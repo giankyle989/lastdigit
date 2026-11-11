@@ -54,7 +54,12 @@ const eslintConfig = [
   },
   {
     files: ['**/*.{ts,tsx}'],
-    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: __dirname } },
+    languageOptions: {
+      parserOptions: {
+        projectService: { allowDefaultProject: ['tests/.tmp-hook/*.ts'] },
+        tsconfigRootDir: __dirname,
+      },
+    },
     rules: {
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: { attributes: false } }],

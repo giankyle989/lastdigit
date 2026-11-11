@@ -1,4 +1,8 @@
-const AI_ATTRIBUTION = [/co-authored-by:.*(claude|anthropic)/i, /generated with \[?claude code/i]
+const AI_ATTRIBUTION = [
+  /co-authored-by:[^\n]*(claude|anthropic)/i,
+  /generated (with|by)\s+\[?claude/i,
+  /noreply@anthropic\.com/i,
+]
 
 /** @type {import('@commitlint/types').UserConfig} */
 const config = {
