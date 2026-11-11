@@ -4,7 +4,7 @@ import { requireUser } from '@/server/session'
 
 export default async function WalletPage() {
   const user = await requireUser()
-  const txs = await listMyTransactions(user.id)
+  const { rows: txs } = await listMyTransactions(user.id, 'all', 1)
   return (
     <div className="space-y-4">
       <div className="card">
