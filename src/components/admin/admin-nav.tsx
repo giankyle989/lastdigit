@@ -6,7 +6,14 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { isActivePath } from '@/lib/url'
 import { cn } from '@/lib/utils'
 
@@ -80,17 +87,12 @@ export function AdminMobileNav({ badges }: { badges: AdminBadges }) {
   const [open, setOpen] = useState(false)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="md:hidden"
-        aria-label="Open menu"
-        onClick={() => setOpen(true)}
-      >
-        <Menu />
-      </Button>
-      <SheetContent side="left" className="w-64">
+      <SheetTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" className="md:hidden" aria-label="Open menu">
+          <Menu />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="data-[side=left]:w-64">
         <SheetHeader>
           <SheetTitle>Admin</SheetTitle>
           <SheetDescription className="sr-only">Admin sections</SheetDescription>

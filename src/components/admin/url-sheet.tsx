@@ -30,12 +30,14 @@ export function UrlSheet({ closeHref, title, description, children }: Props) {
         router.replace(closeHref, { scroll: false })
       }}
     >
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+      <SheetContent
+        side="right"
+        {...(description ? {} : { 'aria-describedby': undefined })}
+        className="overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-xl"
+      >
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
-          <SheetDescription className={description ? undefined : 'sr-only'}>
-            {description ?? title}
-          </SheetDescription>
+          {description && <SheetDescription>{description}</SheetDescription>}
         </SheetHeader>
         <div className="space-y-5 px-4 pb-8">{children}</div>
       </SheetContent>
