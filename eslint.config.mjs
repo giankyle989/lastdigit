@@ -56,7 +56,7 @@ const eslintConfig = [
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       parserOptions: {
-        projectService: { allowDefaultProject: ['tests/.tmp-hook/*.ts'] },
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
     },

@@ -9,3 +9,7 @@ docs/superpowers
 public
 next-env.d.ts
 *.tsbuildinfo
+coverage
+out
+build
+.vercel

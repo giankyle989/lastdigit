@@ -35,6 +35,10 @@ if (LINT_EXT.has(ext)) {
     cwd: ROOT,
     encoding: 'utf8',
   })
+  if (r.error || r.status === null) {
+    process.stderr.write(`Could not run ESLint: ${r.error?.message ?? 'terminated by signal'}\n`)
+    process.exit(2)
+  }
   if (r.status !== 0) {
     process.stderr.write(`ESLint found problems in ${rel} (fix them now):\n${r.stdout}${r.stderr}`)
     process.exit(2)
