@@ -131,6 +131,7 @@ model Transaction {
 
   @@index([userId, createdAt])
   @@index([type])
+  @@index([type, createdAt])
 }
 
 model Inquiry {

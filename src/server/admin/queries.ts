@@ -88,11 +88,3 @@ export function listTransactionsAdmin(f: {
     take: 300,
   })
 }
-
-export function listAdminActions() {
-  return prisma.adminAction.findMany({
-    include: { admin: { select: { username: true } }, targetUser: { select: { username: true } } },
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-  })
-}

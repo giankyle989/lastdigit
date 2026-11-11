@@ -1,6 +1,6 @@
 import { ActionForm } from '@/components/action-form'
 import { formatDateTime } from '@/lib/format'
-import { listAdminActions } from '@/server/admin/queries'
+import { listAdminActions } from '@/server/admin/tables/admin-actions'
 import { requireAdmin } from '@/server/session'
 import { getReferralBonus } from '@/server/settings'
 
@@ -8,7 +8,7 @@ import { referralBonusAction } from '../actions'
 
 export default async function AdminSettingsPage() {
   await requireAdmin()
-  const [bonus, actions] = await Promise.all([getReferralBonus(), listAdminActions()])
+  const [bonus, { rows: actions }] = await Promise.all([getReferralBonus(), listAdminActions({ page: 1 })])
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Settings</h1>
