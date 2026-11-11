@@ -1,0 +1,11 @@
+.next
+node_modules
+package-lock.json
+prisma/migrations
+test-results
+playwright-report
+.superpowers
+docs/superpowers
+public
+next-env.d.ts
+*.tsbuildinfo
