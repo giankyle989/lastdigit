@@ -6,8 +6,8 @@ Free-to-play NBA game: bet points on the last digit of each team's final score (
 
 ```bash
 npm install
-npm run db:up                 # Postgres 16 on localhost:5433
-cp .env.example .env          # then fill AUTH_SECRET, CRON_SECRET, ADMIN_PASSWORD, BALLDONTLIE_API_KEY
+cp .env.example .env          # then fill POSTGRES_PASSWORD (match DATABASE_URL), AUTH_SECRET, CRON_SECRET, ADMIN_PASSWORD, BALLDONTLIE_API_KEY
+npm run db:up                 # Postgres 16 on localhost:5433 (reads POSTGRES_PASSWORD from .env)
 npx prisma migrate dev
 npm run db:seed               # creates the admin from ADMIN_USERNAME / ADMIN_PASSWORD
 npm run dev

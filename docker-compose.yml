@@ -3,7 +3,7 @@ services:
     image: postgres:16
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: lastdigit
     ports:
       - "5433:5432"
