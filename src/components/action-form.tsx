@@ -46,6 +46,7 @@ export function ActionForm({
   const ref = useRef<HTMLFormElement>(null)
   const onSuccessRef = useRef(onSuccess)
   const [confirming, setConfirming] = useState(false)
+  const confirmedRef = useRef(false)
 
   useEffect(() => {
     onSuccessRef.current = onSuccess
@@ -60,7 +61,21 @@ export function ActionForm({
 
   const variant = destructive ? 'destructive' : 'default'
   return (
-    <form ref={ref} action={formAction} className={className ?? 'space-y-3'}>
+    <form
+      ref={ref}
+      action={formAction}
+      className={className ?? 'space-y-3'}
+      onSubmit={(e) => {
+        if (!confirm) return
+        if (confirmedRef.current) {
+          confirmedRef.current = false
+          return
+        }
+        // Implicit submission (Enter in a field) must not skip the confirm step.
+        e.preventDefault()
+        if (e.currentTarget.reportValidity()) setConfirming(true)
+      }}
+    >
       {children}
       {confirm ? (
         <Button
@@ -92,7 +107,12 @@ export function ActionForm({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={() => ref.current?.requestSubmit()}>
+              <AlertDialogAction
+                onClick={() => {
+                  confirmedRef.current = true
+                  ref.current?.requestSubmit()
+                }}
+              >
                 {confirm.actionLabel}
               </AlertDialogAction>
             </AlertDialogFooter>

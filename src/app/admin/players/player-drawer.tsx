@@ -100,13 +100,16 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
             <Input id="note" name="note" maxLength={500} required />
           </Field>
         </ActionDialog>
-        {suspended ? (
+        {/* Both stay mounted (hidden, not swapped) so the success toast and onSuccess of the form
+            that just submitted are not lost when the revalidated render flips `suspended`. */}
+        <div className={suspended ? 'contents' : 'hidden'}>
           <ActionForm
             action={unsuspendAction.bind(null, p.id)}
             submitLabel="Unsuspend"
             className="contents"
           />
-        ) : (
+        </div>
+        <div className={suspended ? 'hidden' : 'contents'}>
           <ActionDialog
             triggerLabel="Suspend"
             title={`Suspend ${p.username}`}
@@ -124,7 +127,7 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
               <Input id="until" name="until" type="date" />
             </Field>
           </ActionDialog>
-        )}
+        </div>
         <ActionDialog
           triggerLabel="Stake limit"
           title="Stake limit per game"

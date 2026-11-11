@@ -43,7 +43,7 @@ const params = (v: object) => ({ params: Promise.resolve(v), searchParams: Promi
 // Keys are the page's path under src/app (without /page.tsx); the last test checks none is missing.
 const adminPages: PageCase[] = [
   ['admin', () => import('@/app/admin/page'), sp()],
-  ['admin/players', () => import('@/app/admin/players/page'), sp({ player: 'x' })],
+  ['admin/players', () => import('@/app/admin/players/page'), sp({ player: 'cplayer123' })],
   ['admin/games', () => import('@/app/admin/games/page'), sp()],
   ['admin/transactions', () => import('@/app/admin/transactions/page'), sp()],
   ['admin/inquiries', () => import('@/app/admin/inquiries/page'), sp()],
