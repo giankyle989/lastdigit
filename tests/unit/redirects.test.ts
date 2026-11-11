@@ -9,6 +9,10 @@ describe('permanent redirects for moved pages', () => {
       ['/referral', '/more/referral', true],
       ['/inquiries', '/more/support', true],
       ['/inquiries/:id', '/more/support/:id', true],
+      ['/admin/transactions', '/admin/ledger', true],
+      ['/admin/inquiries', '/admin/support', true],
+      ['/admin/inquiries/:id', '/admin/support?ticket=:id', true],
+      ['/admin/players/:id', '/admin/players?player=:id', true],
     ])
   })
 })

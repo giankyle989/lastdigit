@@ -46,8 +46,7 @@ const adminPages: PageCase[] = [
   ['admin/players', () => import('@/app/admin/players/page'), sp({ player: 'cplayer123' })],
   ['admin/games', () => import('@/app/admin/games/page'), sp()],
   ['admin/ledger', () => import('@/app/admin/ledger/page'), sp()],
-  ['admin/inquiries', () => import('@/app/admin/inquiries/page'), sp()],
-  ['admin/inquiries/[id]', () => import('@/app/admin/inquiries/[id]/page'), params({ id: 'x' })],
+  ['admin/support', () => import('@/app/admin/support/page'), sp({ ticket: 'x' })],
   ['admin/settings', () => import('@/app/admin/settings/page'), sp()],
 ]
 
