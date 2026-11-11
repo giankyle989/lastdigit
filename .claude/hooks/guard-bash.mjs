@@ -117,6 +117,10 @@ function pushTargetsMaster(args, cwd) {
 
 function checkSegment({ text, head }, cwd) {
   const all = tokenize(head)
+  const gh = all.findIndex((t) => !t.q && t.v === 'gh')
+  if (gh !== -1 && all[gh + 1]?.v === 'pr' && ['create', 'edit'].includes(all[gh + 2]?.v ?? '')) {
+    if (AI_ATTRIBUTION.some((re) => re.test(text))) return 'PR descriptions must not contain AI attribution'
+  }
   const g = all.findIndex((t) => !t.q && t.v === 'git')
   if (g === -1) {
     const p = all.findIndex((t) => !t.q && t.v === 'prisma')
