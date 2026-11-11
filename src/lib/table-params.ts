@@ -46,3 +46,13 @@ export function etDateBounds(from?: string, to?: string): { gte?: Date; lt?: Dat
     ...(to ? { lt: etDayRange(to).end } : {}),
   }
 }
+
+/** Header click: same field flips direction; a new field starts ascending. */
+export function toggleSort(current: string, field: string): string {
+  return current === field ? `-${field}` : field
+}
+
+/** Drawer ids (`?player=` etc.): plausible record ids only; anything else is "Not found". */
+export function isRecordId(value: string | undefined): value is string {
+  return value !== undefined && /^[A-Za-z0-9_-]{1,64}$/.test(value)
+}

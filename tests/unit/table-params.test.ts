@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   etDateBounds,
   formatSort,
+  isRecordId,
   parseEtDateParam,
   parseOption,
   parseSearch,
   parseSort,
+  toggleSort,
 } from '@/lib/table-params'
 import { hrefWith, isActivePath } from '@/lib/url'
 
@@ -86,5 +88,21 @@ describe('isActivePath', () => {
     expect(isActivePath('/gamesx', '/games')).toBe(false)
     expect(isActivePath('/admin/players', '/admin', true)).toBe(false)
     expect(isActivePath('/admin', '/admin', true)).toBe(true)
+  })
+})
+
+describe('toggleSort and isRecordId', () => {
+  it('flips the active field and starts new fields ascending', () => {
+    expect(toggleSort('balance', 'balance')).toBe('-balance')
+    expect(toggleSort('-balance', 'balance')).toBe('balance')
+    expect(toggleSort('-joined', 'balance')).toBe('balance')
+  })
+
+  it('accepts cuid-like ids only', () => {
+    expect(isRecordId('cmh1abc23000008l4')).toBe(true)
+    expect(isRecordId(undefined)).toBe(false)
+    expect(isRecordId('')).toBe(false)
+    expect(isRecordId('../etc')).toBe(false)
+    expect(isRecordId('x'.repeat(65))).toBe(false)
   })
 })
