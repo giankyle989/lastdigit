@@ -1,5 +1,5 @@
 {
-  "name": "app",
+  "name": "lastdigit",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -15,10 +15,10 @@
     "db:seed": "prisma db seed"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.3",
+    "@prisma/client": "6.19.3",
     "bcryptjs": "^3.0.3",
     "next": "15.5.29",
-    "next-auth": "^5.0.0-beta.32",
+    "next-auth": "5.0.0-beta.32",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "zod": "^3.25.76"
@@ -33,7 +33,7 @@
     "dotenv": "^16.6.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
-    "prisma": "^6.19.3",
+    "prisma": "6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
