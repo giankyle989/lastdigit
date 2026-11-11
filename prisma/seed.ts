@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+
 import { hashPassword } from '../src/server/passwords'
 import { generateReferralCode } from '../src/server/referral-code'
 

@@ -1,4 +1,5 @@
 import type { BetResult } from '@prisma/client'
+
 import { prisma } from '@/lib/db'
 
 export function listUpcomingGames(now: Date = new Date()) {

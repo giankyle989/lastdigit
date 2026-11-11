@@ -1,4 +1,5 @@
 import type { TransactionType } from '@prisma/client'
+
 import type { Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 
@@ -27,8 +28,9 @@ export async function postEntry(tx: Tx, entry: LedgerEntry, opts: { requireFunds
       UPDATE "User" SET balance = balance + ${entry.amount}
       WHERE id = ${entry.userId} AND balance + ${entry.amount} >= 0
       RETURNING balance`
-    if (rows.length === 0) throw new DomainError('INSUFFICIENT_BALANCE', 'Insufficient balance')
-    balanceAfter = rows[0].balance
+    const row = rows[0]
+    if (!row) throw new DomainError('INSUFFICIENT_BALANCE', 'Insufficient balance')
+    balanceAfter = row.balance
   } else {
     const updated = await tx.user.update({
       where: { id: entry.userId },

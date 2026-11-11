@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createBalldontlieFetcher, mapApiGame, type ApiGame } from '@/server/sync/balldontlie'
+
+import { type ApiGame, createBalldontlieFetcher, mapApiGame } from '@/server/sync/balldontlie'
 import { syncDates } from '@/server/sync/sync'
 
 function apiGame(over: Partial<ApiGame> = {}): ApiGame {
@@ -77,13 +78,15 @@ describe('createBalldontlieFetcher', () => {
     )
     const games = await fetchGames(['2026-11-10', '2026-11-11'])
     expect(games.map((g) => g.id)).toEqual([1, 2])
-    const [url1, init1] = fetchImpl.mock.calls[0]
+    const call1 = fetchImpl.mock.calls[0]
+    if (!call1) throw new Error('missing fetch call')
+    const [url1, init1] = call1
     expect(String(url1)).toBe(
       'https://x.test/v1/games?dates%5B%5D=2026-11-10&dates%5B%5D=2026-11-11&per_page=100',
     )
     expect(init1.headers).toEqual({ Authorization: 'KEY' })
     expect(init1.signal).toBeDefined()
-    expect(String(fetchImpl.mock.calls[1][0])).toContain('cursor=5')
+    expect(String(fetchImpl.mock.calls[1]?.[0])).toContain('cursor=5')
   })
 
   it('throws on HTTP errors', async () => {

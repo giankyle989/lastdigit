@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { runAction, type ActionState } from '@/lib/action-state'
+
+import { type ActionState, runAction } from '@/lib/action-state'
 import { placeBet } from '@/server/bets'
 import { closeInquiry, createInquiry, replyToInquiry } from '@/server/inquiries'
 import { requireUser } from '@/server/session'

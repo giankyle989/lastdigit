@@ -1,5 +1,6 @@
 import { InquiryStatus } from '@prisma/client'
 import Link from 'next/link'
+
 import { formatDateTime } from '@/lib/format'
 import { listInquiriesAdmin } from '@/server/inquiries'
 import { requireAdmin } from '@/server/session'

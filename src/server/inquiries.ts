@@ -1,5 +1,6 @@
 import type { InquiryStatus } from '@prisma/client'
 import { z } from 'zod'
+
 import { prisma, type Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 

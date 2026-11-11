@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+
 import { prisma } from '@/lib/db'
 import { placeBet } from '@/server/bets'
 import { settleGame, voidGame } from '@/server/settlement'
+
 import { expectLedgerConsistent, fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 async function balanceOf(id: string) {

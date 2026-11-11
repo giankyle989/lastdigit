@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/db'
+
 import { setLastSyncAt } from '../settings'
 import { settleGame } from '../settlement'
-import { createBalldontlieFetcher, mapApiGame, type GamesFetcher } from './balldontlie'
+import { createBalldontlieFetcher, type GamesFetcher, mapApiGame } from './balldontlie'
 
 export type SyncResult = {
   fetched: number

@@ -1,5 +1,7 @@
 import Link from 'next/link'
+
 import { ActionForm } from '@/components/action-form'
+
 import { signupAction } from '../actions'
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {

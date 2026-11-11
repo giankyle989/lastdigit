@@ -1,6 +1,7 @@
-import { defineConfig } from 'vitest/config'
 import path from 'node:path'
+
 import { config } from 'dotenv'
+import { defineConfig } from 'vitest/config'
 
 config({ path: '.env.test', override: true })
 

@@ -1,9 +1,10 @@
 import { ActionForm } from '@/components/action-form'
 import { formatDateTime } from '@/lib/format'
 import { listAdminActions } from '@/server/admin/queries'
-import { getReferralBonus } from '@/server/settings'
-import { referralBonusAction } from '../actions'
 import { requireAdmin } from '@/server/session'
+import { getReferralBonus } from '@/server/settings'
+
+import { referralBonusAction } from '../actions'
 
 export default async function AdminSettingsPage() {
   await requireAdmin()

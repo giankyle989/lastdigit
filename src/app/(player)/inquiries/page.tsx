@@ -1,8 +1,10 @@
 import Link from 'next/link'
+
 import { ActionForm } from '@/components/action-form'
 import { formatDateTime } from '@/lib/format'
 import { listInquiriesForUser } from '@/server/inquiries'
 import { requireUser } from '@/server/session'
+
 import { createInquiryAction } from '../actions'
 
 export default async function InquiriesPage() {

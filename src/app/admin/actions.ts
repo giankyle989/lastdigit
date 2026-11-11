@@ -1,7 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { runAction, type ActionState } from '@/lib/action-state'
+
+import { type ActionState, runAction } from '@/lib/action-state'
 import {
   adjustPoints,
   resetPassword,

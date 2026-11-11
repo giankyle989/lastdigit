@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation'
+
 import { BetGrid } from '@/components/bet-grid'
 import { Countdown } from '@/components/countdown'
-import { endingOf, formatEnding } from '@/lib/game/ending'
 import { formatPoints, formatTipoff } from '@/lib/format'
+import { endingOf, formatEnding } from '@/lib/game/ending'
 import { getGameForPlayer } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
+
 import { placeBetAction } from '../../actions'
 
 export default async function GamePage({ params }: { params: Promise<{ id: string }> }) {
@@ -15,11 +17,11 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
   const { game, myBets, winners } = data
 
   const open = game.status === 'SCHEDULED' && game.startsAt > new Date()
-  const hasFinal =
-    (game.status === 'FINAL' || game.status === 'SETTLED') &&
-    game.awayScore !== null &&
-    game.homeScore !== null
-  const winning = hasFinal ? formatEnding(endingOf(game.awayScore!, game.homeScore!)) : undefined
+  const hasFinal = game.status === 'FINAL' || game.status === 'SETTLED'
+  const winning =
+    hasFinal && game.awayScore !== null && game.homeScore !== null
+      ? formatEnding(endingOf(game.awayScore, game.homeScore))
+      : undefined
   const myStakes = Object.fromEntries(myBets.map((b) => [`${b.awayDigit}-${b.homeDigit}`, b.stake]))
 
   return (

@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+
 import { ActionForm } from '@/components/action-form'
 import { formatDateTime, formatPoints } from '@/lib/format'
 import { isSuspended } from '@/lib/suspension'
 import { getPlayerDetail } from '@/server/admin/queries'
+import { requireAdmin } from '@/server/session'
+
 import {
   adjustPointsAction,
   resetPasswordAction,
@@ -11,7 +14,6 @@ import {
   suspendAction,
   unsuspendAction,
 } from '../../actions'
-import { requireAdmin } from '@/server/session'
 
 export default async function PlayerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin()

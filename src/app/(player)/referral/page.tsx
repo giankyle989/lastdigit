@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+
 import { formatDateTime, formatPoints } from '@/lib/format'
 import { listMyReferrals } from '@/server/queries/player'
 import { requireUser } from '@/server/session'

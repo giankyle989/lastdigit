@@ -1,4 +1,5 @@
 import Link from 'next/link'
+
 import { formatDateTime, formatPoints } from '@/lib/format'
 import { getDashboardStats } from '@/server/admin/queries'
 import { requireAdmin } from '@/server/session'

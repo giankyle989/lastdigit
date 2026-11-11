@@ -1,4 +1,5 @@
 import Link from 'next/link'
+
 import { logoutAction } from '@/app/(auth)/actions'
 import { formatPoints } from '@/lib/format'
 

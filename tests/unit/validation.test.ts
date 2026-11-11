@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+
 import { intFromForm } from '@/lib/validation'
 
 const stake = intFromForm('Stake', 1, 1000)
@@ -16,6 +17,6 @@ describe('intFromForm', () => {
   it('gives a readable message', () => {
     const r = stake.safeParse('abc')
     expect(r.success).toBe(false)
-    if (!r.success) expect(r.error.issues[0].message).toBe('Stake must be a whole number')
+    if (!r.success) expect(r.error.issues[0]?.message).toBe('Stake must be a whole number')
   })
 })

@@ -1,5 +1,6 @@
 import type { BetResult } from '@prisma/client'
 import Link from 'next/link'
+
 import { formatPoints, formatTipoff } from '@/lib/format'
 import { listMyBets } from '@/server/queries/player'
 import { requireUser } from '@/server/session'

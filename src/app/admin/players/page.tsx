@@ -1,4 +1,5 @@
 import Link from 'next/link'
+
 import { formatDateTime, formatPoints } from '@/lib/format'
 import { isSuspended } from '@/lib/suspension'
 import { searchPlayers } from '@/server/admin/queries'

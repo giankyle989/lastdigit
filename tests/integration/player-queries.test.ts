@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+
 import { placeBet } from '@/server/bets'
 import { getGameForPlayer, listUpcomingGames } from '@/server/queries/player'
+
 import { fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 describe('player queries', () => {

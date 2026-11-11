@@ -1,9 +1,11 @@
 import type { Bet, GameStatus } from '@prisma/client'
 import { z } from 'zod'
+
 import { prisma } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 import { isSuspended } from '@/lib/suspension'
 import { intFromForm } from '@/lib/validation'
+
 import { postEntry } from './ledger'
 
 export const placeBetSchema = z.object({

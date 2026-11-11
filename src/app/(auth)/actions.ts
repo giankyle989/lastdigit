@@ -1,8 +1,9 @@
 'use server'
 
 import { AuthError } from 'next-auth'
+
 import { signIn, signOut } from '@/auth'
-import { runAction, type ActionState } from '@/lib/action-state'
+import { type ActionState, runAction } from '@/lib/action-state'
 import { registerPlayer } from '@/server/users'
 
 export async function loginAction(_prev: ActionState, fd: FormData): Promise<ActionState> {

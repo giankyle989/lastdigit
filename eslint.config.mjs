@@ -72,7 +72,7 @@ const eslintConfig = [
       ...NEXT_REACT,
       ...UI,
       { group: ['@/server/*'] },
-      { group: ['@/lib/db'] },
+      { group: ['@/lib/db', '**/lib/db'] },
       { group: ['@prisma/client'], allowTypeImports: true },
     ],
     'src/lib must stay pure: no database, Next.js, React, server or UI imports (Prisma types only).',
@@ -91,12 +91,12 @@ const eslintConfig = [
   ),
   restrict(
     ['src/app/**/*.{ts,tsx}'],
-    [{ group: ['@/lib/db'] }],
+    [{ group: ['@/lib/db', '**/lib/db'] }],
     'src/app must not touch the database directly: call a src/server function.',
   ),
   restrict(
     ['src/components/**/*.{ts,tsx}'],
-    [{ group: ['@/lib/db'] }, { group: ['@/server/*'] }],
+    [{ group: ['@/lib/db', '**/lib/db'] }, { group: ['@/server/*'] }],
     'src/components must not import the database or src/server: pass data in as props or call an action.',
   ),
   prettier,

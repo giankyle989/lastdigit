@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation'
+
 import { ActionForm } from '@/components/action-form'
 import { InquiryThread } from '@/components/inquiry-thread'
 import { DomainError } from '@/lib/errors'
 import { getInquiryThread } from '@/server/inquiries'
 import { requireUser } from '@/server/session'
+
 import { closeInquiryAction, replyInquiryAction } from '../../actions'
 
 export default async function InquiryPage({ params }: { params: Promise<{ id: string }> }) {

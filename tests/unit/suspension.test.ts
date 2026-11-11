@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+
 import { isSuspended } from '@/lib/suspension'
 
 const now = new Date('2026-11-11T12:00:00Z')

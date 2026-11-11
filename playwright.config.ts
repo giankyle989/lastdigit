@@ -3,6 +3,12 @@ import { config } from 'dotenv'
 
 config({ path: '.env.test', override: true })
 
+function requireEnv(name: string): string {
+  const v = process.env[name]
+  if (!v) throw new Error(`Missing env ${name} (.env.test)`)
+  return v
+}
+
 export default defineConfig({
   testDir: 'e2e',
   workers: 1,
@@ -15,10 +21,10 @@ export default defineConfig({
     timeout: 240_000,
     reuseExistingServer: false,
     env: {
-      DATABASE_URL: process.env.DATABASE_URL!,
-      AUTH_SECRET: process.env.AUTH_SECRET!,
+      DATABASE_URL: requireEnv('DATABASE_URL'),
+      AUTH_SECRET: requireEnv('AUTH_SECRET'),
       AUTH_TRUST_HOST: 'true',
-      CRON_SECRET: process.env.CRON_SECRET!,
+      CRON_SECRET: requireEnv('CRON_SECRET'),
       BALLDONTLIE_API_KEY: 'unused',
     },
   },

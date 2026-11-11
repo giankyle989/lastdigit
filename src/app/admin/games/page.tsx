@@ -1,10 +1,12 @@
 import { GameStatus } from '@prisma/client'
 import Link from 'next/link'
+
 import { ActionForm } from '@/components/action-form'
 import { formatPoints, formatTipoff } from '@/lib/format'
 import { listGamesAdmin } from '@/server/admin/queries'
-import { forceSyncAction, voidGameAction } from '../actions'
 import { requireAdmin } from '@/server/session'
+
+import { forceSyncAction, voidGameAction } from '../actions'
 
 const STATUSES = Object.values(GameStatus)
 

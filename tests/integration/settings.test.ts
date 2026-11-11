@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'
+
 import { prisma } from '@/lib/db'
 import { getLastSyncAt, getReferralBonus, setLastSyncAt, setReferralBonus } from '@/server/settings'
+
 import { makeUser, resetDb } from '../helpers/db'
 
 describe('settings', () => {

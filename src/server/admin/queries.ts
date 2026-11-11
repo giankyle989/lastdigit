@@ -1,5 +1,7 @@
 import type { GameStatus, TransactionType } from '@prisma/client'
+
 import { prisma } from '@/lib/db'
+
 import { getLastSyncAt } from '../settings'
 
 const SYNC_STALE_MS = 30 * 60 * 1000

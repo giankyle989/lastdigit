@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { GET } from '@/app/api/cron/sync/route'
 import { prisma } from '@/lib/db'
 import { placeBet } from '@/server/bets'
 import { getLastSyncAt } from '@/server/settings'
+import { voidGame } from '@/server/settlement'
 import type { ApiGame } from '@/server/sync/balldontlie'
 import { syncGames } from '@/server/sync/sync'
-import { GET } from '@/app/api/cron/sync/route'
-import { voidGame } from '@/server/settlement'
+
 import { expectLedgerConsistent, fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 function apiGame(over: Partial<ApiGame> = {}): ApiGame {

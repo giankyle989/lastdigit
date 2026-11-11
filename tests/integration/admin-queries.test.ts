@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+
 import { prisma } from '@/lib/db'
 import { getDashboardStats, listTransactionsAdmin, searchPlayers } from '@/server/admin/queries'
 import { postEntry } from '@/server/ledger'
 import { setLastSyncAt } from '@/server/settings'
+
 import { fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 describe('admin queries', () => {
@@ -47,6 +49,6 @@ describe('admin queries', () => {
     await fundUser(kyle.id, 10)
     const txs = await listTransactionsAdmin({ username: 'KYLE', type: 'ADMIN_GRANT' })
     expect(txs).toHaveLength(1)
-    expect(txs[0].user.username).toBe('Kyle')
+    expect(txs[0]?.user.username).toBe('Kyle')
   })
 })

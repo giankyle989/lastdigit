@@ -1,8 +1,10 @@
 import { Prisma, type User } from '@prisma/client'
 import { z } from 'zod'
+
 import { prisma } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 import { isSuspended } from '@/lib/suspension'
+
 import { postEntry } from './ledger'
 import { hashPassword, verifyPassword } from './passwords'
 import { generateReferralCode } from './referral-code'
