@@ -4,8 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { type ActionState, runAction } from '@/lib/action-state'
-import { placeBet } from '@/server/bets'
+import { placeBet, placeBets } from '@/server/bets'
 import { closeInquiry, createInquiry, replyToInquiry } from '@/server/inquiries'
+import { getSlipStatus } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
 
 export async function placeBetAction(gameId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -22,6 +23,23 @@ export async function placeBetAction(gameId: string, _prev: ActionState, fd: For
   )
   revalidatePath(`/games/${gameId}`)
   return result
+}
+
+/** Places every pick in the slip or none (spec §4.3); `pickIndex` marks the failing pick. */
+export async function placeBetsAction(picks: unknown): Promise<ActionState> {
+  const user = await requireUser()
+  const result = await runAction(
+    () => placeBets(user.id, picks),
+    (bets) => `${bets.length} ${bets.length === 1 ? 'bet' : 'bets'} placed`,
+  )
+  revalidatePath('/', 'layout')
+  return result
+}
+
+/** Fresh open/pool/ending-stake data for the slip's picks, plus the balance. */
+export async function getSlipStatusAction(picks: unknown) {
+  const user = await requireUser()
+  return getSlipStatus(user.id, picks)
 }
 
 export async function createInquiryAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
