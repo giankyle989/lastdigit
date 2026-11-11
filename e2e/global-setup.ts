@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process'
 import { PrismaClient } from '@prisma/client'
+import { TRUNCATE_ALL_SQL } from '../tests/helpers/truncate'
 
 export default async function setup() {
   // Prisma's AI-agent guard blocks `migrate reset`, so: migrate, truncate, seed.
@@ -7,9 +8,7 @@ export default async function setup() {
   execSync('npx prisma migrate deploy', { stdio: 'inherit', env: process.env })
   const prisma = new PrismaClient()
   try {
-    await prisma.$executeRawUnsafe(
-      'TRUNCATE "InquiryMessage", "Inquiry", "AdminAction", "Transaction", "Bet", "Game", "Setting", "User" RESTART IDENTITY CASCADE',
-    )
+    await prisma.$executeRawUnsafe(TRUNCATE_ALL_SQL)
   } finally {
     await prisma.$disconnect()
   }

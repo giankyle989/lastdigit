@@ -68,7 +68,7 @@ export function createBalldontlieFetcher(
       for (const d of dates) url.searchParams.append('dates[]', d)
       url.searchParams.set('per_page', '100')
       if (cursor) url.searchParams.set('cursor', String(cursor))
-      const res = await fetchImpl(url, { headers: { Authorization: apiKey } })
+      const res = await fetchImpl(url, { headers: { Authorization: apiKey }, signal: AbortSignal.timeout(15_000) })
       if (!res.ok) throw new Error(`balldontlie ${res.status}: ${await res.text()}`)
       const json = (await res.json()) as { data: ApiGame[]; meta?: { next_cursor?: number | null } }
       out.push(...json.data)

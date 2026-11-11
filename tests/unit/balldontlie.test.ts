@@ -70,6 +70,7 @@ describe('createBalldontlieFetcher', () => {
     const [url1, init1] = fetchImpl.mock.calls[0]
     expect(String(url1)).toBe('https://x.test/v1/games?dates%5B%5D=2026-11-10&dates%5B%5D=2026-11-11&per_page=100')
     expect(init1.headers).toEqual({ Authorization: 'KEY' })
+    expect(init1.signal).toBeDefined()
     expect(String(fetchImpl.mock.calls[1][0])).toContain('cursor=5')
   })
 

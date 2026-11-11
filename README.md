@@ -13,6 +13,8 @@ npm run db:seed               # creates the admin from ADMIN_USERNAME / ADMIN_PA
 npm run dev
 ```
 
+Re-running the seed resets the admin's password to `ADMIN_PASSWORD`. The seed refuses to run if `ADMIN_USERNAME` belongs to an existing player.
+
 Get a free balldontlie API key at https://www.balldontlie.io.
 
 ## Game sync
@@ -24,6 +26,13 @@ Get a free balldontlie API key at https://www.balldontlie.io.
 ```
 
 (Vercel Hobby cron runs at most daily; use an external cron service or a VPS crontab.) Admins can also click **Force sync** on Admin → Games.
+
+## Production
+
+1. Set environment variables: `AUTH_SECRET` (generate with `openssl rand -base64 32`), `CRON_SECRET`, `BALLDONTLIE_API_KEY`, plus `DATABASE_URL`, `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
+2. Apply migrations with `npx prisma migrate deploy` (not `migrate dev`), then `npm run db:seed`.
+3. `npm run build && npm start`.
+4. Schedule the cron (see Game sync above).
 
 ## Tests
 

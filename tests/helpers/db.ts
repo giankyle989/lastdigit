@@ -2,11 +2,10 @@ import type { Prisma } from '@prisma/client'
 import { expect } from 'vitest'
 import { prisma } from '@/lib/db'
 import { postEntry } from '@/server/ledger'
+import { TRUNCATE_ALL_SQL } from './truncate'
 
 export async function resetDb() {
-  await prisma.$executeRawUnsafe(
-    'TRUNCATE "InquiryMessage", "Inquiry", "AdminAction", "Transaction", "Bet", "Game", "Setting", "User" RESTART IDENTITY CASCADE',
-  )
+  await prisma.$executeRawUnsafe(TRUNCATE_ALL_SQL)
 }
 
 let seq = 0
