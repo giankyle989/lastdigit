@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLAYER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum GameStatus {
+  SCHEDULED
+  LIVE
+  FINAL
+  SETTLED
+  VOID
+  POSTPONED
+}
+
+enum BetResult {
+  PENDING
+  WON
+  LOST
+  REFUNDED
+}
+
+enum TransactionType {
+  REFERRAL_BONUS
+  ADMIN_GRANT
+  ADMIN_DEDUCT
+  BET
+  PAYOUT
+  REFUND
+}
+
+enum InquiryStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+model User {
+  id                String           @id @default(cuid())
+  username          String
+  usernameKey       String           @unique
+  passwordHash      String
+  role              Role             @default(PLAYER)
+  status            UserStatus       @default(ACTIVE)
+  suspendedUntil    DateTime?
+  stakeLimitPerGame Int?
+  balance           Int              @default(0)
+  referralCode      String           @unique
+  referredById      String?
+  referredBy        User?            @relation("Referrals", fields: [referredById], references: [id])
+  referrals         User[]           @relation("Referrals")
+  bets              Bet[]
+  transactions      Transaction[]    @relation("UserTransactions")
+  adminTransactions Transaction[]    @relation("AdminTransactions")
+  inquiries         Inquiry[]
+  inquiryMessages   InquiryMessage[]
+  adminActions      AdminAction[]    @relation("ActionsByAdmin")
+  targetedActions   AdminAction[]    @relation("ActionsOnUser")
+  createdAt         DateTime         @default(now())
+}
+
+model Game {
+  id           String        @id @default(cuid())
+  externalId   Int           @unique
+  startsAt     DateTime
+  awayTeam     String
+  homeTeam     String
+  awayScore    Int?
+  homeScore    Int?
+  status       GameStatus    @default(SCHEDULED)
+  pool         Int           @default(0)
+  houseTake    Int           @default(0)
+  settledAt    DateTime?
+  voidReason   String?
+  bets         Bet[]
+  transactions Transaction[]
+  adminActions AdminAction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([startsAt])
+  @@index([status])
+}
+
+model Bet {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  gameId       String
+  game         Game          @relation(fields: [gameId], references: [id])
+  awayDigit    Int
+  homeDigit    Int
+  stake        Int
+  payout       Int           @default(0)
+  result       BetResult     @default(PENDING)
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+
+  @@unique([userId, gameId, awayDigit, homeDigit])
+  @@index([gameId])
+}
+
+model Transaction {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation("UserTransactions", fields: [userId], references: [id])
+  type         TransactionType
+  amount       Int
+  balanceAfter Int
+  gameId       String?
+  game         Game?           @relation(fields: [gameId], references: [id])
+  betId        String?
+  bet          Bet?            @relation(fields: [betId], references: [id])
+  adminId      String?
+  admin        User?           @relation("AdminTransactions", fields: [adminId], references: [id])
+  note         String?
+  createdAt    DateTime        @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type])
+}
+
+model Inquiry {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  subject   String
+  status    InquiryStatus    @default(OPEN)
+  messages  InquiryMessage[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([status])
+}
+
+model InquiryMessage {
+  id        String   @id @default(cuid())
+  inquiryId String
+  inquiry   Inquiry  @relation(fields: [inquiryId], references: [id])
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+}
+
+model AdminAction {
+  id           String   @id @default(cuid())
+  adminId      String
+  admin        User     @relation("ActionsByAdmin", fields: [adminId], references: [id])
+  action       String
+  targetUserId String?
+  targetUser   User?    @relation("ActionsOnUser", fields: [targetUserId], references: [id])
+  targetGameId String?
+  targetGame   Game?    @relation(fields: [targetGameId], references: [id])
+  details      Json     @default("{}")
+  createdAt    DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
