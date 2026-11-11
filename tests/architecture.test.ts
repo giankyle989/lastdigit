@@ -9,6 +9,7 @@ import {
   findBalanceWrites,
   hasGuardCall,
   importsDb,
+  importsServer,
   isServerActionFile,
   listFiles,
   parseServerActions,
@@ -102,6 +103,13 @@ describe('rule helpers (fixtures)', () => {
     expect(importsDb("import { prisma } from '../../lib/db'")).toBe(true)
     expect(importsDb("import { x } from './lib/dbx'")).toBe(false)
   })
+
+  it('detects server-layer imports', () => {
+    expect(importsServer("import { a } from '@/server/ledger'")).toBe(true)
+    expect(importsServer("import { a } from '../../server/ledger'")).toBe(true)
+    expect(importsServer("import { a } from '@/lib/format'")).toBe(false)
+    expect(importsServer("import { a } from './serverless'")).toBe(false)
+  })
 })
 
 describe('repository invariants', () => {
@@ -150,5 +158,10 @@ describe('repository invariants', () => {
       ...listFiles('src/components', /\.(ts|tsx)$/),
     ].filter((f) => importsDb(read(f)))
     expect(offenders, 'use a src/server function instead of @/lib/db').toEqual([])
+  })
+
+  it('components never import the server layer', () => {
+    const offenders = listFiles('src/components', /\.(ts|tsx)$/).filter((f) => importsServer(read(f)))
+    expect(offenders, 'pass data as props or call an action instead of importing src/server').toEqual([])
   })
 })

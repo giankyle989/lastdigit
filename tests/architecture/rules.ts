@@ -103,6 +103,10 @@ export function importsDb(source: string): boolean {
   return /from\s+['"](@\/lib\/db|(?:\.{1,2}\/)+(?:[\w-]+\/)*lib\/db)['"]/.test(source)
 }
 
+export function importsServer(source: string): boolean {
+  return /from\s+['"](@\/server\/|(?:\.{1,2}\/)+(?:[\w-]+\/)*server\/)[^'"]*['"]/.test(source)
+}
+
 export function listFiles(dir: string, match: RegExp): string[] {
   const abs = path.join(ROOT, dir)
   const out: string[] = []

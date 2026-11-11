@@ -16,8 +16,8 @@ function restrict(files, groups, message, ignores = []) {
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {
-          patterns: groups.map(({ group, allowTypeImports = false }) => ({
-            group,
+          patterns: groups.map(({ allowTypeImports = false, ...rule }) => ({
+            ...rule,
             allowTypeImports,
             message,
           })),
@@ -76,7 +76,7 @@ const eslintConfig = [
     [
       ...NEXT_REACT,
       ...UI,
-      { group: ['@/server/*'] },
+      { group: ['@/server/*', '**/server/*'] },
       { group: ['@/lib/db', '**/lib/db'] },
       { group: ['@prisma/client'], allowTypeImports: true },
     ],
@@ -91,7 +91,7 @@ const eslintConfig = [
   ),
   restrict(
     ['src/server/session.ts'],
-    [{ group: ['react', 'react-dom', 'react/*'] }, ...UI],
+    [{ group: ['react', 'react-dom', 'react/*'] }, { regex: '^next(/(?!navigation$).*)?$' }, ...UI],
     'session.ts may use next/navigation and @/auth only.',
   ),
   restrict(
@@ -101,7 +101,7 @@ const eslintConfig = [
   ),
   restrict(
     ['src/components/**/*.{ts,tsx}'],
-    [{ group: ['@/lib/db', '**/lib/db'] }, { group: ['@/server/*'] }],
+    [{ group: ['@/lib/db', '**/lib/db'] }, { group: ['@/server/*', '**/server/*'] }],
     'src/components must not import the database or src/server: pass data in as props or call an action.',
   ),
   prettier,
