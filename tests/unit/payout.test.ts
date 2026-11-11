@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { computeSplit } from '@/lib/game/payout'
+import { computeSplit, estimatePayout } from '@/lib/game/payout'
 
 describe('computeSplit', () => {
   it('splits 90% of the pool pro-rata by stake', () => {
@@ -49,5 +49,51 @@ describe('computeSplit', () => {
     ])
     expect(s.payouts.get('a')).toBe(1_710_000_000)
     expect(s.houseTake).toBe(190_000_000)
+  })
+})
+
+describe('estimatePayout', () => {
+  // The estimate must equal what settlement would pay if the game ended now on this ending.
+  function settledPayout(pool: number, endingStake: number, stake: number): number {
+    const bets = [
+      { id: 'others-on-ending', stake: endingStake, isWinner: true },
+      { id: 'rest-of-pool', stake: pool - endingStake, isWinner: false },
+      { id: 'me', stake, isWinner: true },
+    ].filter((b) => b.stake > 0)
+    return computeSplit(bets).payouts.get('me') ?? 0
+  }
+
+  it.each([
+    [0, 0, 100], // empty pool: you get 90% of your own stake
+    [1000, 0, 100], // nobody else on the ending
+    [1000, 300, 100],
+    [1000, 1000, 100], // everyone on your ending
+    [5, 2, 1], // tiny numbers, flooring
+    [1200, 0, 1],
+    [123_457, 4_321, 999],
+    [1_000_000_000, 250_000_000, 1_000_000_000], // large values stay exact
+  ])('pool=%i endingStake=%i stake=%i matches computeSplit', (pool, endingStake, stake) => {
+    expect(estimatePayout(pool, endingStake, stake)).toBe(settledPayout(pool, endingStake, stake))
+  })
+
+  it('matches computeSplit across a grid of small values', () => {
+    for (let pool = 0; pool <= 60; pool += 7) {
+      for (let endingStake = 0; endingStake <= pool; endingStake += 5) {
+        for (const stake of [1, 2, 3, 10, 50]) {
+          expect(estimatePayout(pool, endingStake, stake)).toBe(settledPayout(pool, endingStake, stake))
+        }
+      }
+    }
+  })
+
+  it('is the documented formula', () => {
+    // floor(floor((1000 + 100) * 90 / 100) * 100 / (300 + 100)) = floor(990 * 100 / 400) = 247
+    expect(estimatePayout(1000, 300, 100)).toBe(247)
+  })
+
+  it('returns 0 for a non-positive or fractional stake', () => {
+    expect(estimatePayout(1000, 0, 0)).toBe(0)
+    expect(estimatePayout(1000, 0, -5)).toBe(0)
+    expect(estimatePayout(1000, 0, 1.5)).toBe(0)
   })
 })

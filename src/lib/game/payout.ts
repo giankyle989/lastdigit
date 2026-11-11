@@ -21,3 +21,13 @@ export function computeSplit(bets: StakeEntry[]): Split {
   }
   return { pool, houseTake: pool - Number(paid), payouts }
 }
+
+/**
+ * Payout for a new bet of `stake` on an ending that already has `endingStake`, in a pool of
+ * `pool`, assuming no further bets. Equals computeSplit's payout for that bet (spec §6.3).
+ */
+export function estimatePayout(pool: number, endingStake: number, stake: number): number {
+  if (!Number.isInteger(stake) || stake <= 0) return 0
+  const payoutPool = (BigInt(pool + stake) * BigInt(PAYOUT_PERCENT)) / BigInt(100)
+  return Number((payoutPool * BigInt(stake)) / BigInt(endingStake + stake))
+}
