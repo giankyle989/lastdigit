@@ -50,6 +50,8 @@ describe('guard-bash hook', () => {
     'git push -fu origin master',
     'git push -uf origin master',
     'git push --force origin refs/heads/master',
+    'gh pr create --title "feat: x" --body "Summary\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)"',
+    `gh pr edit 1 --body "$(cat <<'EOF'\nSummary\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)"`,
     "git commit -F - <<'EOF'\nfeat: x\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\nEOF",
   ])('blocks: %s', (cmd) => {
     const r = guard(cmd)
@@ -71,6 +73,8 @@ describe('guard-bash hook', () => {
     'git -C . status',
     'git push origin +feat/x',
     'echo "do not run prisma migrate reset"',
+    'gh pr create --title "feat: x" --body "Adds the bet slip."',
+    'gh pr view 1',
   ])('allows: %s', (cmd) => {
     expect(guard(cmd).code).toBe(0)
   })
@@ -99,6 +103,7 @@ describe('guard-bash hook', () => {
 
 describe('format-and-lint hook', () => {
   const tmpDir = path.join(ROOT, 'tests', 'tmp-hook')
+  rmSync(tmpDir, { recursive: true, force: true })
   mkdirSync(tmpDir, { recursive: true })
   afterAll(() => rmSync(tmpDir, { recursive: true, force: true }))
 
@@ -122,8 +127,21 @@ describe('format-and-lint hook', () => {
   }, 60_000)
 
   // Review Focus #3
-  it.each(['/tmp/outside.ts', path.join(ROOT, 'public', 'missing.png')])('ignores %s', (file) => {
-    expect(edit(file).code).toBe(0)
+  it('ignores a real file outside the repo', () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'ld-outside-'))
+    try {
+      const file = path.join(dir, 'outside.ts')
+      const content = 'export const x   =   {a:1}\n'
+      writeFileSync(file, content)
+      expect(edit(file).code).toBe(0)
+      expect(readFileSync(file, 'utf8')).toBe(content)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('ignores a missing file inside the repo', () => {
+    expect(edit(path.join(ROOT, 'public', 'missing.png')).code).toBe(0)
   })
 
   it('formats markdown without linting', () => {
