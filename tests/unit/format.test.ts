@@ -7,6 +7,7 @@ import {
   formatRelative,
   formatSignedPoints,
   formatTipoffTime,
+  formatUtcDate,
 } from '@/lib/format'
 
 describe('format', () => {
@@ -37,5 +38,9 @@ describe('format', () => {
     expect(formatRelative(new Date('2026-11-11T11:48:00Z'), now)).toBe('12 min ago')
     expect(formatRelative(new Date('2026-11-11T09:00:00Z'), now)).toBe('3 h ago')
     expect(formatRelative(new Date('2026-11-08T12:00:00Z'), now)).toBe('3 d ago')
+  })
+
+  it('formats the UTC calendar date regardless of ET', () => {
+    expect(formatUtcDate(new Date('2026-11-12T00:00:00Z'))).toBe('Nov 12, 2026')
   })
 })

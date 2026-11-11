@@ -136,6 +136,7 @@ export function BetSlipPanel() {
                   size="icon-sm"
                   aria-label={`Remove ${label}`}
                   onClick={() => slip.remove(i)}
+                  disabled={pending}
                 >
                   <X />
                 </Button>
@@ -150,7 +151,7 @@ export function BetSlipPanel() {
                   className="num h-8 w-24"
                   value={p.stake === 0 ? '' : p.stake}
                   onChange={(e) => slip.setStake(i, parseStakeInput(e.target.value))}
-                  disabled={closed}
+                  disabled={closed || pending}
                 />
                 {QUICK_STAKES.map((amount) => (
                   <Button
@@ -160,7 +161,7 @@ export function BetSlipPanel() {
                     size="sm"
                     aria-label={`Add ${amount} to ${label}`}
                     onClick={() => slip.addStake(i, amount)}
-                    disabled={closed}
+                    disabled={closed || pending}
                   >
                     +{amount}
                   </Button>
@@ -171,7 +172,7 @@ export function BetSlipPanel() {
                   size="sm"
                   aria-label={`Max stake for ${label}`}
                   onClick={() => slip.setMax(i, balance)}
-                  disabled={closed}
+                  disabled={closed || pending}
                 >
                   Max
                 </Button>

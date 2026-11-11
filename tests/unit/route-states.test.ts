@@ -24,6 +24,14 @@ describe('route segment states (spec §3.6)', () => {
     expect(pages.filter((p) => !covered(p, 'error.tsx'))).toEqual([])
   })
 
+  it('has an app-level global-error.tsx (own html/body, ErrorState, client component)', () => {
+    const src = read('src/app/global-error.tsx')
+    expect(src).toMatch(/^['"]use client['"]/)
+    expect(src).toContain('<html')
+    expect(src).toContain('<body')
+    expect(src).toContain('ErrorState')
+  })
+
   // Next 15.5.29 production builds: a loading.tsx or <Suspense> boundary in a page makes client
   // transitions (search-param links, drawers, server-action refreshes) hang intermittently —
   // reproduced while planning the redesign. Pages render without streaming boundaries.

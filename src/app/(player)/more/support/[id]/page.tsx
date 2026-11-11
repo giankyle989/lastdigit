@@ -26,15 +26,19 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
         </span>
       </div>
       <ChatThread messages={thread.messages} viewer="PLAYER" />
-      {thread.status !== 'CLOSED' && (
-        <div className="bg-card border-border space-y-3 rounded-xl border p-4">
-          <ActionForm action={replyInquiryAction.bind(null, id)} submitLabel="Reply" resetOnSuccess>
-            <Label htmlFor="body">Reply</Label>
-            <Textarea id="body" name="body" rows={4} maxLength={5000} required />
-          </ActionForm>
-          <ActionForm action={closeInquiryAction.bind(null, id)} submitLabel="Close ticket" />
-        </div>
-      )}
+      {/* Stay mounted (hidden, not removed) so the success toast is not lost when the revalidated
+          ticket flips to CLOSED. */}
+      <div
+        className={
+          thread.status === 'CLOSED' ? 'hidden' : 'bg-card border-border space-y-3 rounded-xl border p-4'
+        }
+      >
+        <ActionForm action={replyInquiryAction.bind(null, id)} submitLabel="Reply" resetOnSuccess>
+          <Label htmlFor="body">Reply</Label>
+          <Textarea id="body" name="body" rows={4} maxLength={5000} required />
+        </ActionForm>
+        <ActionForm action={closeInquiryAction.bind(null, id)} submitLabel="Close ticket" />
+      </div>
     </div>
   )
 }

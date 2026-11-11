@@ -16,15 +16,16 @@ describe('admin tables', () => {
 
   it('players: search, status filter, whitelisted sort, pagination', async () => {
     const now = new Date('2026-11-11T12:00:00Z')
-    const ref = await makeUser({ username: 'Referrer' })
-    await makeUser({ username: 'kyle', referredById: ref.id })
-    await makeUser({ username: 'kylie', status: 'SUSPENDED' })
+    const ref = await makeUser({ username: 'Referrer', createdAt: new Date('2026-11-01T00:00:00Z') })
+    await makeUser({ username: 'kyle', referredById: ref.id, createdAt: new Date('2026-11-02T00:00:00Z') })
+    await makeUser({ username: 'kylie', status: 'SUSPENDED', createdAt: new Date('2026-11-05T00:00:00Z') })
     await makeUser({
       username: 'expired',
       status: 'SUSPENDED',
+      createdAt: new Date('2026-11-06T00:00:00Z'),
       suspendedUntil: new Date('2026-11-01T00:00:00Z'),
     })
-    await makeUser({ username: 'boss', role: 'ADMIN' })
+    await makeUser({ username: 'boss', role: 'ADMIN', createdAt: new Date('2026-11-03T00:00:00Z') })
     await fundUser(ref.id, 50)
 
     const byName = await listPlayers(parsePlayerListParams({ q: 'KY', sort: 'username' }), now)
@@ -40,6 +41,7 @@ describe('admin tables', () => {
     // unknown sort → default -joined (newest first); bad page → 1
     const fallback = await listPlayers(parsePlayerListParams({ sort: 'passwordHash', page: 'x' }), now)
     expect(fallback.page).toBe(1)
+    // 'expired' has the latest explicit createdAt among the seeded rows, so it sorts first (newest)
     expect(fallback.rows[0]?.username).toBe('expired')
     expect(fallback.rows.map((r) => r.username)).not.toContain('boss')
 
