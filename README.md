@@ -38,7 +38,13 @@ Get a free balldontlie API key at https://www.balldontlie.io.
 
 ```bash
 npm test          # unit + integration (uses lastdigit_test DB)
-npm run test:e2e  # Playwright full flow
+npm run test:e2e  # Playwright full flow on a desktop and an iPhone 13 viewport (Chromium)
 ```
 
 Before pushing, run `npm run check` (format, lint, typecheck, tests). See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/engineering/standards.md](docs/engineering/standards.md).
+
+## UI
+
+- Player app: `/games` (date strip, `?date=YYYY-MM-DD`), `/games/[id]` (pickers, pool heatmap, estimate), bet slip (saved in `localStorage`), `/bets`, `/wallet`, `/more` (referral, support, account).
+- Admin console: `/admin` (overview), `/admin/players`, `/admin/games`, `/admin/ledger`, `/admin/support`, `/admin/settings`. Tables are driven by `?q=&sort=&page=`; drawers open with `?player=`, `?game=` or `?ticket=` and can be linked to.
+- Components: shadcn/ui lives in `src/components/ui` (add more with `npx shadcn@4.23.0 add <name>`, then run `npx eslint --fix` and `npx prettier --write` on the new file). The theme tokens are in `src/app/globals.css`.

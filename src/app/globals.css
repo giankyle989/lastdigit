@@ -89,32 +89,3 @@
 @utility num {
   @apply font-mono tabular-nums;
 }
-
-/* Legacy MVP classes, restyled to the theme so pages not yet redesigned stay readable.
-   Task 16 deletes this block once no page uses them. */
-@layer components {
-  .btn {
-    @apply bg-primary text-primary-foreground hover:bg-primary/80 inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50;
-  }
-  .btn-secondary {
-    @apply border-border bg-surface-2 hover:bg-accent inline-flex items-center rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50;
-  }
-  .input {
-    @apply border-input bg-surface-2 w-full rounded-lg border px-2 py-1.5 text-sm;
-  }
-  .label {
-    @apply text-muted-foreground mb-1 block text-sm font-medium;
-  }
-  .card {
-    @apply border-border bg-card rounded-xl border p-4;
-  }
-  .table {
-    @apply w-full text-left text-sm;
-  }
-  .table th {
-    @apply border-border text-muted-foreground border-b px-2 py-1.5 font-medium;
-  }
-  .table td {
-    @apply border-border border-b px-2 py-1.5;
-  }
-}

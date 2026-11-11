@@ -45,6 +45,7 @@ Bad: a page that imports `prisma` and updates rows itself.
 - **Size.** One responsibility per file; split past ~300 lines. YAGNI — no speculative options.
 - **Types.** No `any`, no non-null `!`, `as` only at validated boundaries, exhaustive `switch`, `import type` for types. `noUncheckedIndexedAccess` is on: handle `rows[0]` being `undefined`.
 - **UI.** Every interactive control has an accessible name; no raw `'` in JSX text; client components never touch the database.
+- **No streaming boundaries in pages.** Do not add `loading.tsx` or a page-level `<Suspense>`: on Next 15.5 they make same-route transitions (search-param links, drawers, action refreshes) hang intermittently in production builds. `tests/unit/route-states.test.ts` enforces this; revisit after a Next upgrade.
 
 ## 4. Tooling
 
