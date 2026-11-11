@@ -20,3 +20,16 @@ export function formatDateTime(d: Date): string {
 export function formatPoints(n: number): string {
   return n.toLocaleString('en-US')
 }
+
+export function formatSignedPoints(n: number): string {
+  return n > 0 ? `+${formatPoints(n)}` : formatPoints(n)
+}
+
+/** "2h 05m 09s" / "4m 09s" — time left until tip-off. */
+export function formatCountdown(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = String(s % 60).padStart(2, '0')
+  return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m ${sec}s` : `${m}m ${sec}s`
+}
