@@ -4,10 +4,12 @@ import { ActionForm } from '@/components/action-form'
 import { formatPoints, formatTipoff } from '@/lib/format'
 import { listGamesAdmin } from '@/server/admin/queries'
 import { forceSyncAction, voidGameAction } from '../actions'
+import { requireAdmin } from '@/server/session'
 
 const STATUSES = Object.values(GameStatus)
 
 export default async function AdminGamesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  await requireAdmin()
   const { status } = await searchParams
   const filter = STATUSES.includes(status as GameStatus) ? (status as GameStatus) : undefined
   const games = await listGamesAdmin(filter)

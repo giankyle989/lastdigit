@@ -7,8 +7,8 @@ import { requireAdmin } from '@/server/session'
 import { adminCloseAction, adminReplyAction } from '../../actions'
 
 export default async function AdminInquiryPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
   const admin = await requireAdmin()
+  const { id } = await params
   const thread = await getInquiryThread(admin.id, id).catch((e) => {
     if (e instanceof DomainError) notFound()
     throw e

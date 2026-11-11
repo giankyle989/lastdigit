@@ -11,8 +11,10 @@ import {
   suspendAction,
   unsuspendAction,
 } from '../../actions'
+import { requireAdmin } from '@/server/session'
 
 export default async function PlayerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin()
   const { id } = await params
   const p = await getPlayerDetail(id)
   if (!p) notFound()

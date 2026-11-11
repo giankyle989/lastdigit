@@ -2,10 +2,12 @@ import { InquiryStatus } from '@prisma/client'
 import Link from 'next/link'
 import { formatDateTime } from '@/lib/format'
 import { listInquiriesAdmin } from '@/server/inquiries'
+import { requireAdmin } from '@/server/session'
 
 const STATUSES = Object.values(InquiryStatus)
 
 export default async function AdminInquiriesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+  await requireAdmin()
   const { status } = await searchParams
   const filter = STATUSES.includes(status as InquiryStatus) ? (status as InquiryStatus) : 'OPEN'
   const inquiries = await listInquiriesAdmin(filter)

@@ -1,6 +1,7 @@
 import { TransactionType } from '@prisma/client'
 import { formatDateTime, formatPoints } from '@/lib/format'
 import { listTransactionsAdmin } from '@/server/admin/queries'
+import { requireAdmin } from '@/server/session'
 
 const TYPES = Object.values(TransactionType)
 
@@ -15,6 +16,7 @@ export default async function AdminTransactionsPage({
 }: {
   searchParams: Promise<{ username?: string; type?: string; from?: string; to?: string }>
 }) {
+  await requireAdmin()
   const sp = await searchParams
   const type = TYPES.includes(sp.type as TransactionType) ? (sp.type as TransactionType) : undefined
   const to = parseDate(sp.to)

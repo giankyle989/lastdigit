@@ -2,8 +2,10 @@ import Link from 'next/link'
 import { formatDateTime, formatPoints } from '@/lib/format'
 import { isSuspended } from '@/lib/suspension'
 import { searchPlayers } from '@/server/admin/queries'
+import { requireAdmin } from '@/server/session'
 
 export default async function PlayersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  await requireAdmin()
   const { q } = await searchParams
   const players = await searchPlayers(q)
   return (

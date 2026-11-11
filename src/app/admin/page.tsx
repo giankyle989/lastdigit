@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { formatDateTime, formatPoints } from '@/lib/format'
 import { getDashboardStats } from '@/server/admin/queries'
+import { requireAdmin } from '@/server/session'
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -12,6 +13,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 export default async function AdminDashboard() {
+  await requireAdmin()
   const s = await getDashboardStats()
   return (
     <div className="space-y-4">
