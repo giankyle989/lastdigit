@@ -2,42 +2,6 @@ import type { GameStatus, TransactionType } from '@prisma/client'
 
 import { prisma } from '@/lib/db'
 
-import { getLastSyncAt } from '../settings'
-
-const SYNC_STALE_MS = 30 * 60 * 1000
-
-export async function getDashboardStats(now: Date = new Date()) {
-  const [playerCount, openPools, house, openInquiries, negativeBalances, lastSyncAt, postponedCount] =
-    await Promise.all([
-      prisma.user.count({ where: { role: 'PLAYER' } }),
-      prisma.game.aggregate({
-        where: { status: { in: ['SCHEDULED', 'LIVE', 'FINAL'] }, pool: { gt: 0 } },
-        _sum: { pool: true },
-        _count: true,
-      }),
-      prisma.game.aggregate({ where: { status: 'SETTLED' }, _sum: { houseTake: true } }),
-      prisma.inquiry.count({ where: { status: 'OPEN' } }),
-      prisma.user.findMany({
-        where: { balance: { lt: 0 } },
-        select: { id: true, username: true, balance: true },
-        orderBy: { balance: 'asc' },
-      }),
-      getLastSyncAt(),
-      prisma.game.count({ where: { status: 'POSTPONED' } }),
-    ])
-  return {
-    playerCount,
-    openPoolCount: openPools._count,
-    openPoolTotal: openPools._sum.pool ?? 0,
-    houseTakeTotal: house._sum.houseTake ?? 0,
-    openInquiries,
-    negativeBalances,
-    lastSyncAt,
-    syncStale: !lastSyncAt || now.getTime() - lastSyncAt.getTime() > SYNC_STALE_MS,
-    postponedCount,
-  }
-}
-
 export function searchPlayers(q?: string) {
   const key = q?.trim().toLowerCase()
   return prisma.user.findMany({

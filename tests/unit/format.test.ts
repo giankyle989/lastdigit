@@ -4,6 +4,7 @@ import {
   formatCountdown,
   formatEtDay,
   formatPoints,
+  formatRelative,
   formatSignedPoints,
   formatTipoffTime,
 } from '@/lib/format'
@@ -28,5 +29,13 @@ describe('format', () => {
 
   it('formats ET days', () => {
     expect(formatEtDay('2026-11-11')).toBe('Wed, Nov 11')
+  })
+
+  it('formats relative times', () => {
+    const now = new Date('2026-11-11T12:00:00Z')
+    expect(formatRelative(new Date('2026-11-11T11:59:30Z'), now)).toBe('just now')
+    expect(formatRelative(new Date('2026-11-11T11:48:00Z'), now)).toBe('12 min ago')
+    expect(formatRelative(new Date('2026-11-11T09:00:00Z'), now)).toBe('3 h ago')
+    expect(formatRelative(new Date('2026-11-08T12:00:00Z'), now)).toBe('3 d ago')
   })
 })

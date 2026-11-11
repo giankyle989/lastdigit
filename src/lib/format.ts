@@ -48,3 +48,13 @@ export function formatEtDay(etDate: string): string {
     day: 'numeric',
   })
 }
+
+/** "just now", "12 min ago", "3 h ago", "2 d ago" */
+export function formatRelative(then: Date, now: Date): string {
+  const min = Math.floor((now.getTime() - then.getTime()) / 60_000)
+  if (min < 1) return 'just now'
+  if (min < 60) return `${min} min ago`
+  const h = Math.floor(min / 60)
+  if (h < 48) return `${h} h ago`
+  return `${Math.floor(h / 24)} d ago`
+}
