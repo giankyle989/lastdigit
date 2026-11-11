@@ -113,6 +113,16 @@ describe('voidGame', () => {
     await expectLedgerConsistent()
   })
 
+  it('does not refund bets that are already REFUNDED', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const { a, b, c, g } = await setupGame()
+    await voidGame(admin.id, g.id, 'First')
+    await prisma.game.update({ where: { id: g.id }, data: { status: 'POSTPONED' } }) // simulates the old sync overwrite
+    await voidGame(admin.id, g.id, 'Second')
+    for (const u of [a, b, c]) expect(await balanceOf(u.id)).toBe(1000)
+    await expectLedgerConsistent()
+  })
+
   it('a reversal can leave a negative balance', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const winner = await makeUser({ username: 'w' })

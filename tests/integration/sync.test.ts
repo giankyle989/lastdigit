@@ -5,7 +5,8 @@ import { getLastSyncAt } from '@/server/settings'
 import type { ApiGame } from '@/server/sync/balldontlie'
 import { syncGames } from '@/server/sync/sync'
 import { GET } from '@/app/api/cron/sync/route'
-import { fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
+import { voidGame } from '@/server/settlement'
+import { expectLedgerConsistent, fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 function apiGame(over: Partial<ApiGame> = {}): ApiGame {
   return {
@@ -59,6 +60,23 @@ describe('syncGames', () => {
     const g = await makeGame({ externalId: 501, status: 'VOID' })
     await syncGames({ fetchGames: fetcher([apiGame({ status: 'Final', period: 4, visitor_team_score: 1, home_team_score: 2 })]) })
     expect((await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).status).toBe('VOID')
+  })
+
+  it('does not resurrect a game voided after it was read (void then Final from API)', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const u = await makeUser()
+    await fundUser(u.id, 100)
+    const g = await makeGame({ externalId: 501 })
+    await placeBet(u.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await prisma.game.update({ where: { id: g.id }, data: { status: 'POSTPONED' } })
+    await voidGame(admin.id, g.id, 'Postponed')
+    const r = await syncGames({
+      fetchGames: fetcher([apiGame({ status: 'Final', period: 4, visitor_team_score: 99, home_team_score: 106 })]),
+    })
+    expect(r.settled).toBe(0)
+    expect(await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).toMatchObject({ status: 'VOID' })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: u.id } })).balance).toBe(100)
+    await expectLedgerConsistent()
   })
 
   it('never touches settled games', async () => {

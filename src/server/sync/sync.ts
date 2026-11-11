@@ -56,8 +56,10 @@ export async function syncGames({
       if (existing.status === 'FINAL' || existing.status === 'SETTLED' || existing.status === 'VOID') continue
 
       const reschedulable = existing.status === 'SCHEDULED' || existing.status === 'POSTPONED'
-      await prisma.game.update({
-        where: { id: existing.id },
+      // The WHERE guards terminal states: an admin may have voided (or settlement
+      // finished) since `existing` was read, and sync must never overwrite that.
+      const { count } = await prisma.game.updateMany({
+        where: { id: existing.id, status: { in: ['SCHEDULED', 'LIVE', 'POSTPONED'] } },
         data: {
           status: mapped.status,
           awayTeam: mapped.awayTeam,
@@ -67,6 +69,7 @@ export async function syncGames({
           ...(reschedulable ? { startsAt: mapped.startsAt } : {}),
         },
       })
+      if (count === 0) continue
       result.updated++
     } catch (e) {
       console.error('sync: failed game', apiGame?.id, e)
