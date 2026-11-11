@@ -1,6 +1,7 @@
 'use client'
 
 import { X } from 'lucide-react'
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
@@ -35,6 +36,8 @@ export function BetSlipPanel() {
 
   useEffect(() => {
     picksRef.current = slip.picks
+    // Any edit (remove, stake change) moves rows around; drop the failure highlight.
+    setFailedIndex(null)
   }, [slip.picks])
 
   // Fresh status whenever the slip opens (mounts) or the set of picks changes — not on stake edits.
@@ -75,24 +78,32 @@ export function BetSlipPanel() {
     startTransition(async () => {
       setFailedIndex(null)
       const picks = picksRef.current
-      const fresh = await getSlipStatusAction(toKeys(picks))
-      setStatus(fresh)
-      if (fresh.picks.some((s) => !s.open)) {
-        toast.error('Remove the picks marked "Betting closed" first')
-        return
+      try {
+        const fresh = await getSlipStatusAction(toKeys(picks))
+        setStatus(fresh)
+        if (fresh.picks.some((s) => !s.open)) {
+          toast.error('Remove the picks marked "Betting closed" first')
+          return
+        }
+        const result = await placeBetsAction(
+          picks.map(({ gameId, awayDigit, homeDigit, stake }) => ({ gameId, awayDigit, homeDigit, stake })),
+        )
+        if (result.error) {
+          setFailedIndex(result.pickIndex ?? null)
+          toast.error(result.error)
+          return
+        }
+        // Only the confirmed picks leave the slip; ones added meanwhile stay.
+        slip.removePicks(toKeys(picks))
+        setStatus(null)
+        slip.setSheetOpen(false)
+        toast.success(result.ok)
+        router.refresh()
+      } catch (e) {
+        if (isRedirectError(e)) throw e
+        console.error('bet slip: confirm failed', e)
+        toast.error('Could not place bets. Try again.')
       }
-      const result = await placeBetsAction(
-        picks.map(({ gameId, awayDigit, homeDigit, stake }) => ({ gameId, awayDigit, homeDigit, stake })),
-      )
-      if (result.error) {
-        setFailedIndex(result.pickIndex ?? null)
-        toast.error(result.error)
-        return
-      }
-      slip.clear()
-      slip.setSheetOpen(false)
-      toast.success(result.ok)
-      router.refresh()
     })
   }
 

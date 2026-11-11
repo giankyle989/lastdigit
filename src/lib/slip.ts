@@ -22,6 +22,7 @@ export type SlipAction =
   | { type: 'setStake'; index: number; stake: number }
   | { type: 'addStake'; index: number; amount: number }
   | { type: 'setMax'; index: number; balance: number }
+  | { type: 'removePicks'; picks: Omit<NewPick, 'matchup'>[] }
   | { type: 'clear' }
   | { type: 'load'; slip: Slip }
 
@@ -77,6 +78,8 @@ export function slipReducer(slip: Slip, action: SlipAction): Slip {
       return updateAt(slip, action.index, (slip.picks[action.index]?.stake ?? 0) + action.amount, true)
     case 'setMax':
       return updateAt(slip, action.index, maxStakeFor(slip.picks, action.index, action.balance), false)
+    case 'removePicks':
+      return { ...slip, picks: slip.picks.filter((p) => !action.picks.some((r) => samePick(p, r))) }
     case 'clear':
       return { ...slip, picks: [] }
     case 'load':

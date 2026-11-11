@@ -66,6 +66,15 @@ describe('slipReducer', () => {
   })
 })
 
+describe('removePicks', () => {
+  it('removes only the listed picks and keeps ones added later', () => {
+    let s = add(add(EMPTY_SLIP), pick('g2'))
+    s = add(s, pick('g3'))
+    s = slipReducer(s, { type: 'removePicks', picks: [pick('g1'), pick('g2')] })
+    expect(s.picks.map((p) => p.gameId)).toEqual(['g3'])
+  })
+})
+
 describe('slip input and storage', () => {
   it('parses stake input as whole numbers only', () => {
     expect(parseStakeInput('250')).toBe(250)
