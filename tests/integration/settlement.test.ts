@@ -140,6 +140,16 @@ describe('voidGame', () => {
     await expect(voidGame(admin.id, 'nope', 'x')).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
+  it('races settle against void: both resolve and the game ends VOID with stakes refunded', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const { a, b, c, g } = await setupGame()
+    const results = await Promise.allSettled([settleGame(g.id), voidGame(admin.id, g.id, 'race')])
+    expect(results.map((r) => r.status)).toEqual(['fulfilled', 'fulfilled'])
+    expect((await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).status).toBe('VOID')
+    for (const u of [a, b, c]) expect(await balanceOf(u.id)).toBe(1000)
+    await expectLedgerConsistent()
+  })
+
   it('a voided game cannot be settled', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const { g } = await setupGame()

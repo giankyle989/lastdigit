@@ -21,7 +21,12 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
         throw new Error(`Game ${gameId} is FINAL without scores`) // rolls back the claim
       }
       const ending = endingOf(game.awayScore, game.homeScore)
-      const bets = await tx.bet.findMany({ where: { gameId } })
+      // Stable order: per-user postEntry locks are taken in a consistent sequence,
+      // so concurrent settle/void runs on games sharing users cannot deadlock.
+      const bets = await tx.bet.findMany({
+        where: { gameId },
+        orderBy: [{ userId: 'asc' }, { id: 'asc' }],
+      })
       const split = computeSplit(
         bets.map((b) => ({
           id: b.id,
@@ -61,7 +66,12 @@ export async function voidGame(adminId: string, gameId: string, reason: unknown)
       if (!game) throw new DomainError('NOT_FOUND', 'Game not found')
       if (game.status === 'VOID') throw new DomainError('CONFLICT', 'Game is already void')
 
-      const bets = await tx.bet.findMany({ where: { gameId } })
+      // Stable order: per-user postEntry locks are taken in a consistent sequence,
+      // so concurrent settle/void runs on games sharing users cannot deadlock.
+      const bets = await tx.bet.findMany({
+        where: { gameId },
+        orderBy: [{ userId: 'asc' }, { id: 'asc' }],
+      })
       for (const bet of bets) {
         if (bet.payout > 0) {
           await postEntry(tx, {
