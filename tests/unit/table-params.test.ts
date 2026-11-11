@@ -8,7 +8,7 @@ import {
   parseSearch,
   parseSort,
 } from '@/lib/table-params'
-import { hrefWith } from '@/lib/url'
+import { hrefWith, isActivePath } from '@/lib/url'
 
 const FIELDS = ['username', 'balance', 'joined'] as const
 const fallback = { field: 'joined', dir: 'desc' } as const
@@ -76,5 +76,15 @@ describe('hrefWith', () => {
     )
     expect(hrefWith('/x', { q: ['a', 'b'], sort: '' }, { page: 2 })).toBe('/x?q=a&page=2')
     expect(hrefWith('/x', {}, {})).toBe('/x')
+  })
+})
+
+describe('isActivePath', () => {
+  it('matches a section and its children, or exactly', () => {
+    expect(isActivePath('/games/abc', '/games')).toBe(true)
+    expect(isActivePath('/games', '/games')).toBe(true)
+    expect(isActivePath('/gamesx', '/games')).toBe(false)
+    expect(isActivePath('/admin/players', '/admin', true)).toBe(false)
+    expect(isActivePath('/admin', '/admin', true)).toBe(true)
   })
 })

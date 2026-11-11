@@ -20,3 +20,9 @@ export function hrefWith(
   const qs = params.toString()
   return qs ? `${basePath}?${qs}` : basePath
 }
+
+/** Nav highlighting: `/games/abc` is inside `/games`; with `exact`, only the path itself matches. */
+export function isActivePath(pathname: string, href: string, exact = false): boolean {
+  if (exact) return pathname === href
+  return pathname === href || pathname.startsWith(`${href}/`)
+}

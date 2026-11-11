@@ -1,20 +1,14 @@
-import { Nav } from '@/components/nav'
+import { PlayerHeader } from '@/components/shell/player-header'
+import { PlayerBottomNav } from '@/components/shell/player-nav'
 import { requireUser } from '@/server/session'
 
 export default async function PlayerLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser()
-  const links = [
-    { href: '/games', label: 'Games' },
-    { href: '/bets', label: 'My bets' },
-    { href: '/wallet', label: 'Wallet' },
-    { href: '/referral', label: 'Referral' },
-    { href: '/inquiries', label: 'Inquiries' },
-    ...(user.role === 'ADMIN' ? [{ href: '/admin', label: 'Admin' }] : []),
-  ]
   return (
-    <>
-      <Nav links={links} user={user} />
-      <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
-    </>
+    <div className="min-h-dvh">
+      <PlayerHeader balance={user.balance} isAdmin={user.role === 'ADMIN'} />
+      <main className="mx-auto max-w-3xl px-4 pt-4 pb-28 md:pb-10">{children}</main>
+      <PlayerBottomNav />
+    </div>
   )
 }
