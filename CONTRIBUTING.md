@@ -24,7 +24,7 @@ npm run dev
 1. Features: write a spec in `docs/superpowers/specs/`, then a plan in `docs/superpowers/plans/`, then implement task by task with tests first.
 2. Run `npm run check` (and `npm run test:e2e` for UI changes) before pushing.
 3. Open a PR using the template; the title must be a Conventional Commit (it becomes the squash commit message).
-4. CI (`quality`, `test`, `e2e`, PR title) must be green. `master` is protected: PRs only, no force pushes.
+4. There is no CI: run `npm run check` and `npm run test:e2e` before merging. `master` is protected: PRs only, no force pushes.
 
 ## Standards
 

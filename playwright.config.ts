@@ -17,7 +17,7 @@ export default defineConfig({
   use: { baseURL: 'http://localhost:3100', trace: 'retain-on-failure' },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
-    // iPhone 13 viewport, touch and user agent on Chromium (CI installs Chromium only).
+    // iPhone 13 viewport, touch and user agent on Chromium (only Chromium is installed).
     { name: 'iphone', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
   ],
   webServer: {

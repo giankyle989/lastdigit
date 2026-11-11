@@ -29,7 +29,7 @@ npx prisma migrate dev --name <name>   # schema change (never migrate reset)
 4. Money-like state changes run in a transaction with a row lock or a conditional update; lock multiple rows in ascending id order.
 5. Never run `prisma migrate reset`. Schema changes = committed migration.
 6. Conventional Commits (`feat|fix|chore|docs|test|refactor|style|perf|ci|build|revert`). **Never add AI attribution to commits or PRs:** no `Co-Authored-By:` naming Claude/Anthropic, no "Generated with Claude Code", no `noreply@anthropic.com`.
-7. Branch → PR → green CI → squash merge. Never commit `.env`, secrets, `.superpowers/`, test artifacts. Never use `--no-verify`, `git commit -n` or `HUSKY=0`, and never change `core.hooksPath` to skip hooks.
+7. Branch → PR → `npm run check` and `npm run test:e2e` pass locally → squash merge (there is no CI). Never commit `.env`, secrets, `.superpowers/`, test artifacts. Never use `--no-verify`, `git commit -n` or `HUSKY=0`, and never change `core.hooksPath` to skip hooks.
 
 ## Workflow
 
