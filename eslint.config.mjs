@@ -15,7 +15,13 @@ function restrict(files, groups, message, ignores = []) {
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
-        { patterns: groups.map(({ group, allowTypeImports = false }) => ({ group, allowTypeImports, message })) },
+        {
+          patterns: groups.map(({ group, allowTypeImports = false }) => ({
+            group,
+            allowTypeImports,
+            message,
+          })),
+        },
       ],
     },
   }

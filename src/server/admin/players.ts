@@ -26,7 +26,13 @@ export async function adjustPoints(adminId: string, userId: string, input: unkno
     const grant = direction === 'GRANT'
     await postEntry(
       tx,
-      { userId, type: grant ? 'ADMIN_GRANT' : 'ADMIN_DEDUCT', amount: grant ? amount : -amount, adminId, note },
+      {
+        userId,
+        type: grant ? 'ADMIN_GRANT' : 'ADMIN_DEDUCT',
+        amount: grant ? amount : -amount,
+        adminId,
+        note,
+      },
       { requireFunds: !grant },
     )
     await logAdminAction(tx, {
@@ -72,7 +78,12 @@ export async function setStakeLimit(adminId: string, userId: string, limit: unkn
   await prisma.$transaction(async (tx) => {
     await requirePlayer(tx, userId)
     await tx.user.update({ where: { id: userId }, data: { stakeLimitPerGame: value } })
-    await logAdminAction(tx, { adminId, action: 'SET_STAKE_LIMIT', targetUserId: userId, details: { limit: value } })
+    await logAdminAction(tx, {
+      adminId,
+      action: 'SET_STAKE_LIMIT',
+      targetUserId: userId,
+      details: { limit: value },
+    })
   })
 }
 

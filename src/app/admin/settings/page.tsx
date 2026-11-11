@@ -13,14 +13,33 @@ export default async function AdminSettingsPage() {
       <h1 className="text-xl font-semibold">Settings</h1>
       <div className="card max-w-sm">
         <ActionForm action={referralBonusAction} submitLabel="Save">
-          <label htmlFor="referralBonus" className="label">Referral bonus (points to referrer)</label>
-          <input id="referralBonus" name="referralBonus" type="number" min={0} step={1} defaultValue={bonus} className="input" required />
+          <label htmlFor="referralBonus" className="label">
+            Referral bonus (points to referrer)
+          </label>
+          <input
+            id="referralBonus"
+            name="referralBonus"
+            type="number"
+            min={0}
+            step={1}
+            defaultValue={bonus}
+            className="input"
+            required
+          />
         </ActionForm>
       </div>
       <div className="card overflow-x-auto">
         <h2 className="mb-2 font-semibold">Admin action log</h2>
         <table className="table">
-          <thead><tr><th>Date</th><th>Admin</th><th>Action</th><th>Player</th><th>Details</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Admin</th>
+              <th>Action</th>
+              <th>Player</th>
+              <th>Details</th>
+            </tr>
+          </thead>
           <tbody>
             {actions.map((a) => (
               <tr key={a.id}>

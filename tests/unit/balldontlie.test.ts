@@ -35,7 +35,9 @@ describe('mapApiGame', () => {
   })
 
   it('maps a scheduled game with null scores', () => {
-    const m = mapApiGame(apiGame({ status: '7:00 pm ET', period: 0, home_team_score: 0, visitor_team_score: 0 }))
+    const m = mapApiGame(
+      apiGame({ status: '7:00 pm ET', period: 0, home_team_score: 0, visitor_team_score: 0 }),
+    )
     expect(m).toMatchObject({ status: 'SCHEDULED', awayScore: null, homeScore: null })
   })
 
@@ -62,13 +64,23 @@ describe('createBalldontlieFetcher', () => {
   it('sends the API key, all dates, and follows cursors', async () => {
     const fetchImpl = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ data: [apiGame({ id: 1 })], meta: { next_cursor: 5 } })))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ data: [apiGame({ id: 2 })], meta: { next_cursor: null } })))
-    const fetchGames = createBalldontlieFetcher('KEY', fetchImpl as unknown as typeof fetch, 'https://x.test/v1')
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [apiGame({ id: 1 })], meta: { next_cursor: 5 } })),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [apiGame({ id: 2 })], meta: { next_cursor: null } })),
+      )
+    const fetchGames = createBalldontlieFetcher(
+      'KEY',
+      fetchImpl as unknown as typeof fetch,
+      'https://x.test/v1',
+    )
     const games = await fetchGames(['2026-11-10', '2026-11-11'])
     expect(games.map((g) => g.id)).toEqual([1, 2])
     const [url1, init1] = fetchImpl.mock.calls[0]
-    expect(String(url1)).toBe('https://x.test/v1/games?dates%5B%5D=2026-11-10&dates%5B%5D=2026-11-11&per_page=100')
+    expect(String(url1)).toBe(
+      'https://x.test/v1/games?dates%5B%5D=2026-11-10&dates%5B%5D=2026-11-11&per_page=100',
+    )
     expect(init1.headers).toEqual({ Authorization: 'KEY' })
     expect(init1.signal).toBeDefined()
     expect(String(fetchImpl.mock.calls[1][0])).toContain('cursor=5')

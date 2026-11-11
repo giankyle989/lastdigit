@@ -29,7 +29,8 @@ export async function signupAction(_prev: ActionState, fd: FormData): Promise<Ac
   try {
     await signIn('credentials', { username, password, redirectTo: '/' })
   } catch (e) {
-    if (e instanceof AuthError) return { error: 'Account created, but automatic login failed. Please log in.' }
+    if (e instanceof AuthError)
+      return { error: 'Account created, but automatic login failed. Please log in.' }
     throw e
   }
   return {}

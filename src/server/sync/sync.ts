@@ -3,7 +3,14 @@ import { setLastSyncAt } from '../settings'
 import { settleGame } from '../settlement'
 import { createBalldontlieFetcher, mapApiGame, type GamesFetcher } from './balldontlie'
 
-export type SyncResult = { fetched: number; created: number; updated: number; skipped: number; settled: number; errors: number }
+export type SyncResult = {
+  fetched: number
+  created: number
+  updated: number
+  skipped: number
+  settled: number
+  errors: number
+}
 
 const easternDate = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/New_York',
@@ -36,7 +43,14 @@ export async function syncGames({
   now?: Date
 }): Promise<SyncResult> {
   const apiGames = await fetchGames(syncDates(now))
-  const result: SyncResult = { fetched: apiGames.length, created: 0, updated: 0, skipped: 0, settled: 0, errors: 0 }
+  const result: SyncResult = {
+    fetched: apiGames.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    settled: 0,
+    errors: 0,
+  }
 
   for (const apiGame of apiGames) {
     try {

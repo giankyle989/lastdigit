@@ -2,17 +2,32 @@
 
 import { revalidatePath } from 'next/cache'
 import { runAction, type ActionState } from '@/lib/action-state'
-import { adjustPoints, resetPassword, setStakeLimit, suspendPlayer, unsuspendPlayer } from '@/server/admin/players'
+import {
+  adjustPoints,
+  resetPassword,
+  setStakeLimit,
+  suspendPlayer,
+  unsuspendPlayer,
+} from '@/server/admin/players'
 import { closeInquiry, replyToInquiry } from '@/server/inquiries'
 import { requireAdmin } from '@/server/session'
 import { setReferralBonus } from '@/server/settings'
 import { voidGame } from '@/server/settlement'
 import { defaultFetcher, syncGames } from '@/server/sync/sync'
 
-export async function adjustPointsAction(userId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+export async function adjustPointsAction(
+  userId: string,
+  _prev: ActionState,
+  fd: FormData,
+): Promise<ActionState> {
   const admin = await requireAdmin()
   const r = await runAction(
-    () => adjustPoints(admin.id, userId, { direction: fd.get('direction'), amount: fd.get('amount'), note: fd.get('note') }),
+    () =>
+      adjustPoints(admin.id, userId, {
+        direction: fd.get('direction'),
+        amount: fd.get('amount'),
+        note: fd.get('note'),
+      }),
     'Points updated',
   )
   revalidatePath(`/admin/players/${userId}`)
@@ -36,7 +51,11 @@ export async function unsuspendAction(userId: string): Promise<ActionState> {
   return r
 }
 
-export async function stakeLimitAction(userId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+export async function stakeLimitAction(
+  userId: string,
+  _prev: ActionState,
+  fd: FormData,
+): Promise<ActionState> {
   const admin = await requireAdmin()
   const v = String(fd.get('limit') ?? '').trim()
   const r = await runAction(() => setStakeLimit(admin.id, userId, v === '' ? null : v), 'Stake limit saved')
@@ -44,7 +63,11 @@ export async function stakeLimitAction(userId: string, _prev: ActionState, fd: F
   return r
 }
 
-export async function resetPasswordAction(userId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+export async function resetPasswordAction(
+  userId: string,
+  _prev: ActionState,
+  fd: FormData,
+): Promise<ActionState> {
   const admin = await requireAdmin()
   return runAction(() => resetPassword(admin.id, userId, fd.get('newPassword')), 'Password reset')
 }
@@ -69,7 +92,11 @@ export async function forceSyncAction(): Promise<ActionState> {
   }
 }
 
-export async function adminReplyAction(inquiryId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+export async function adminReplyAction(
+  inquiryId: string,
+  _prev: ActionState,
+  fd: FormData,
+): Promise<ActionState> {
   const admin = await requireAdmin()
   const r = await runAction(() => replyToInquiry(admin.id, inquiryId, { body: fd.get('body') }), 'Reply sent')
   revalidatePath(`/admin/inquiries/${inquiryId}`)

@@ -10,17 +10,31 @@ export default function LoginPage() {
         <h2 className="mb-4 text-lg font-semibold">Log in</h2>
         <ActionForm action={loginAction} submitLabel="Log in">
           <div>
-            <label htmlFor="username" className="label">Username</label>
+            <label htmlFor="username" className="label">
+              Username
+            </label>
             <input id="username" name="username" className="input" autoComplete="username" required />
           </div>
           <div>
-            <label htmlFor="password" className="label">Password</label>
-            <input id="password" name="password" type="password" className="input" autoComplete="current-password" required />
+            <label htmlFor="password" className="label">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              className="input"
+              autoComplete="current-password"
+              required
+            />
           </div>
         </ActionForm>
       </div>
       <p className="mt-4 text-sm">
-        No account? <Link href="/signup" className="text-orange-600 underline">Sign up</Link>
+        No account?{' '}
+        <Link href="/signup" className="text-orange-600 underline">
+          Sign up
+        </Link>
       </p>
     </main>
   )

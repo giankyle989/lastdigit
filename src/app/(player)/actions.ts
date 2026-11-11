@@ -33,9 +33,16 @@ export async function createInquiryAction(_prev: ActionState, fd: FormData): Pro
   return result
 }
 
-export async function replyInquiryAction(inquiryId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+export async function replyInquiryAction(
+  inquiryId: string,
+  _prev: ActionState,
+  fd: FormData,
+): Promise<ActionState> {
   const user = await requireUser()
-  const result = await runAction(() => replyToInquiry(user.id, inquiryId, { body: fd.get('body') }), 'Reply sent')
+  const result = await runAction(
+    () => replyToInquiry(user.id, inquiryId, { body: fd.get('body') }),
+    'Reply sent',
+  )
   revalidatePath(`/inquiries/${inquiryId}`)
   return result
 }

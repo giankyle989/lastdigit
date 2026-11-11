@@ -48,7 +48,9 @@ describe('placeBet', () => {
     const u = await makeUser()
     await fundUser(u.id, 50)
     const g = await makeGame()
-    await expect(placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 51 })).rejects.toMatchObject({
+    await expect(
+      placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 51 }),
+    ).rejects.toMatchObject({
       code: 'INSUFFICIENT_BALANCE',
     })
     expect(await prisma.bet.count()).toBe(0)
@@ -71,19 +73,26 @@ describe('placeBet', () => {
     expect(ok.stake).toBe(10)
   })
 
-  it.each(['LIVE', 'FINAL', 'SETTLED', 'VOID', 'POSTPONED'] as const)('rejects bets on %s games', async (status) => {
-    const u = await makeUser()
-    await fundUser(u.id, 100)
-    const g = await makeGame({ status })
-    await expect(placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 })).rejects.toMatchObject({
-      code: 'BETTING_CLOSED',
-    })
-  })
+  it.each(['LIVE', 'FINAL', 'SETTLED', 'VOID', 'POSTPONED'] as const)(
+    'rejects bets on %s games',
+    async (status) => {
+      const u = await makeUser()
+      await fundUser(u.id, 100)
+      const g = await makeGame({ status })
+      await expect(
+        placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }),
+      ).rejects.toMatchObject({
+        code: 'BETTING_CLOSED',
+      })
+    },
+  )
 
   it('rejects an unknown game', async () => {
     const u = await makeUser()
     await fundUser(u.id, 100)
-    await expect(placeBet(u.id, { gameId: 'nope', awayDigit: 1, homeDigit: 1, stake: 10 })).rejects.toMatchObject({
+    await expect(
+      placeBet(u.id, { gameId: 'nope', awayDigit: 1, homeDigit: 1, stake: 10 }),
+    ).rejects.toMatchObject({
       code: 'NOT_FOUND',
     })
   })
@@ -92,11 +101,15 @@ describe('placeBet', () => {
     const u = await makeUser({ status: 'SUSPENDED' })
     await fundUser(u.id, 100)
     const g = await makeGame()
-    await expect(placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 })).rejects.toMatchObject({
+    await expect(
+      placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }),
+    ).rejects.toMatchObject({
       code: 'SUSPENDED',
     })
     await prisma.user.update({ where: { id: u.id }, data: { suspendedUntil: new Date(Date.now() - 1000) } })
-    await expect(placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 })).resolves.toBeTruthy()
+    await expect(
+      placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }),
+    ).resolves.toBeTruthy()
   })
 
   it('enforces the per-game stake limit across all endings', async () => {
@@ -104,11 +117,15 @@ describe('placeBet', () => {
     await fundUser(u.id, 1000)
     const g = await makeGame()
     await placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 60 })
-    await expect(placeBet(u.id, { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 50 })).rejects.toMatchObject({
+    await expect(
+      placeBet(u.id, { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 50 }),
+    ).rejects.toMatchObject({
       code: 'STAKE_LIMIT',
       message: 'Stake limit exceeded (remaining: 40)',
     })
-    await expect(placeBet(u.id, { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 40 })).resolves.toBeTruthy()
+    await expect(
+      placeBet(u.id, { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 40 }),
+    ).resolves.toBeTruthy()
   })
 
   it('concurrent bets cannot overdraw the balance', async () => {

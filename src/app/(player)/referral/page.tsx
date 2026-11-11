@@ -13,15 +13,26 @@ export default async function ReferralPage() {
     <div className="space-y-4">
       <div className="card space-y-2">
         <h1 className="text-xl font-semibold">Refer friends</h1>
-        <p className="text-sm">Earn {formatPoints(bonus)} points for each friend who signs up with your code.</p>
-        <p>Your code: <strong className="font-mono" data-testid="referral-code">{user.referralCode}</strong></p>
-        <p className="break-all text-sm">Share link: <span className="font-mono">{link}</span></p>
+        <p className="text-sm">
+          Earn {formatPoints(bonus)} points for each friend who signs up with your code.
+        </p>
+        <p>
+          Your code:{' '}
+          <strong className="font-mono" data-testid="referral-code">
+            {user.referralCode}
+          </strong>
+        </p>
+        <p className="text-sm break-all">
+          Share link: <span className="font-mono">{link}</span>
+        </p>
       </div>
       <div className="card">
         <h2 className="mb-2 font-semibold">Referred players ({referrals.length})</h2>
         <ul className="text-sm">
           {referrals.map((r) => (
-            <li key={r.username}>{r.username} · {formatDateTime(r.createdAt)}</li>
+            <li key={r.username}>
+              {r.username} · {formatDateTime(r.createdAt)}
+            </li>
           ))}
         </ul>
       </div>

@@ -17,7 +17,11 @@ export async function setReferralBonus(adminId: string, value: unknown): Promise
       update: { value: String(bonus) },
       create: { key: 'referralBonus', value: String(bonus) },
     })
-    await logAdminAction(tx, { adminId, action: 'UPDATE_SETTING', details: { key: 'referralBonus', value: bonus } })
+    await logAdminAction(tx, {
+      adminId,
+      action: 'UPDATE_SETTING',
+      details: { key: 'referralBonus', value: bonus },
+    })
   })
 }
 

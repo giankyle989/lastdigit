@@ -66,13 +66,20 @@ export function listGamesAdmin(status?: GameStatus) {
   })
 }
 
-export function listTransactionsAdmin(f: { username?: string; type?: TransactionType; from?: Date; to?: Date }) {
+export function listTransactionsAdmin(f: {
+  username?: string
+  type?: TransactionType
+  from?: Date
+  to?: Date
+}) {
   const username = f.username?.trim().toLowerCase()
   return prisma.transaction.findMany({
     where: {
       ...(username ? { user: { usernameKey: username } } : {}),
       ...(f.type ? { type: f.type } : {}),
-      ...(f.from || f.to ? { createdAt: { ...(f.from ? { gte: f.from } : {}), ...(f.to ? { lt: f.to } : {}) } } : {}),
+      ...(f.from || f.to
+        ? { createdAt: { ...(f.from ? { gte: f.from } : {}), ...(f.to ? { lt: f.to } : {}) } }
+        : {}),
     },
     include: { user: { select: { username: true } } },
     orderBy: { createdAt: 'desc' },

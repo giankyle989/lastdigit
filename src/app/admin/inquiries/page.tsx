@@ -6,7 +6,11 @@ import { requireAdmin } from '@/server/session'
 
 const STATUSES = Object.values(InquiryStatus)
 
-export default async function AdminInquiriesPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function AdminInquiriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
   await requireAdmin()
   const { status } = await searchParams
   const filter = STATUSES.includes(status as InquiryStatus) ? (status as InquiryStatus) : 'OPEN'
@@ -16,16 +20,33 @@ export default async function AdminInquiriesPage({ searchParams }: { searchParam
       <h1 className="text-xl font-semibold">Inquiries</h1>
       <div className="flex gap-2 text-sm">
         {STATUSES.map((s) => (
-          <Link key={s} href={`/admin/inquiries?status=${s}`} className={filter === s ? 'btn' : 'btn-secondary'}>{s}</Link>
+          <Link
+            key={s}
+            href={`/admin/inquiries?status=${s}`}
+            className={filter === s ? 'btn' : 'btn-secondary'}
+          >
+            {s}
+          </Link>
         ))}
       </div>
       <div className="card overflow-x-auto">
         <table className="table">
-          <thead><tr><th>Subject</th><th>Player</th><th>Messages</th><th>Updated</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Player</th>
+              <th>Messages</th>
+              <th>Updated</th>
+            </tr>
+          </thead>
           <tbody>
             {inquiries.map((i) => (
               <tr key={i.id}>
-                <td><Link href={`/admin/inquiries/${i.id}`} className="underline">{i.subject}</Link></td>
+                <td>
+                  <Link href={`/admin/inquiries/${i.id}`} className="underline">
+                    {i.subject}
+                  </Link>
+                </td>
                 <td>{i.user.username}</td>
                 <td>{i._count.messages}</td>
                 <td>{formatDateTime(i.updatedAt)}</td>

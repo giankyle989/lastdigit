@@ -45,7 +45,11 @@ export async function placeBet(userId: string, input: unknown, now: Date = new D
       update: { stake: { increment: stake } },
     })
 
-    await postEntry(tx, { userId, type: 'BET', amount: -stake, gameId, betId: bet.id }, { requireFunds: true })
+    await postEntry(
+      tx,
+      { userId, type: 'BET', amount: -stake, gameId, betId: bet.id },
+      { requireFunds: true },
+    )
     await tx.game.update({ where: { id: gameId }, data: { pool: { increment: stake } } })
     return bet
   })

@@ -31,7 +31,10 @@ export default async function AdminDashboard() {
       </div>
       {s.postponedCount > 0 && (
         <p className="card text-sm">
-          {s.postponedCount} postponed game(s) need review. <Link href="/admin/games?status=POSTPONED" className="underline">Review</Link>
+          {s.postponedCount} postponed game(s) need review.{' '}
+          <Link href="/admin/games?status=POSTPONED" className="underline">
+            Review
+          </Link>
         </p>
       )}
       <div className="card">
@@ -42,7 +45,10 @@ export default async function AdminDashboard() {
           <ul className="text-sm">
             {s.negativeBalances.map((u) => (
               <li key={u.id}>
-                <Link href={`/admin/players/${u.id}`} className="underline">{u.username}</Link>: {formatPoints(u.balance)}
+                <Link href={`/admin/players/${u.id}`} className="underline">
+                  {u.username}
+                </Link>
+                : {formatPoints(u.balance)}
               </li>
             ))}
           </ul>
