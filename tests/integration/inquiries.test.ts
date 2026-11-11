@@ -39,6 +39,20 @@ describe('inquiries', () => {
     await expect(replyToInquiry(p.id, inq.id, { body: 'hello?' })).rejects.toMatchObject({ code: 'CONFLICT' })
   })
 
+  it('a concurrent reply cannot reopen a closed inquiry', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const p = await makeUser()
+    const inq = await createInquiry(p.id, { subject: 's', body: 'b' })
+    const results = await Promise.allSettled([
+      closeInquiry(p.id, inq.id),
+      replyToInquiry(admin.id, inq.id, { body: 'x' }),
+    ])
+    const final = await prisma.inquiry.findUniqueOrThrow({ where: { id: inq.id } })
+    expect(final.status).toBe('CLOSED')
+    const reply = results[1]
+    if (reply.status === 'rejected') expect(reply.reason).toMatchObject({ code: 'CONFLICT' })
+  })
+
   it('validates subject and body', async () => {
     const p = await makeUser()
     await expect(createInquiry(p.id, { subject: ' ', body: 'b' })).rejects.toBeInstanceOf(ZodError)

@@ -27,13 +27,15 @@ export async function createInquiry(userId: string, input: unknown) {
 export async function replyToInquiry(actorId: string, inquiryId: string, input: unknown): Promise<void> {
   const { body } = z.object({ body: bodySchema }).parse(input)
   await prisma.$transaction(async (tx) => {
-    const { actor, inquiry } = await loadForActor(tx, actorId, inquiryId)
-    if (inquiry.status === 'CLOSED') throw new DomainError('CONFLICT', 'This inquiry is closed')
-    await tx.inquiryMessage.create({ data: { inquiryId, authorId: actorId, body } })
-    await tx.inquiry.update({
-      where: { id: inquiryId },
+    const { actor } = await loadForActor(tx, actorId, inquiryId)
+    // Conditional write first: takes the row lock, so a concurrent close either
+    // commits before (count 0 here) or waits and then sets CLOSED last.
+    const res = await tx.inquiry.updateMany({
+      where: { id: inquiryId, status: { not: 'CLOSED' } },
       data: { status: actor.role === 'ADMIN' ? 'ANSWERED' : 'OPEN' },
     })
+    if (res.count === 0) throw new DomainError('CONFLICT', 'This inquiry is closed')
+    await tx.inquiryMessage.create({ data: { inquiryId, authorId: actorId, body } })
   })
 }
 
@@ -51,7 +53,7 @@ export async function getInquiryThread(viewerId: string, inquiryId: string) {
       user: { select: { username: true } },
       messages: {
         include: { author: { select: { username: true, role: true } } },
-        orderBy: { createdAt: 'asc' },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       },
     },
   })
