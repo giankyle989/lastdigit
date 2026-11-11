@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LastDigit
 
-## Getting Started
+Free-to-play NBA game: bet points on the last digit of each team's final score (LAL 99 @ GSW 106 → **9-6**). Winners split 90% of the pool by stake. Points have no cash value.
 
-First, run the development server:
+## Setup
 
 ```bash
+npm install
+npm run db:up                 # Postgres 16 on localhost:5433
+cp .env.example .env          # then fill AUTH_SECRET, CRON_SECRET, ADMIN_PASSWORD, BALLDONTLIE_API_KEY
+npx prisma migrate dev
+npm run db:seed               # creates the admin from ADMIN_USERNAME / ADMIN_PASSWORD
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Get a free balldontlie API key at https://www.balldontlie.io.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Game sync
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`GET /api/cron/sync` with header `Authorization: Bearer $CRON_SECRET` pulls games (yesterday → +7 days) and settles finished games. Call it every 5 minutes, for example with crontab:
 
-## Learn More
+```
+*/5 * * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://your-host/api/cron/sync > /dev/null
+```
 
-To learn more about Next.js, take a look at the following resources:
+(Vercel Hobby cron runs at most daily; use an external cron service or a VPS crontab.) Admins can also click **Force sync** on Admin → Games.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tests
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm test          # unit + integration (uses lastdigit_test DB)
+npm run test:e2e  # Playwright full flow
+```
