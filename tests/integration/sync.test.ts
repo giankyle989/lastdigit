@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { prisma } from '@/lib/db'
 import { placeBet } from '@/server/bets'
 import { getLastSyncAt } from '@/server/settings'
@@ -59,6 +59,38 @@ describe('syncGames', () => {
     const g = await makeGame({ externalId: 501, status: 'VOID' })
     await syncGames({ fetchGames: fetcher([apiGame({ status: 'Final', period: 4, visitor_team_score: 1, home_team_score: 2 })]) })
     expect((await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).status).toBe('VOID')
+  })
+
+  it('never touches settled games', async () => {
+    const g = await makeGame({ externalId: 501, status: 'SETTLED', awayScore: 10, homeScore: 20 })
+    await syncGames({ fetchGames: fetcher([apiGame({ status: 'Final', period: 4, visitor_team_score: 1, home_team_score: 2 })]) })
+    expect(await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).toMatchObject({
+      status: 'SETTLED',
+      awayScore: 10,
+      homeScore: 20,
+    })
+  })
+
+  it('isolates a malformed API record and still records the sync time', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const now = new Date('2026-11-11T12:00:00Z')
+    const bad = apiGame({ id: 777, status: null as unknown as string })
+    const r = await syncGames({ fetchGames: fetcher([bad, apiGame()]), now })
+    expect(r).toMatchObject({ created: 1, errors: 1 })
+    expect(await prisma.game.findUnique({ where: { externalId: 501 } })).not.toBeNull()
+    expect(await getLastSyncAt()).toEqual(now)
+    spy.mockRestore()
+  })
+
+  it('isolates a settlement failure and settles other final games', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const broken = await makeGame({ externalId: 601, status: 'FINAL', awayScore: null, homeScore: null })
+    const good = await makeGame({ externalId: 602, status: 'FINAL', awayScore: 99, homeScore: 106 })
+    const r = await syncGames({ fetchGames: fetcher([]) })
+    expect(r).toMatchObject({ settled: 1, errors: 1 })
+    expect((await prisma.game.findUniqueOrThrow({ where: { id: good.id } })).status).toBe('SETTLED')
+    expect((await prisma.game.findUniqueOrThrow({ where: { id: broken.id } })).status).toBe('FINAL')
+    spy.mockRestore()
   })
 
   // Review Focus #4
