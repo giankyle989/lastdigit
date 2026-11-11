@@ -1,5 +1,7 @@
 import type { Prisma } from '@prisma/client'
+import { expect } from 'vitest'
 import { prisma } from '@/lib/db'
+import { postEntry } from '@/server/ledger'
 
 export async function resetDb() {
   await prisma.$executeRawUnsafe(
@@ -36,4 +38,18 @@ export async function makeGame(over: Partial<Prisma.GameUncheckedCreateInput> = 
       ...over,
     },
   })
+}
+
+export async function fundUser(userId: string, amount: number) {
+  await prisma.$transaction((tx) =>
+    postEntry(tx, { userId, type: 'ADMIN_GRANT', amount, note: 'test funding' }),
+  )
+}
+
+export async function expectLedgerConsistent() {
+  const rows = await prisma.$queryRaw<{ id: string; balance: number; total: number }[]>`
+    SELECT u.id, u.balance, COALESCE(SUM(t.amount), 0)::int AS total
+    FROM "User" u LEFT JOIN "Transaction" t ON t."userId" = u.id
+    GROUP BY u.id`
+  for (const r of rows) expect(r.balance, `user ${r.id}`).toBe(r.total)
 }
