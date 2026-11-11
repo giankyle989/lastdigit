@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatCountdown, formatPoints, formatSignedPoints, formatTipoffTime } from '@/lib/format'
+import {
+  formatCountdown,
+  formatEtDay,
+  formatPoints,
+  formatSignedPoints,
+  formatTipoffTime,
+} from '@/lib/format'
 
 describe('format', () => {
   it('formats ET tip-off times', () => {
@@ -18,5 +24,9 @@ describe('format', () => {
     expect(formatCountdown(2 * 3600_000 + 5 * 60_000 + 9_000)).toBe('2h 05m 09s')
     expect(formatCountdown(4 * 60_000 + 9_000)).toBe('4m 09s')
     expect(formatCountdown(-5)).toBe('0m 00s')
+  })
+
+  it('formats ET days', () => {
+    expect(formatEtDay('2026-11-11')).toBe('Wed, Nov 11')
   })
 })

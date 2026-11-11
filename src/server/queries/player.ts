@@ -1,4 +1,4 @@
-import type { Bet, BetResult, Game } from '@prisma/client'
+import type { Bet, Game } from '@prisma/client'
 import { z } from 'zod'
 
 import { etDayRange } from '@/lib/dates'
@@ -30,16 +30,6 @@ export async function listGamesForDate(etDate: string, userId: string): Promise<
   })
   const byGame = new Map(counts.map((c) => [c.gameId, c._count._all]))
   return games.map((g) => ({ ...g, myPickCount: byGame.get(g.id) ?? 0 }))
-}
-
-/** Replaced by listMyBetsGrouped; removed in Task 10 with the old bets page. */
-export function listMyBets(userId: string, result?: BetResult) {
-  return prisma.bet.findMany({
-    where: { userId, ...(result ? { result } : {}) },
-    include: { game: true },
-    orderBy: { createdAt: 'desc' },
-    take: 200,
-  })
 }
 
 export async function getGameForPlayer(gameId: string, userId: string) {

@@ -38,3 +38,13 @@ export function formatCountdown(ms: number): string {
 export function formatTipoffTime(d: Date): string {
   return d.toLocaleTimeString('en-US', { timeZone: ET, hour: 'numeric', minute: '2-digit' }) + ' ET'
 }
+
+/** 'YYYY-MM-DD' (an ET date) → "Wed, Nov 11" */
+export function formatEtDay(etDate: string): string {
+  return new Date(`${etDate}T12:00:00Z`).toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+}

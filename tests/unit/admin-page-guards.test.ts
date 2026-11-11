@@ -56,10 +56,10 @@ const playerPages: PageCase[] = [
   ['(player)/bets', () => import('@/app/(player)/bets/page'), sp()],
   ['(player)/games', () => import('@/app/(player)/games/page'), sp()],
   ['(player)/games/[id]', () => import('@/app/(player)/games/[id]/page'), params({ id: 'x' })],
-  ['(player)/inquiries', () => import('@/app/(player)/inquiries/page'), sp()],
-  ['(player)/inquiries/[id]', () => import('@/app/(player)/inquiries/[id]/page'), params({ id: 'x' })],
   ['(player)/more', () => import('@/app/(player)/more/page'), sp()],
-  ['(player)/referral', () => import('@/app/(player)/referral/page'), sp()],
+  ['(player)/more/referral', () => import('@/app/(player)/more/referral/page'), sp()],
+  ['(player)/more/support', () => import('@/app/(player)/more/support/page'), sp()],
+  ['(player)/more/support/[id]', () => import('@/app/(player)/more/support/[id]/page'), params({ id: 'x' })],
   ['(player)/wallet', () => import('@/app/(player)/wallet/page'), sp()],
 ]
 

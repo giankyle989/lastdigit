@@ -1,47 +1,105 @@
-import { formatDateTime, formatPoints } from '@/lib/format'
+import { EmptyState } from '@/components/empty-state'
+import { FilterChips } from '@/components/filter-chips'
+import { Pagination } from '@/components/pagination'
+import { PointsAmount } from '@/components/points-amount'
+import { TxIcon } from '@/components/tx-icon'
+import { etDateOf } from '@/lib/dates'
+import { formatEtDay, formatTipoffTime } from '@/lib/format'
+import { parsePage } from '@/lib/pagination'
+import type { SearchParams } from '@/lib/table-params'
+import {
+  parseWalletFilter,
+  TX_TYPE_LABELS,
+  WALLET_FILTER_LABELS,
+  WALLET_FILTERS,
+  type WalletFilter,
+} from '@/lib/wallet'
 import { listMyTransactions } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
 
-export default async function WalletPage() {
+export default async function WalletPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await requireUser()
-  const { rows: txs } = await listMyTransactions(user.id, 'all', 1)
+  const sp = await searchParams
+  const filter = parseWalletFilter(sp.type)
+  const page = parsePage(sp.page)
   return (
     <div className="space-y-4">
-      <div className="card">
-        <div className="text-sm text-gray-600">Balance</div>
-        <div className="text-3xl font-bold" data-testid="balance">
-          {formatPoints(user.balance)} pts
+      <h1 className="sr-only">Wallet</h1>
+      <section className="from-primary/20 to-card border-border rounded-xl border bg-gradient-to-br p-5">
+        <div className="text-muted-foreground text-sm">Balance</div>
+        <div className="mt-1 text-4xl font-bold" data-testid="balance">
+          <PointsAmount value={user.balance} unit />
         </div>
-      </div>
-      <div className="card overflow-x-auto">
-        <h2 className="mb-2 font-semibold">History</h2>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Amount</th>
-              <th>Balance</th>
-              <th>Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            {txs.map((t) => (
-              <tr key={t.id}>
-                <td>{formatDateTime(t.createdAt)}</td>
-                <td>{t.type}</td>
-                <td className={t.amount < 0 ? 'text-red-600' : 'text-green-700'}>
-                  {t.amount > 0 ? '+' : ''}
-                  {formatPoints(t.amount)}
-                </td>
-                <td>{formatPoints(t.balanceAfter)}</td>
-                <td>{t.note}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {txs.length === 0 && <p className="p-2 text-sm text-gray-500">No transactions yet.</p>}
-      </div>
+      </section>
+      <FilterChips
+        label="Transaction type"
+        chips={WALLET_FILTERS.map((f) => ({
+          label: WALLET_FILTER_LABELS[f],
+          href: f === 'all' ? '/wallet' : `/wallet?type=${f}`,
+          active: f === filter,
+        }))}
+      />
+      <TransactionDays userId={user.id} filter={filter} page={page} />
     </div>
+  )
+}
+
+async function TransactionDays({
+  userId,
+  filter,
+  page,
+}: {
+  userId: string
+  filter: WalletFilter
+  page: number
+}) {
+  const result = await listMyTransactions(userId, filter, page)
+  if (result.rows.length === 0) return <EmptyState>No transactions yet.</EmptyState>
+
+  // Rows come newest first; group them by ET calendar day.
+  const days: { date: string; rows: typeof result.rows }[] = []
+  for (const t of result.rows) {
+    const date = etDateOf(t.createdAt)
+    const last = days.at(-1)
+    if (last?.date === date) last.rows.push(t)
+    else days.push({ date, rows: [t] })
+  }
+
+  return (
+    <>
+      {days.map((day) => (
+        <section key={day.date} aria-label={formatEtDay(day.date)}>
+          <h2 className="text-muted-foreground mb-1 text-xs font-semibold uppercase">
+            {formatEtDay(day.date)}
+          </h2>
+          <ul className="bg-card border-border divide-border divide-y rounded-xl border">
+            {day.rows.map((t) => (
+              <li key={t.id} className="flex items-center gap-3 p-3">
+                <TxIcon type={t.type} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium">{TX_TYPE_LABELS[t.type]}</div>
+                  <div className="text-muted-foreground truncate text-xs">
+                    {t.game ? `${t.game.awayTeam} @ ${t.game.homeTeam}` : (t.note ?? '')} ·{' '}
+                    {formatTipoffTime(t.createdAt)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <PointsAmount value={t.amount} signed className="block font-semibold" />
+                  <span className="text-muted-foreground text-xs">
+                    <PointsAmount value={t.balanceAfter} />
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+      <Pagination
+        basePath="/wallet"
+        params={filter === 'all' ? {} : { type: filter }}
+        page={result.page}
+        pageCount={result.pageCount}
+      />
+    </>
   )
 }

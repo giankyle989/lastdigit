@@ -32,7 +32,7 @@ export async function createInquiryAction(_prev: ActionState, fd: FormData): Pro
   const result = await runAction(async () => {
     id = (await createInquiry(user.id, { subject: fd.get('subject'), body: fd.get('body') })).id
   })
-  if (id) redirect(`/inquiries/${id}`)
+  if (id) redirect(`/more/support/${id}`)
   return result
 }
 
@@ -46,13 +46,13 @@ export async function replyInquiryAction(
     () => replyToInquiry(user.id, inquiryId, { body: fd.get('body') }),
     'Reply sent',
   )
-  revalidatePath(`/inquiries/${inquiryId}`)
+  revalidatePath(`/more/support/${inquiryId}`)
   return result
 }
 
 export async function closeInquiryAction(inquiryId: string): Promise<ActionState> {
   const user = await requireUser()
   const result = await runAction(() => closeInquiry(user.id, inquiryId), 'Inquiry closed')
-  revalidatePath(`/inquiries/${inquiryId}`)
+  revalidatePath(`/more/support/${inquiryId}`)
   return result
 }
