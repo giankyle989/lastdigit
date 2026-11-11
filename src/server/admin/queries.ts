@@ -2,18 +2,11 @@ import type { GameStatus, TransactionType } from '@prisma/client'
 
 import { prisma } from '@/lib/db'
 
-export function searchPlayers(q?: string) {
-  const key = q?.trim().toLowerCase()
-  return prisma.user.findMany({
-    where: { role: 'PLAYER', ...(key ? { usernameKey: { contains: key } } : {}) },
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-  })
-}
-
 export function getPlayerDetail(id: string) {
   return prisma.user.findFirst({
     where: { id, role: 'PLAYER' },
+    // The result is rendered into a client-visible drawer: never ship the password hash.
+    omit: { passwordHash: true },
     include: {
       referredBy: { select: { id: true, username: true } },
       referrals: { select: { id: true, username: true, createdAt: true }, orderBy: { createdAt: 'desc' } },

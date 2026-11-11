@@ -31,7 +31,7 @@ export async function adjustPointsAction(
       }),
     'Points updated',
   )
-  revalidatePath(`/admin/players/${userId}`)
+  revalidatePath('/admin', 'layout')
   return r
 }
 
@@ -41,14 +41,14 @@ export async function suspendAction(userId: string, _prev: ActionState, fd: Form
   const until = v ? new Date(`${v}T00:00:00Z`) : null
   if (until && Number.isNaN(until.getTime())) return { error: 'Invalid date' }
   const r = await runAction(() => suspendPlayer(admin.id, userId, until), 'Player suspended')
-  revalidatePath(`/admin/players/${userId}`)
+  revalidatePath('/admin', 'layout')
   return r
 }
 
 export async function unsuspendAction(userId: string): Promise<ActionState> {
   const admin = await requireAdmin()
   const r = await runAction(() => unsuspendPlayer(admin.id, userId), 'Suspension lifted')
-  revalidatePath(`/admin/players/${userId}`)
+  revalidatePath('/admin', 'layout')
   return r
 }
 
@@ -60,7 +60,7 @@ export async function stakeLimitAction(
   const admin = await requireAdmin()
   const v = String(fd.get('limit') ?? '').trim()
   const r = await runAction(() => setStakeLimit(admin.id, userId, v === '' ? null : v), 'Stake limit saved')
-  revalidatePath(`/admin/players/${userId}`)
+  revalidatePath('/admin', 'layout')
   return r
 }
 
@@ -70,13 +70,15 @@ export async function resetPasswordAction(
   fd: FormData,
 ): Promise<ActionState> {
   const admin = await requireAdmin()
-  return runAction(() => resetPassword(admin.id, userId, fd.get('newPassword')), 'Password reset')
+  const r = await runAction(() => resetPassword(admin.id, userId, fd.get('newPassword')), 'Password reset')
+  revalidatePath('/admin', 'layout')
+  return r
 }
 
 export async function voidGameAction(gameId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireAdmin()
   const r = await runAction(() => voidGame(admin.id, gameId, fd.get('reason')), 'Game voided')
-  revalidatePath('/admin/games')
+  revalidatePath('/admin', 'layout')
   return r
 }
 
@@ -84,7 +86,7 @@ export async function forceSyncAction(): Promise<ActionState> {
   await requireAdmin()
   try {
     const r = await syncGames({ fetchGames: defaultFetcher() })
-    revalidatePath('/admin/games')
+    revalidatePath('/admin', 'layout')
     return {
       ok: `Sync complete: ${r.created} new, ${r.updated} updated, ${r.skipped} skipped, ${r.settled} settled, ${r.errors} errors`,
     }
@@ -100,20 +102,20 @@ export async function adminReplyAction(
 ): Promise<ActionState> {
   const admin = await requireAdmin()
   const r = await runAction(() => replyToInquiry(admin.id, inquiryId, { body: fd.get('body') }), 'Reply sent')
-  revalidatePath(`/admin/inquiries/${inquiryId}`)
+  revalidatePath('/admin', 'layout')
   return r
 }
 
 export async function adminCloseAction(inquiryId: string): Promise<ActionState> {
   const admin = await requireAdmin()
   const r = await runAction(() => closeInquiry(admin.id, inquiryId), 'Inquiry closed')
-  revalidatePath(`/admin/inquiries/${inquiryId}`)
+  revalidatePath('/admin', 'layout')
   return r
 }
 
 export async function referralBonusAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireAdmin()
   const r = await runAction(() => setReferralBonus(admin.id, fd.get('referralBonus')), 'Referral bonus saved')
-  revalidatePath('/admin/settings')
+  revalidatePath('/admin', 'layout')
   return r
 }
