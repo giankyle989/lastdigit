@@ -23,12 +23,14 @@ describe('feed sections', () => {
   it('orders sections Live, Open, Upcoming/closed, Final and drops empty ones', () => {
     const games = [
       { id: 'f', status: 'FINAL' as const, startsAt: earlier },
+      { id: 'c', status: 'SCHEDULED' as const, startsAt: earlier },
       { id: 'o', status: 'SCHEDULED' as const, startsAt: later },
       { id: 'l', status: 'LIVE' as const, startsAt: earlier },
     ]
     expect(groupIntoSections(games, now).map((s) => [s.title, s.games.map((g) => g.id)])).toEqual([
       ['Live', ['l']],
       ['Open for bets', ['o']],
+      ['Upcoming / closed', ['c']],
       ['Final', ['f']],
     ])
     expect(groupIntoSections([], now)).toEqual([])

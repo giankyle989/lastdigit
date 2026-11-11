@@ -51,6 +51,14 @@ describe('player feed queries', () => {
       await placeBet(me.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 1 }, now)
       await placeBet(me.id, { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 1 }, now)
     }
+    // another player's bets must never show up for me
+    const other = await makeUser()
+    await fundUser(other.id, 100)
+    const shared = games[5]
+    if (!shared) throw new Error('setup')
+    const theirs = await makeGame({ startsAt: new Date(Date.UTC(2026, 10, 12, 12)) })
+    await placeBet(other.id, { gameId: shared.id, awayDigit: 3, homeDigit: 3, stake: 1 }, now)
+    await placeBet(other.id, { gameId: theirs.id, awayDigit: 3, homeDigit: 3, stake: 1 }, now)
     const settled = games[0]
     if (!settled) throw new Error('setup')
     await prisma.bet.updateMany({ where: { gameId: settled.id, awayDigit: 1 }, data: { result: 'WON' } })
@@ -61,6 +69,9 @@ describe('player feed queries', () => {
     expect(open1.rows).toHaveLength(20)
     expect(open1.rows[0]?.game.id).toBe(games[21]?.id) // latest tip-off first
     expect(open1.rows[0]?.bets.map((b) => b.awayDigit)).toEqual([1, 2])
+    expect(open1.rows.map((r) => r.game.id)).not.toContain(theirs.id)
+    const sharedRow = open1.rows.find((r) => r.game.id === shared.id)
+    expect(sharedRow?.bets.map((b) => b.userId)).toEqual([me.id, me.id])
     const open2 = await listMyBetsGrouped(me.id, 'open', 2)
     expect(open2.rows.map((r) => r.game.id)).toEqual([games[1]?.id])
     expect((await listMyBetsGrouped(me.id, 'open', 99)).page).toBe(2) // out of range clamps
