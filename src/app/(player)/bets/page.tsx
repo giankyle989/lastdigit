@@ -1,5 +1,6 @@
 import type { BetResult } from '@prisma/client'
 import Link from 'next/link'
+
 import { formatPoints, formatTipoff } from '@/lib/format'
 import { listMyBets } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
@@ -28,14 +29,27 @@ export default async function BetsPage({ searchParams }: { searchParams: Promise
       <div className="card overflow-x-auto">
         <table className="table">
           <thead>
-            <tr><th>Game</th><th>Tip-off</th><th>Ending</th><th>Stake</th><th>Result</th><th>Payout</th></tr>
+            <tr>
+              <th>Game</th>
+              <th>Tip-off</th>
+              <th>Ending</th>
+              <th>Stake</th>
+              <th>Result</th>
+              <th>Payout</th>
+            </tr>
           </thead>
           <tbody>
             {bets.map((b) => (
               <tr key={b.id}>
-                <td><Link href={`/games/${b.gameId}`} className="underline">{b.game.awayTeam} @ {b.game.homeTeam}</Link></td>
+                <td>
+                  <Link href={`/games/${b.gameId}`} className="underline">
+                    {b.game.awayTeam} @ {b.game.homeTeam}
+                  </Link>
+                </td>
                 <td>{formatTipoff(b.game.startsAt)}</td>
-                <td className="font-mono">{b.awayDigit}-{b.homeDigit}</td>
+                <td className="font-mono">
+                  {b.awayDigit}-{b.homeDigit}
+                </td>
                 <td>{formatPoints(b.stake)}</td>
                 <td>{b.result}</td>
                 <td>{formatPoints(b.payout)}</td>

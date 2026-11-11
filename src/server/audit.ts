@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client'
+
 import type { Tx } from '@/lib/db'
 
 export type AdminActionType =

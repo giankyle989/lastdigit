@@ -9,13 +9,21 @@ export default async function WalletPage() {
     <div className="space-y-4">
       <div className="card">
         <div className="text-sm text-gray-600">Balance</div>
-        <div className="text-3xl font-bold" data-testid="balance">{formatPoints(user.balance)} pts</div>
+        <div className="text-3xl font-bold" data-testid="balance">
+          {formatPoints(user.balance)} pts
+        </div>
       </div>
       <div className="card overflow-x-auto">
         <h2 className="mb-2 font-semibold">History</h2>
         <table className="table">
           <thead>
-            <tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance</th><th>Note</th></tr>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Balance</th>
+              <th>Note</th>
+            </tr>
           </thead>
           <tbody>
             {txs.map((t) => (
@@ -23,7 +31,8 @@ export default async function WalletPage() {
                 <td>{formatDateTime(t.createdAt)}</td>
                 <td>{t.type}</td>
                 <td className={t.amount < 0 ? 'text-red-600' : 'text-green-700'}>
-                  {t.amount > 0 ? '+' : ''}{formatPoints(t.amount)}
+                  {t.amount > 0 ? '+' : ''}
+                  {formatPoints(t.amount)}
                 </td>
                 <td>{formatPoints(t.balanceAfter)}</td>
                 <td>{t.note}</td>

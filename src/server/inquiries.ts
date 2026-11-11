@@ -1,10 +1,19 @@
 import type { InquiryStatus } from '@prisma/client'
 import { z } from 'zod'
+
 import { prisma, type Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 
-const subjectSchema = z.string({ required_error: 'Subject is required' }).trim().min(1, 'Subject is required').max(120)
-const bodySchema = z.string({ required_error: 'Message is required' }).trim().min(1, 'Message is required').max(5000)
+const subjectSchema = z
+  .string({ required_error: 'Subject is required' })
+  .trim()
+  .min(1, 'Subject is required')
+  .max(120)
+const bodySchema = z
+  .string({ required_error: 'Message is required' })
+  .trim()
+  .min(1, 'Message is required')
+  .max(5000)
 
 async function loadForActor(db: Tx, actorId: string, inquiryId: string) {
   const [actor, inquiry] = await Promise.all([

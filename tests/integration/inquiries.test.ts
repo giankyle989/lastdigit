@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'
+
 import { prisma } from '@/lib/db'
 import {
   closeInquiry,
@@ -8,6 +9,7 @@ import {
   listInquiriesAdmin,
   replyToInquiry,
 } from '@/server/inquiries'
+
 import { makeUser, resetDb } from '../helpers/db'
 
 describe('inquiries', () => {
@@ -29,7 +31,7 @@ describe('inquiries', () => {
     const thread = await getInquiryThread(p.id, inq.id)
     expect(thread.status).toBe('CLOSED')
     expect(thread.messages.map((m) => m.body)).toEqual(['Where are my points?', 'Checking.', 'Thanks'])
-    expect(thread.messages[1].author.role).toBe('ADMIN')
+    expect(thread.messages[1]?.author.role).toBe('ADMIN')
   })
 
   it('rejects replies to closed inquiries', async () => {
@@ -76,6 +78,6 @@ describe('inquiries', () => {
     await closeInquiry(p.id, closed.id)
     const open = await listInquiriesAdmin('OPEN')
     expect(open.map((i) => i.subject)).toEqual(['a'])
-    expect(open[0].user.username).toBe('kyle')
+    expect(open[0]?.user.username).toBe('kyle')
   })
 })

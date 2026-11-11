@@ -1,4 +1,5 @@
 import { TransactionType } from '@prisma/client'
+
 import { formatDateTime, formatPoints } from '@/lib/format'
 import { listTransactionsAdmin } from '@/server/admin/queries'
 import { requireAdmin } from '@/server/session'
@@ -31,29 +32,52 @@ export default async function AdminTransactionsPage({
       <h1 className="text-xl font-semibold">Transactions</h1>
       <form className="card grid gap-2 sm:grid-cols-5">
         <div>
-          <label htmlFor="username" className="label">Username</label>
+          <label htmlFor="username" className="label">
+            Username
+          </label>
           <input id="username" name="username" defaultValue={sp.username ?? ''} className="input" />
         </div>
         <div>
-          <label htmlFor="type" className="label">Type</label>
+          <label htmlFor="type" className="label">
+            Type
+          </label>
           <select id="type" name="type" defaultValue={type ?? ''} className="input">
             <option value="">All</option>
-            {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            {TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
           </select>
         </div>
         <div>
-          <label htmlFor="from" className="label">From</label>
+          <label htmlFor="from" className="label">
+            From
+          </label>
           <input id="from" name="from" type="date" defaultValue={sp.from ?? ''} className="input" />
         </div>
         <div>
-          <label htmlFor="to" className="label">To</label>
+          <label htmlFor="to" className="label">
+            To
+          </label>
           <input id="to" name="to" type="date" defaultValue={sp.to ?? ''} className="input" />
         </div>
-        <div className="flex items-end"><button className="btn">Filter</button></div>
+        <div className="flex items-end">
+          <button className="btn">Filter</button>
+        </div>
       </form>
       <div className="card overflow-x-auto">
         <table className="table">
-          <thead><tr><th>Date</th><th>User</th><th>Type</th><th>Amount</th><th>Balance</th><th>Note</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>User</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Balance</th>
+              <th>Note</th>
+            </tr>
+          </thead>
           <tbody>
             {txs.map((t) => (
               <tr key={t.id}>

@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { GET } from '@/app/api/cron/sync/route'
 import { prisma } from '@/lib/db'
 import { placeBet } from '@/server/bets'
 import { getLastSyncAt } from '@/server/settings'
+import { voidGame } from '@/server/settlement'
 import type { ApiGame } from '@/server/sync/balldontlie'
 import { syncGames } from '@/server/sync/sync'
-import { GET } from '@/app/api/cron/sync/route'
-import { voidGame } from '@/server/settlement'
+
 import { expectLedgerConsistent, fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 function apiGame(over: Partial<ApiGame> = {}): ApiGame {
@@ -45,7 +47,9 @@ describe('syncGames', () => {
     const g = await makeGame({ externalId: 501 })
     await placeBet(u.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
     const r = await syncGames({
-      fetchGames: fetcher([apiGame({ status: 'Final', period: 4, visitor_team_score: 99, home_team_score: 106 })]),
+      fetchGames: fetcher([
+        apiGame({ status: 'Final', period: 4, visitor_team_score: 99, home_team_score: 106 }),
+      ]),
     })
     expect(r.settled).toBe(1)
     expect(await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).toMatchObject({
@@ -58,7 +62,11 @@ describe('syncGames', () => {
 
   it('never touches settled or void games', async () => {
     const g = await makeGame({ externalId: 501, status: 'VOID' })
-    await syncGames({ fetchGames: fetcher([apiGame({ status: 'Final', period: 4, visitor_team_score: 1, home_team_score: 2 })]) })
+    await syncGames({
+      fetchGames: fetcher([
+        apiGame({ status: 'Final', period: 4, visitor_team_score: 1, home_team_score: 2 }),
+      ]),
+    })
     expect((await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).status).toBe('VOID')
   })
 
@@ -71,7 +79,9 @@ describe('syncGames', () => {
     await prisma.game.update({ where: { id: g.id }, data: { status: 'POSTPONED' } })
     await voidGame(admin.id, g.id, 'Postponed')
     const r = await syncGames({
-      fetchGames: fetcher([apiGame({ status: 'Final', period: 4, visitor_team_score: 99, home_team_score: 106 })]),
+      fetchGames: fetcher([
+        apiGame({ status: 'Final', period: 4, visitor_team_score: 99, home_team_score: 106 }),
+      ]),
     })
     expect(r.settled).toBe(0)
     expect(await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).toMatchObject({ status: 'VOID' })
@@ -81,7 +91,11 @@ describe('syncGames', () => {
 
   it('never touches settled games', async () => {
     const g = await makeGame({ externalId: 501, status: 'SETTLED', awayScore: 10, homeScore: 20 })
-    await syncGames({ fetchGames: fetcher([apiGame({ status: 'Final', period: 4, visitor_team_score: 1, home_team_score: 2 })]) })
+    await syncGames({
+      fetchGames: fetcher([
+        apiGame({ status: 'Final', period: 4, visitor_team_score: 1, home_team_score: 2 }),
+      ]),
+    })
     expect(await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).toMatchObject({
       status: 'SETTLED',
       awayScore: 10,
@@ -152,7 +166,9 @@ describe('GET /api/cron/sync', () => {
   it('rejects requests without the cron secret', async () => {
     const res = await GET(new Request('http://localhost/api/cron/sync'))
     expect(res.status).toBe(401)
-    const res2 = await GET(new Request('http://localhost/api/cron/sync', { headers: { authorization: 'Bearer wrong' } }))
+    const res2 = await GET(
+      new Request('http://localhost/api/cron/sync', { headers: { authorization: 'Bearer wrong' } }),
+    )
     expect(res2.status).toBe(401)
   })
 })

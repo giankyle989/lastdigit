@@ -40,3 +40,5 @@ Get a free balldontlie API key at https://www.balldontlie.io.
 npm test          # unit + integration (uses lastdigit_test DB)
 npm run test:e2e  # Playwright full flow
 ```
+
+Before pushing, run `npm run check` (format, lint, typecheck, tests). See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/engineering/standards.md](docs/engineering/standards.md).

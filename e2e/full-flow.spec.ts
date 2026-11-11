@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
+
 import { prisma } from '../src/lib/db'
 import type { ApiGame } from '../src/server/sync/balldontlie'
 import { syncGames } from '../src/server/sync/sync'
@@ -27,7 +28,8 @@ test('referral → admin grant → bet → auto-settle → payout', async ({ pag
   // alice signs up and shares her code
   await signup(page, 'alice')
   await page.goto('/referral')
-  const code = (await page.getByTestId('referral-code').textContent())!.trim()
+  const code = (await page.getByTestId('referral-code').textContent())?.trim() ?? ''
+  expect(code).not.toBe('')
   await logout(page)
 
   // bob signs up with alice's code; alice gets 500

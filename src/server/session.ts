@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
 import { isSuspended } from '@/lib/suspension'

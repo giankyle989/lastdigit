@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'
+
 import { prisma } from '@/lib/db'
 import {
   adjustPoints,
@@ -9,6 +10,7 @@ import {
   unsuspendPlayer,
 } from '@/server/admin/players'
 import { registerPlayer, verifyCredentials } from '@/server/users'
+
 import { expectLedgerConsistent, makeUser, resetDb } from '../helpers/db'
 
 describe('admin player management', () => {
@@ -25,7 +27,10 @@ describe('admin player management', () => {
       adminId: admin.id,
       note: 'Welcome',
     })
-    expect(await prisma.adminAction.findFirstOrThrow()).toMatchObject({ action: 'GRANT_POINTS', targetUserId: p.id })
+    expect(await prisma.adminAction.findFirstOrThrow()).toMatchObject({
+      action: 'GRANT_POINTS',
+      targetUserId: p.id,
+    })
     await expectLedgerConsistent()
   })
 
@@ -43,9 +48,9 @@ describe('admin player management', () => {
   it('requires a note', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const p = await makeUser()
-    await expect(adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 1, note: '  ' })).rejects.toBeInstanceOf(
-      ZodError,
-    )
+    await expect(
+      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 1, note: '  ' }),
+    ).rejects.toBeInstanceOf(ZodError)
   })
 
   it('only targets players', async () => {

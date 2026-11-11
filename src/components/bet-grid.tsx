@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+
 import type { ActionState } from '@/lib/action-state'
 
 const DIGITS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -28,7 +29,9 @@ export function BetGrid({ action, open, awayTeam, homeTeam, myStakes, winning }:
                 {awayTeam} ↓ / {homeTeam} →
               </th>
               {DIGITS.map((h) => (
-                <th key={h} className="w-9 p-1">{h}</th>
+                <th key={h} className="w-9 p-1">
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -68,7 +71,9 @@ export function BetGrid({ action, open, awayTeam, homeTeam, myStakes, winning }:
           </tbody>
         </table>
       </div>
-      <p className="mt-1 text-xs text-gray-500">Rows: {awayTeam} last digit. Columns: {homeTeam} last digit. Numbers show your stake.</p>
+      <p className="mt-1 text-xs text-gray-500">
+        Rows: {awayTeam} last digit. Columns: {homeTeam} last digit. Numbers show your stake.
+      </p>
 
       {open && (
         <form action={formAction} className="mt-4 flex flex-wrap items-end gap-3">
@@ -79,7 +84,9 @@ export function BetGrid({ action, open, awayTeam, homeTeam, myStakes, winning }:
             <div className="font-mono text-lg">{sel ? `${sel.a}-${sel.h}` : '—'}</div>
           </div>
           <div>
-            <label htmlFor="stake" className="label">Stake</label>
+            <label htmlFor="stake" className="label">
+              Stake
+            </label>
             <input id="stake" name="stake" type="number" min={1} step={1} required className="input w-32" />
           </div>
           <button className="btn" disabled={!sel || pending}>
@@ -87,7 +94,11 @@ export function BetGrid({ action, open, awayTeam, homeTeam, myStakes, winning }:
           </button>
         </form>
       )}
-      {state.error && <p role="alert" className="mt-2 text-sm text-red-600">{state.error}</p>}
+      {state.error && (
+        <p role="alert" className="mt-2 text-sm text-red-600">
+          {state.error}
+        </p>
+      )}
       {state.ok && <p className="mt-2 text-sm text-green-700">{state.ok}</p>}
     </div>
   )

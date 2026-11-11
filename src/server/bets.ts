@@ -1,9 +1,11 @@
 import type { Bet, GameStatus } from '@prisma/client'
 import { z } from 'zod'
+
 import { prisma } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 import { isSuspended } from '@/lib/suspension'
 import { intFromForm } from '@/lib/validation'
+
 import { postEntry } from './ledger'
 
 export const placeBetSchema = z.object({
@@ -45,7 +47,11 @@ export async function placeBet(userId: string, input: unknown, now: Date = new D
       update: { stake: { increment: stake } },
     })
 
-    await postEntry(tx, { userId, type: 'BET', amount: -stake, gameId, betId: bet.id }, { requireFunds: true })
+    await postEntry(
+      tx,
+      { userId, type: 'BET', amount: -stake, gameId, betId: bet.id },
+      { requireFunds: true },
+    )
     await tx.game.update({ where: { id: gameId }, data: { pool: { increment: stake } } })
     return bet
   })

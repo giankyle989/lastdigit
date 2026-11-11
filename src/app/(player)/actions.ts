@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { runAction, type ActionState } from '@/lib/action-state'
+
+import { type ActionState, runAction } from '@/lib/action-state'
 import { placeBet } from '@/server/bets'
 import { closeInquiry, createInquiry, replyToInquiry } from '@/server/inquiries'
 import { requireUser } from '@/server/session'
@@ -33,9 +34,16 @@ export async function createInquiryAction(_prev: ActionState, fd: FormData): Pro
   return result
 }
 
-export async function replyInquiryAction(inquiryId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+export async function replyInquiryAction(
+  inquiryId: string,
+  _prev: ActionState,
+  fd: FormData,
+): Promise<ActionState> {
   const user = await requireUser()
-  const result = await runAction(() => replyToInquiry(user.id, inquiryId, { body: fd.get('body') }), 'Reply sent')
+  const result = await runAction(
+    () => replyToInquiry(user.id, inquiryId, { body: fd.get('body') }),
+    'Reply sent',
+  )
   revalidatePath(`/inquiries/${inquiryId}`)
   return result
 }

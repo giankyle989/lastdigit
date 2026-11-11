@@ -1,8 +1,9 @@
 'use server'
 
 import { AuthError } from 'next-auth'
+
 import { signIn, signOut } from '@/auth'
-import { runAction, type ActionState } from '@/lib/action-state'
+import { type ActionState, runAction } from '@/lib/action-state'
 import { registerPlayer } from '@/server/users'
 
 export async function loginAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -29,7 +30,8 @@ export async function signupAction(_prev: ActionState, fd: FormData): Promise<Ac
   try {
     await signIn('credentials', { username, password, redirectTo: '/' })
   } catch (e) {
-    if (e instanceof AuthError) return { error: 'Account created, but automatic login failed. Please log in.' }
+    if (e instanceof AuthError)
+      return { error: 'Account created, but automatic login failed. Please log in.' }
     throw e
   }
   return {}

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+
 import { prisma } from '@/lib/db'
 import { placeBet } from '@/server/bets'
 import { settleGame, voidGame } from '@/server/settlement'
+
 import { expectLedgerConsistent, fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 async function balanceOf(id: string) {
@@ -132,7 +134,10 @@ describe('voidGame', () => {
     const g = await makeGame()
     await placeBet(winner.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
     await placeBet(loser.id, { gameId: g.id, awayDigit: 0, homeDigit: 0, stake: 900 })
-    await prisma.game.update({ where: { id: g.id }, data: { status: 'FINAL', awayScore: 99, homeScore: 106 } })
+    await prisma.game.update({
+      where: { id: g.id },
+      data: { status: 'FINAL', awayScore: 99, homeScore: 106 },
+    })
     await settleGame(g.id) // winner gets 900
     const g2 = await makeGame()
     await placeBet(winner.id, { gameId: g2.id, awayDigit: 1, homeDigit: 1, stake: 900 }) // spends it

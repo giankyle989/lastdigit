@@ -14,11 +14,14 @@ export function InquiryThread({ thread }: { thread: Thread }) {
         <span className="rounded bg-gray-100 px-2 py-0.5 text-xs">{thread.status}</span>
       </div>
       {thread.messages.map((m) => (
-        <div key={m.id} className={`card ${m.author.role === 'ADMIN' ? 'border-orange-200 bg-orange-50' : ''}`}>
+        <div
+          key={m.id}
+          className={`card ${m.author.role === 'ADMIN' ? 'border-orange-200 bg-orange-50' : ''}`}
+        >
           <div className="mb-1 text-xs text-gray-500">
             {m.author.role === 'ADMIN' ? 'Support' : m.author.username} · {formatDateTime(m.createdAt)}
           </div>
-          <p className="whitespace-pre-wrap text-sm">{m.body}</p>
+          <p className="text-sm whitespace-pre-wrap">{m.body}</p>
         </div>
       ))}
     </div>
