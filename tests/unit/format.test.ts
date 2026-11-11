@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatCountdown, formatPoints, formatSignedPoints } from '@/lib/format'
+import { formatCountdown, formatPoints, formatSignedPoints, formatTipoffTime } from '@/lib/format'
 
 describe('format', () => {
+  it('formats ET tip-off times', () => {
+    expect(formatTipoffTime(new Date('2026-11-12T00:30:00Z'))).toBe('7:30 PM ET')
+  })
+
   it('formats points with separators and signs', () => {
     expect(formatPoints(1200)).toBe('1,200')
     expect(formatSignedPoints(90)).toBe('+90')

@@ -33,3 +33,8 @@ export function formatCountdown(ms: number): string {
   const sec = String(s % 60).padStart(2, '0')
   return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m ${sec}s` : `${m}m ${sec}s`
 }
+
+/** "7:30 PM ET" */
+export function formatTipoffTime(d: Date): string {
+  return d.toLocaleTimeString('en-US', { timeZone: ET, hour: 'numeric', minute: '2-digit' }) + ' ET'
+}

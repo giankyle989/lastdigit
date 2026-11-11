@@ -1,100 +1,63 @@
 import { notFound } from 'next/navigation'
 
-import { BetGrid } from '@/components/bet-grid'
-import { Countdown } from '@/components/countdown'
-import { formatPoints, formatTipoff } from '@/lib/format'
-import { endingOf, formatEnding } from '@/lib/game/ending'
+import { BetResult } from '@/components/bet-result'
+import { EndingPicker } from '@/components/games/ending-picker'
+import { GameHeader } from '@/components/games/game-header'
+import { PointsAmount } from '@/components/points-amount'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatEnding } from '@/lib/game/ending'
+import { isBettingOpen } from '@/lib/game/status'
 import { getGameForPlayer } from '@/server/queries/player'
+import { getEndingStakes } from '@/server/queries/stakes'
 import { requireUser } from '@/server/session'
 
-import { placeBetAction } from '../../actions'
-
 export default async function GamePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
   const user = await requireUser()
+  const { id } = await params
   const data = await getGameForPlayer(id, user.id)
   if (!data) notFound()
   const { game, myBets, winners } = data
-
-  const open = game.status === 'SCHEDULED' && game.startsAt > new Date()
-  const hasFinal = game.status === 'FINAL' || game.status === 'SETTLED'
-  const winning =
-    hasFinal && game.awayScore !== null && game.homeScore !== null
-      ? formatEnding(endingOf(game.awayScore, game.homeScore))
-      : undefined
-  const myStakes = Object.fromEntries(myBets.map((b) => [`${b.awayDigit}-${b.homeDigit}`, b.stake]))
+  const stakes = await getEndingStakes(game.id)
+  const now = new Date()
 
   return (
-    <div className="space-y-6">
-      <div className="card">
-        <h1 className="text-xl font-semibold">
-          {game.awayTeam} @ {game.homeTeam}
-        </h1>
-        <p className="text-sm text-gray-600">
-          {formatTipoff(game.startsAt)} · {game.status} · Pool {formatPoints(game.pool)}
-        </p>
-        {game.awayScore !== null && game.homeScore !== null && (
-          <p className="mt-2 font-mono text-2xl">
-            {game.awayScore} – {game.homeScore}
-          </p>
-        )}
-        {winning && (
-          <p className="mt-1 text-sm">
-            Winning ending: <strong className="font-mono">{winning}</strong>
-            {game.status === 'SETTLED' && ` · ${winners} winning bet${winners === 1 ? '' : 's'}`}
-          </p>
-        )}
-        {game.status === 'VOID' && (
-          <p className="mt-1 text-sm text-red-600">Void: {game.voidReason}. Stakes were refunded.</p>
-        )}
-        {open && (
-          <p className="mt-1 text-sm text-orange-700">
-            <Countdown to={game.startsAt.toISOString()} />
-          </p>
-        )}
-      </div>
-
-      <div className="card">
-        <h2 className="mb-3 font-semibold">{open ? 'Place bet' : 'Endings'}</h2>
-        <BetGrid
-          action={placeBetAction.bind(null, game.id)}
-          open={open}
-          awayTeam={game.awayTeam}
-          homeTeam={game.homeTeam}
-          myStakes={myStakes}
-          winning={winning}
-        />
-      </div>
-
-      <div className="card">
-        <h2 className="mb-3 font-semibold">My bets on this game</h2>
-        {myBets.length === 0 ? (
-          <p className="text-sm text-gray-500">No bets yet.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Ending</th>
-                <th>Stake</th>
-                <th>Result</th>
-                <th>Payout</th>
-              </tr>
-            </thead>
-            <tbody>
+    <div className="space-y-4">
+      <GameHeader game={game} winners={winners} now={now} />
+      <Card>
+        <CardHeader>
+          <CardTitle>Pick an ending</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EndingPicker
+            gameId={game.id}
+            awayTeam={game.awayTeam}
+            homeTeam={game.homeTeam}
+            open={isBettingOpen(game, now)}
+            pool={stakes.pool}
+            cells={stakes.cells}
+          />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>My bets on this game</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {myBets.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No bets yet.</p>
+          ) : (
+            <ul className="divide-border divide-y">
               {myBets.map((b) => (
-                <tr key={b.id}>
-                  <td className="font-mono">
-                    {b.awayDigit}-{b.homeDigit}
-                  </td>
-                  <td>{formatPoints(b.stake)}</td>
-                  <td>{b.result}</td>
-                  <td>{formatPoints(b.payout)}</td>
-                </tr>
+                <li key={b.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span className="num text-base font-semibold">{formatEnding(b)}</span>
+                  <PointsAmount value={b.stake} unit className="text-muted-foreground" />
+                  <BetResult result={b.result} payout={b.payout} />
+                </li>
               ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

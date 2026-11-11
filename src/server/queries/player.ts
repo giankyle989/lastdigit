@@ -32,15 +32,6 @@ export async function listGamesForDate(etDate: string, userId: string): Promise<
   return games.map((g) => ({ ...g, myPickCount: byGame.get(g.id) ?? 0 }))
 }
 
-/** Replaced by listGamesForDate; removed in Task 9 with the old games page. */
-export function listUpcomingGames(now: Date = new Date()) {
-  return prisma.game.findMany({
-    where: { startsAt: { gte: new Date(now.getTime() - 36 * 3600_000) } },
-    orderBy: { startsAt: 'asc' },
-    take: 100,
-  })
-}
-
 /** Replaced by listMyBetsGrouped; removed in Task 10 with the old bets page. */
 export function listMyBets(userId: string, result?: BetResult) {
   return prisma.bet.findMany({

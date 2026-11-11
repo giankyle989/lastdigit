@@ -4,26 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { type ActionState, runAction } from '@/lib/action-state'
-import { placeBet, placeBets } from '@/server/bets'
+import { placeBets } from '@/server/bets'
 import { closeInquiry, createInquiry, replyToInquiry } from '@/server/inquiries'
 import { getSlipStatus } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
-
-export async function placeBetAction(gameId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
-  const user = await requireUser()
-  const result = await runAction(
-    () =>
-      placeBet(user.id, {
-        gameId,
-        awayDigit: fd.get('awayDigit'),
-        homeDigit: fd.get('homeDigit'),
-        stake: fd.get('stake'),
-      }),
-    'Bet placed',
-  )
-  revalidatePath(`/games/${gameId}`)
-  return result
-}
 
 /** Places every pick in the slip or none (spec §4.3); `pickIndex` marks the failing pick. */
 export async function placeBetsAction(picks: unknown): Promise<ActionState> {
