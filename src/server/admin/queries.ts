@@ -1,6 +1,6 @@
-import type { GameStatus, TransactionType } from '@prisma/client'
-
 import { prisma } from '@/lib/db'
+
+import { getEndingStakes } from '../queries/stakes'
 
 export function getPlayerDetail(id: string) {
   return prisma.user.findFirst({
@@ -16,32 +16,17 @@ export function getPlayerDetail(id: string) {
   })
 }
 
-export function listGamesAdmin(status?: GameStatus) {
-  return prisma.game.findMany({
-    where: status ? { status } : {},
-    orderBy: { startsAt: 'desc' },
-    take: 200,
-    include: { _count: { select: { bets: { where: { result: 'WON' } } } } },
-  })
-}
-
-export function listTransactionsAdmin(f: {
-  username?: string
-  type?: TransactionType
-  from?: Date
-  to?: Date
-}) {
-  const username = f.username?.trim().toLowerCase()
-  return prisma.transaction.findMany({
-    where: {
-      ...(username ? { user: { usernameKey: username } } : {}),
-      ...(f.type ? { type: f.type } : {}),
-      ...(f.from || f.to
-        ? { createdAt: { ...(f.from ? { gte: f.from } : {}), ...(f.to ? { lt: f.to } : {}) } }
-        : {}),
-    },
-    include: { user: { select: { username: true } } },
-    orderBy: { createdAt: 'desc' },
-    take: 300,
-  })
+/** Game drawer: the game, its pool breakdown and its winning bets (with usernames — admin only). */
+export async function getGameDetail(id: string) {
+  const game = await prisma.game.findUnique({ where: { id } })
+  if (!game) return null
+  const [stakes, winners] = await Promise.all([
+    getEndingStakes(id),
+    prisma.bet.findMany({
+      where: { gameId: id, result: 'WON' },
+      include: { user: { select: { id: true, username: true } } },
+      orderBy: [{ payout: 'desc' }, { id: 'asc' }],
+    }),
+  ])
+  return { game, stakes, winners }
 }
