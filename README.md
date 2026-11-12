@@ -19,20 +19,15 @@ Get a free balldontlie API key at https://www.balldontlie.io.
 
 ## Game sync
 
-`GET /api/cron/sync` with header `Authorization: Bearer $CRON_SECRET` pulls games (yesterday → +7 days) and settles finished games. Call it every 5 minutes, for example with crontab:
+The app syncs games itself. When the server starts, it pulls games (yesterday → +7 days) and settles finished ones, then repeats every `SYNC_INTERVAL_MINUTES` (default 5 in `.env.example`; unset or `0` turns it off). This needs `BALLDONTLIE_API_KEY` and a long-running server (`npm start` / `npm run dev`). Each server instance runs its own schedule, which is safe: sync never overwrites finished games and settlement is idempotent.
 
-```
-*/5 * * * * curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://your-host/api/cron/sync > /dev/null
-```
-
-(Vercel Hobby cron runs at most daily; use an external cron service or a VPS crontab.) Admins can also click **Force sync** on Admin → Games.
+On serverless hosts (no long-running process), turn the schedule off and call the route instead: `GET /api/cron/sync` with header `Authorization: Bearer $CRON_SECRET`. Admins can also click **Force sync** on Admin → Games.
 
 ## Production
 
-1. Set environment variables: `AUTH_SECRET` (generate with `openssl rand -base64 32`), `CRON_SECRET`, `BALLDONTLIE_API_KEY`, plus `DATABASE_URL`, `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
+1. Set environment variables: `AUTH_SECRET` (generate with `openssl rand -base64 32`), `CRON_SECRET`, `BALLDONTLIE_API_KEY`, `SYNC_INTERVAL_MINUTES`, plus `DATABASE_URL`, `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
 2. Apply migrations with `npx prisma migrate deploy` (not `migrate dev`), then `npm run db:seed`.
 3. `npm run build && npm start`.
-4. Schedule the cron (see Game sync above).
 
 ## Tests
 

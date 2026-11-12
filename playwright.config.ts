@@ -31,6 +31,8 @@ export default defineConfig({
       AUTH_TRUST_HOST: 'true',
       CRON_SECRET: requireEnv('CRON_SECRET'),
       BALLDONTLIE_API_KEY: 'unused',
+      // never call balldontlie from E2E; the test seeds its own games
+      SYNC_INTERVAL_MINUTES: '0',
     },
   },
 })
