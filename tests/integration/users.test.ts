@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'
 
 import { prisma } from '@/lib/db'
-import { setReferralBonus } from '@/server/settings'
+import { setBonuses } from '@/server/settings'
 import { registerPlayer, verifyCredentials } from '@/server/users'
 
 import { expectLedgerConsistent, makeUser, resetDb } from '../helpers/db'
@@ -15,7 +15,6 @@ describe('registerPlayer', () => {
     expect(u.username).toBe('Kyle_1')
     expect(u.usernameKey).toBe('kyle_1')
     expect(u.role).toBe('PLAYER')
-    expect(u.balance).toBe(0)
     expect(u.passwordHash).not.toContain('secret123')
     expect(u.referralCode).toMatch(/^[A-Z2-9]{8}$/)
   })
@@ -35,7 +34,15 @@ describe('registerPlayer', () => {
     await expect(registerPlayer({ username: 'kyle', password: 'short' })).rejects.toBeInstanceOf(ZodError)
   })
 
-  it('credits the referrer with the referral bonus (case/space-insensitive code)', async () => {
+  it('gives every new player the signup bonus', async () => {
+    const u = await registerPlayer({ username: 'kyle', password: 'secret123' })
+    expect(u.balance).toBe(1000)
+    const t = await prisma.transaction.findFirstOrThrow({ where: { userId: u.id } })
+    expect(t).toMatchObject({ type: 'SIGNUP_BONUS', amount: 1000, note: 'Welcome bonus' })
+    await expectLedgerConsistent()
+  })
+
+  it('links the referrer (case/space-insensitive code) but does not pay them at signup', async () => {
     const referrer = await registerPlayer({ username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
       username: 'bob',
@@ -43,11 +50,11 @@ describe('registerPlayer', () => {
       referralCode: `  ${referrer.referralCode.toLowerCase()} `,
     })
     expect(bob.referredById).toBe(referrer.id)
-    expect(bob.balance).toBe(0)
+    expect(bob.referralBonusPaidAt).toBeNull()
+    expect(bob.balance).toBe(1000)
     const after = await prisma.user.findUniqueOrThrow({ where: { id: referrer.id } })
-    expect(after.balance).toBe(500)
-    const t = await prisma.transaction.findFirstOrThrow({ where: { userId: referrer.id } })
-    expect(t).toMatchObject({ type: 'REFERRAL_BONUS', amount: 500, note: 'Referral: bob' })
+    expect(after.balance).toBe(1000) // only her own signup bonus
+    expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(0)
     await expectLedgerConsistent()
   })
 
@@ -63,11 +70,11 @@ describe('registerPlayer', () => {
     expect(u.referredById).toBeNull()
   })
 
-  it('writes no bonus transaction when the bonus is 0', async () => {
+  it('writes no bonus transaction when the signup bonus is 0', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
-    await setReferralBonus(admin.id, 0)
-    const referrer = await registerPlayer({ username: 'alice', password: 'secret123' })
-    await registerPlayer({ username: 'bob', password: 'secret123', referralCode: referrer.referralCode })
+    await setBonuses(admin.id, { signupBonus: 0, referralBonus: 500, dailyBonus: 100 })
+    const u = await registerPlayer({ username: 'alice', password: 'secret123' })
+    expect(u.balance).toBe(0)
     expect(await prisma.transaction.count()).toBe(0)
   })
 })

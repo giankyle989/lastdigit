@@ -57,9 +57,12 @@ describe('syncGames', () => {
 
   it('updates scores and settles games that went final', async () => {
     const u = await makeUser()
+    const other = await makeUser()
     await fundUser(u.id, 100)
+    await fundUser(other.id, 100)
     const g = await makeGame({ externalId: 501 })
     await placeBet(u.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(other.id, { gameId: g.id, awayDigit: 0, homeDigit: 0, stake: 100 })
     const r = await syncGames({
       fetchGames: fetcher([
         apiGame({ status: 'Final', period: 4, visitor_team_score: 99, home_team_score: 106 }),
@@ -71,7 +74,7 @@ describe('syncGames', () => {
       awayScore: 99,
       homeScore: 106,
     })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: u.id } })).balance).toBe(90)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: u.id } })).balance).toBe(180) // 90% of a 200 pool
   })
 
   it('never touches settled or void games', async () => {

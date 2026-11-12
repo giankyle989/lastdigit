@@ -13,7 +13,7 @@ import {
 } from '@/server/admin/players'
 import { closeInquiry, replyToInquiry } from '@/server/inquiries'
 import { requireAdmin } from '@/server/session'
-import { setReferralBonus } from '@/server/settings'
+import { setBonuses } from '@/server/settings'
 import { voidGame } from '@/server/settlement'
 import { defaultFetcher, syncGames } from '@/server/sync/sync'
 
@@ -114,9 +114,17 @@ export async function adminCloseAction(inquiryId: string): Promise<ActionState> 
   return r
 }
 
-export async function referralBonusAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+export async function bonusesAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireAdmin()
-  const r = await runAction(() => setReferralBonus(admin.id, fd.get('referralBonus')), 'Referral bonus saved')
+  const r = await runAction(
+    () =>
+      setBonuses(admin.id, {
+        signupBonus: fd.get('signupBonus'),
+        referralBonus: fd.get('referralBonus'),
+        dailyBonus: fd.get('dailyBonus'),
+      }),
+    'Bonuses saved',
+  )
   revalidatePath('/admin', 'layout')
   return r
 }

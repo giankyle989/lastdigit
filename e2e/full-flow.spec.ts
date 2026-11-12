@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 
 import { prisma } from '../src/lib/db'
+import { placeBet } from '../src/server/bets'
 import type { ApiGame } from '../src/server/sync/balldontlie'
 import { syncGames } from '../src/server/sync/sync'
 
@@ -26,7 +27,9 @@ async function logout(page: Page, from: 'player' | 'admin') {
   await page.waitForURL('**/login')
 }
 
-test('referral → admin grant in drawer → slip bet → auto-settle → payout', async ({ page }, testInfo) => {
+test('signup bonus → referral → admin grant → daily bonus → slip bet → settle → payout + referral bonus', async ({
+  page,
+}, testInfo) => {
   // Each project (desktop, iphone) runs against the same database: keep its users and game apart.
   const tag = testInfo.project.name
   const alice = `alice_${tag}`
@@ -46,8 +49,9 @@ test('referral → admin grant in drawer → slip bet → auto-settle → payout
   await page.goto('/login')
   await page.waitForURL('**/games')
   await logout(page, 'player')
+  // both start with the 1000-point welcome bonus; alice's referral bonus waits for bob's first settled bet
   const aliceRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect(aliceRow.balance).toBe(500)
+  expect(aliceRow.balance).toBe(1000)
 
   // admin grants bob 1000 from the player drawer
   await login(page, 'admin', 'admin12345')
@@ -72,8 +76,18 @@ test('referral → admin grant in drawer → slip bet → auto-settle → payout
       status: 'SCHEDULED',
     },
   })
+  // alice is also in the pool (on a losing ending), so it is not a solo pool
+  await placeBet(aliceRow.id, { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
+
   await login(page, bob, 'secret123')
   await page.waitForURL('**/games')
+
+  // bob claims today's daily bonus from the wallet
+  await page.goto('/wallet')
+  await page.getByRole('button', { name: 'Claim', exact: true }).click()
+  await expect(page.getByText('+100 pts daily bonus')).toBeVisible()
+  await expect(page.getByText(/Claimed today/)).toBeVisible()
+
   await page.goto(`/games/${game.id}`)
   await page.getByRole('button', { name: 'LAL digit 9' }).click()
   await page.getByRole('button', { name: 'GSW digit 6' }).click()
@@ -97,10 +111,14 @@ test('referral → admin grant in drawer → slip bet → auto-settle → payout
   const result = await syncGames({ fetchGames: async () => [final] })
   expect(result.settled).toBe(1)
 
-  // bob: 1000 - 100 + 90 (sole winner gets 90% of a 100 pool)
+  // bob: 1000 welcome + 1000 grant + 100 daily - 100 stake + 180 (sole winner: 90% of a 200 pool)
   await page.goto('/wallet')
-  await expect(page.getByTestId('balance')).toHaveText('990 pts')
+  await expect(page.getByTestId('balance')).toHaveText('2,180 pts')
   await expect(page.getByText('Payout', { exact: true })).toBeVisible()
+
+  // bob's first settled bet pays alice the referral bonus: 1000 - 100 + 500
+  const aliceAfter = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
+  expect(aliceAfter.balance).toBe(1400)
 })
 
 test.afterAll(async () => {

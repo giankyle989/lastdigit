@@ -8,7 +8,7 @@ import { isSuspended } from '@/lib/suspension'
 import { postEntry } from './ledger'
 import { hashPassword, verifyPassword } from './passwords'
 import { generateReferralCode } from './referral-code'
-import { getReferralBonus } from './settings'
+import { getBonus } from './settings'
 
 export const usernameSchema = z
   .string({ required_error: 'Username is required' })
@@ -61,16 +61,11 @@ export async function registerPlayer(input: unknown): Promise<User> {
             referredById: referrerId,
           },
         })
-        if (referrerId) {
-          const bonus = await getReferralBonus(tx)
-          if (bonus > 0) {
-            await postEntry(tx, {
-              userId: referrerId,
-              type: 'REFERRAL_BONUS',
-              amount: bonus,
-              note: `Referral: ${username}`,
-            })
-          }
+        // The referrer is paid later, when this player's first bet settles (see settlement.ts).
+        const bonus = await getBonus('signupBonus', tx)
+        if (bonus > 0) {
+          await postEntry(tx, { userId: user.id, type: 'SIGNUP_BONUS', amount: bonus, note: 'Welcome bonus' })
+          return tx.user.findUniqueOrThrow({ where: { id: user.id } })
         }
         return user
       })

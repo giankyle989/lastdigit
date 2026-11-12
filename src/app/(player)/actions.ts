@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 
 import { type ActionState, runAction } from '@/lib/action-state'
 import { placeBets } from '@/server/bets'
+import { claimDailyBonus } from '@/server/bonuses'
 import { closeInquiry, createInquiry, replyToInquiry } from '@/server/inquiries'
 import { getSlipStatus } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
@@ -15,6 +16,16 @@ export async function placeBetsAction(picks: unknown): Promise<ActionState> {
   const result = await runAction(
     () => placeBets(user.id, picks),
     (bets) => `${bets.length} ${bets.length === 1 ? 'bet' : 'bets'} placed`,
+  )
+  revalidatePath('/', 'layout')
+  return result
+}
+
+export async function claimDailyBonusAction(): Promise<ActionState> {
+  const user = await requireUser()
+  const result = await runAction(
+    () => claimDailyBonus(user.id),
+    (amount) => `+${amount.toLocaleString('en-US')} pts daily bonus`,
   )
   revalidatePath('/', 'layout')
   return result

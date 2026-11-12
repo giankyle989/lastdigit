@@ -1,6 +1,8 @@
 # LastDigit
 
-Free-to-play NBA game: bet points on the last digit of each team's final score (LAL 99 @ GSW 106 → **9-6**). Winners split 90% of the pool by stake. Points have no cash value.
+Free-to-play NBA game: bet points on the last digit of each team's final score (LAL 99 @ GSW 106 → **9-6**). Winners split 90% of the pool by stake and never get back less than they staked; a pool with only one player, or with nobody on a losing ending, is refunded. Points have no cash value.
+
+Points come from a signup bonus, a daily bonus claimed in the wallet, a referral bonus (paid when the referred friend's first bet settles) and admin grants. All three bonus amounts are set on Admin → Settings. Signups are limited to `SIGNUP_LIMIT_PER_HOUR` (default 5) per IP.
 
 ## Setup
 

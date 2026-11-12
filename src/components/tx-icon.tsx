@@ -1,10 +1,21 @@
 import type { TransactionType } from '@prisma/client'
-import { Gift, ShieldMinus, ShieldPlus, Ticket, Trophy, Undo2 } from 'lucide-react'
+import {
+  CalendarCheck,
+  Gift,
+  PartyPopper,
+  ShieldMinus,
+  ShieldPlus,
+  Ticket,
+  Trophy,
+  Undo2,
+} from 'lucide-react'
 
 const ICONS = {
   BET: Ticket,
   PAYOUT: Trophy,
   REFERRAL_BONUS: Gift,
+  SIGNUP_BONUS: PartyPopper,
+  DAILY_BONUS: CalendarCheck,
   ADMIN_GRANT: ShieldPlus,
   ADMIN_DEDUCT: ShieldMinus,
   REFUND: Undo2,

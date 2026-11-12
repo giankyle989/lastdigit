@@ -16,38 +16,55 @@ import {
 } from '@/server/admin/tables/admin-actions'
 import { ADMIN_ACTION_TYPES } from '@/server/audit'
 import { requireAdmin } from '@/server/session'
-import { getReferralBonus } from '@/server/settings'
+import { type BonusKey, getBonuses } from '@/server/settings'
 
-import { referralBonusAction } from '../actions'
+import { bonusesAction } from '../actions'
 
 const BASE = '/admin/settings'
+
+const BONUS_FIELDS: { key: BonusKey; label: string; hint: string }[] = [
+  { key: 'signupBonus', label: 'Signup bonus', hint: 'Given to every new player' },
+  {
+    key: 'referralBonus',
+    label: 'Referral bonus',
+    hint: "Paid to the referrer when the new player's first bet settles",
+  },
+  {
+    key: 'dailyBonus',
+    label: 'Daily bonus',
+    hint: 'Claimable once per PHT day from the wallet; 0 turns it off',
+  },
+]
 
 export default async function AdminSettingsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   await requireAdmin()
   const sp = await searchParams
   const params = parseAdminActionListParams(sp)
-  const bonus = await getReferralBonus()
+  const bonuses = await getBonuses()
 
   return (
     <>
       <PageHeader title="Settings" />
       <Card className="mb-6 max-w-sm">
         <CardHeader>
-          <CardTitle>Referral bonus</CardTitle>
+          <CardTitle>Bonuses</CardTitle>
         </CardHeader>
         <CardContent>
-          <ActionForm action={referralBonusAction} submitLabel="Save" className="grid gap-3">
-            <Field id="referralBonus" label="Points paid to the referrer">
-              <Input
-                id="referralBonus"
-                name="referralBonus"
-                type="number"
-                min={0}
-                step={1}
-                defaultValue={bonus}
-                required
-              />
-            </Field>
+          <ActionForm action={bonusesAction} submitLabel="Save" className="grid gap-3">
+            {BONUS_FIELDS.map((f) => (
+              <Field key={f.key} id={f.key} label={f.label}>
+                <Input
+                  id={f.key}
+                  name={f.key}
+                  type="number"
+                  min={0}
+                  step={1}
+                  defaultValue={bonuses[f.key]}
+                  required
+                />
+                <p className="text-muted-foreground text-xs">{f.hint}</p>
+              </Field>
+            ))}
           </ActionForm>
         </CardContent>
       </Card>

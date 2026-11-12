@@ -17,7 +17,7 @@ export const WALLET_FILTER_TYPES: Record<WalletFilter, TransactionType[] | null>
   all: null,
   bets: ['BET'],
   payouts: ['PAYOUT'],
-  bonuses: ['REFERRAL_BONUS'],
+  bonuses: ['SIGNUP_BONUS', 'DAILY_BONUS', 'REFERRAL_BONUS'],
   admin: ['ADMIN_GRANT', 'ADMIN_DEDUCT'],
   refunds: ['REFUND'],
 }
@@ -26,6 +26,8 @@ export const TX_TYPE_LABELS: Record<TransactionType, string> = {
   BET: 'Bet',
   PAYOUT: 'Payout',
   REFERRAL_BONUS: 'Referral bonus',
+  SIGNUP_BONUS: 'Welcome bonus',
+  DAILY_BONUS: 'Daily bonus',
   ADMIN_GRANT: 'Admin grant',
   ADMIN_DEDUCT: 'Admin deduction',
   REFUND: 'Refund',

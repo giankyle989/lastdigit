@@ -3,10 +3,11 @@ import type { GameStatus } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 import { endingOf } from '@/lib/game/ending'
-import { computeSplit } from '@/lib/game/payout'
+import { computeSplit, REFUND_NOTES, refundReason } from '@/lib/game/payout'
 
 import { logAdminAction } from './audit'
-import { postEntry } from './ledger'
+import { lockUsers, postEntry } from './ledger'
+import { getBonus } from './settings'
 
 export async function settleGame(gameId: string, now: Date = new Date()): Promise<{ settled: boolean }> {
   return prisma.$transaction(
@@ -29,13 +30,50 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
         where: { gameId, result: 'PENDING' },
         orderBy: [{ userId: 'asc' }, { id: 'asc' }],
       })
-      const split = computeSplit(
-        bets.map((b) => ({
-          id: b.id,
-          stake: b.stake,
-          isWinner: b.awayDigit === ending.awayDigit && b.homeDigit === ending.homeDigit,
-        })),
-      )
+      const entries = bets.map((b) => ({
+        id: b.id,
+        userId: b.userId,
+        stake: b.stake,
+        isWinner: b.awayDigit === ending.awayDigit && b.homeDigit === ending.homeDigit,
+      }))
+      const bettorIds = [...new Set(bets.map((b) => b.userId))]
+
+      // A solo pool, or one where nobody picked a losing ending, is refunded (spec §4.3).
+      const reason = refundReason(entries)
+      if (reason) {
+        await lockUsers(tx, bettorIds)
+        for (const bet of bets) {
+          await postEntry(tx, {
+            userId: bet.userId,
+            type: 'REFUND',
+            amount: bet.stake,
+            gameId,
+            betId: bet.id,
+            note: REFUND_NOTES[reason],
+          })
+          await tx.bet.update({ where: { id: bet.id }, data: { result: 'REFUNDED' } })
+        }
+        const pool = bets.reduce((sum, b) => sum + b.stake, 0)
+        await tx.game.update({ where: { id: gameId }, data: { pool, houseTake: 0 } })
+        return { settled: true }
+      }
+
+      // Referred players settling their first bet earn their referrer the referral bonus (spec §5).
+      const referralBonus = await getBonus('referralBonus', tx)
+      const referred =
+        referralBonus > 0
+          ? await tx.user.findMany({
+              where: { id: { in: bettorIds }, referredById: { not: null }, referralBonusPaidAt: null },
+              select: { id: true, username: true, referredById: true },
+              orderBy: { id: 'asc' },
+            })
+          : []
+      await lockUsers(tx, [
+        ...bettorIds,
+        ...referred.flatMap((r) => (r.referredById ? [r.referredById] : [])),
+      ])
+
+      const split = computeSplit(entries)
 
       for (const bet of bets) {
         const payout = split.payouts.get(bet.id)
@@ -47,6 +85,21 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
         if (payout > 0) {
           await postEntry(tx, { userId: bet.userId, type: 'PAYOUT', amount: payout, gameId, betId: bet.id })
         }
+      }
+
+      for (const r of referred) {
+        if (!r.referredById) continue
+        const claimed = await tx.user.updateMany({
+          where: { id: r.id, referralBonusPaidAt: null },
+          data: { referralBonusPaidAt: now },
+        })
+        if (claimed.count === 0) continue
+        await postEntry(tx, {
+          userId: r.referredById,
+          type: 'REFERRAL_BONUS',
+          amount: referralBonus,
+          note: `Referral: ${r.username}`,
+        })
       }
 
       await tx.game.update({ where: { id: gameId }, data: { pool: split.pool, houseTake: split.houseTake } })
