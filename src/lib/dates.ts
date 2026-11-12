@@ -35,6 +35,9 @@ export function localDateOf(date: Date): string {
 /** True for a real calendar date in 'YYYY-MM-DD' form (rejects 2026-02-30). */
 export function isLocalDate(value: string): boolean {
   if (!LOCAL_DATE.test(value)) return false
+  // Bound the year so hostile params like ?to=9999-12-31 can't produce dates the DB rejects.
+  const year = Number(value.slice(0, 4))
+  if (year < 2000 || year > 2099) return false
   const d = new Date(`${value}T12:00:00Z`)
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value
 }
