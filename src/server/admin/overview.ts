@@ -1,4 +1,4 @@
-import { addEtDays, etDateOf, etDayRange } from '@/lib/dates'
+import { addDays, localDateOf, localDayRange, TIME_ZONE } from '@/lib/dates'
 import { prisma } from '@/lib/db'
 
 import { getLastSyncAt } from '../settings'
@@ -8,7 +8,7 @@ const DAY_MS = 86_400_000
 const ATTENTION_LIMIT = 10
 
 export async function getOverviewStats(now: Date = new Date()) {
-  const weekStart = etDayRange(addEtDays(etDateOf(now), -6)).start
+  const weekStart = localDayRange(addDays(localDateOf(now), -6)).start
   const [
     playerCount,
     newPlayers7d,
@@ -75,24 +75,24 @@ export async function getOverviewStats(now: Date = new Date()) {
 export type DailyPoint = { date: string; volume: number; houseTake: number }
 
 /**
- * The last `days` ET days ending today (oldest first). volume = Σ|amount| of BET transactions
- * created that ET day; houseTake = Σ houseTake of games settled that ET day (spec §5.1).
+ * The last `days` PHT days ending today (oldest first). volume = Σ|amount| of BET transactions
+ * created that PHT day; houseTake = Σ houseTake of games settled that PHT day (spec §5.1).
  */
 export async function getDailyVolume(days: number, now: Date = new Date()): Promise<DailyPoint[]> {
-  const today = etDateOf(now)
-  const dates = Array.from({ length: days }, (_, i) => addEtDays(today, i - days + 1))
+  const today = localDateOf(now)
+  const dates = Array.from({ length: days }, (_, i) => addDays(today, i - days + 1))
   const first = dates[0] ?? today
-  const start = etDayRange(first).start
-  const end = etDayRange(today).end
+  const start = localDayRange(first).start
+  const end = localDayRange(today).end
   const [volumes, takes] = await Promise.all([
     prisma.$queryRaw<{ day: string; total: bigint }[]>`
-      SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day,
+      SELECT to_char(("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${TIME_ZONE}::text, 'YYYY-MM-DD') AS day,
              SUM(ABS(amount))::bigint AS total
       FROM "Transaction"
       WHERE type = 'BET' AND "createdAt" >= ${start} AND "createdAt" < ${end}
       GROUP BY 1`,
     prisma.$queryRaw<{ day: string; total: bigint }[]>`
-      SELECT to_char(("settledAt" AT TIME ZONE 'UTC') AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS day,
+      SELECT to_char(("settledAt" AT TIME ZONE 'UTC') AT TIME ZONE ${TIME_ZONE}::text, 'YYYY-MM-DD') AS day,
              SUM("houseTake")::bigint AS total
       FROM "Game"
       WHERE status = 'SETTLED' AND "settledAt" >= ${start} AND "settledAt" < ${end}
@@ -107,9 +107,9 @@ export async function getDailyVolume(days: number, now: Date = new Date()): Prom
   }))
 }
 
-/** Top 5 players by BET volume in today's ET day. */
+/** Top 5 players by BET volume in today's PHT day. */
 export async function getTopBettorsToday(now: Date = new Date()) {
-  const { start, end } = etDayRange(etDateOf(now))
+  const { start, end } = localDayRange(localDateOf(now))
   const groups = await prisma.transaction.groupBy({
     by: ['userId'],
     where: { type: 'BET', createdAt: { gte: start, lt: end } },

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  etDateBounds,
+  dateBounds,
   formatSort,
   isRecordId,
-  parseEtDateParam,
+  parseDateParam,
   parseOption,
   parseSearch,
   parseSort,
@@ -50,21 +50,21 @@ describe('search and options', () => {
   })
 })
 
-describe('ET date filters', () => {
+describe('PHT date filters', () => {
   it('accepts only real dates', () => {
-    expect(parseEtDateParam('2026-11-11')).toBe('2026-11-11')
-    expect(parseEtDateParam('2026-13-01')).toBeUndefined()
-    expect(parseEtDateParam('11/11/2026')).toBeUndefined()
-    expect(parseEtDateParam(undefined)).toBeUndefined()
+    expect(parseDateParam('2026-11-11')).toBe('2026-11-11')
+    expect(parseDateParam('2026-13-01')).toBeUndefined()
+    expect(parseDateParam('11/11/2026')).toBeUndefined()
+    expect(parseDateParam(undefined)).toBeUndefined()
   })
 
-  it('turns an inclusive ET range into UTC bounds', () => {
-    expect(etDateBounds('2026-11-10', '2026-11-11')).toEqual({
-      gte: new Date('2026-11-10T05:00:00Z'),
-      lt: new Date('2026-11-12T05:00:00Z'),
+  it('turns an inclusive PHT range into UTC bounds', () => {
+    expect(dateBounds('2026-11-10', '2026-11-11')).toEqual({
+      gte: new Date('2026-11-09T16:00:00Z'),
+      lt: new Date('2026-11-11T16:00:00Z'),
     })
-    expect(etDateBounds(undefined, '2026-07-04')).toEqual({ lt: new Date('2026-07-05T04:00:00Z') })
-    expect(etDateBounds()).toBeUndefined()
+    expect(dateBounds(undefined, '2026-07-04')).toEqual({ lt: new Date('2026-07-04T16:00:00Z') })
+    expect(dateBounds()).toBeUndefined()
   })
 })
 

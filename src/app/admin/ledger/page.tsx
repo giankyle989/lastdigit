@@ -43,10 +43,10 @@ export default async function AdminLedgerPage({ searchParams }: { searchParams: 
             ...LEDGER_TYPES.map((t) => ({ value: t, label: TX_TYPE_LABELS[t] })),
           ]}
         />
-        <Field id="from" label="From (ET)">
+        <Field id="from" label="From (PHT)">
           <Input id="from" name="from" type="date" defaultValue={params.from ?? ''} />
         </Field>
-        <Field id="to" label="To (ET)">
+        <Field id="to" label="To (PHT)">
           <Input id="to" name="to" type="date" defaultValue={params.to ?? ''} />
         </Field>
       </FilterForm>

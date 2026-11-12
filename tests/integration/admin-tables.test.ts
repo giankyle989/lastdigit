@@ -51,10 +51,10 @@ describe('admin tables', () => {
     expect(p2.rows).toHaveLength(1)
   })
 
-  it('games: status and ET date-range filters, team search, sort', async () => {
-    const a = await makeGame({ startsAt: new Date('2026-11-10T23:00:00Z'), pool: 50 }) // Nov 10 ET
-    const b = await makeGame({ startsAt: new Date('2026-11-12T03:00:00Z'), pool: 500, awayTeam: 'BOS' }) // Nov 11 ET
-    const c = await makeGame({ startsAt: new Date('2026-11-12T06:00:00Z'), status: 'POSTPONED' }) // Nov 12 ET
+  it('games: status and PHT date-range filters, team search, sort', async () => {
+    const a = await makeGame({ startsAt: new Date('2026-11-10T15:59:59Z'), pool: 50 }) // 23:59:59 PHT Nov 10
+    const b = await makeGame({ startsAt: new Date('2026-11-10T16:00:00Z'), pool: 500, awayTeam: 'BOS' }) // 00:00 PHT Nov 11
+    const c = await makeGame({ startsAt: new Date('2026-11-11T16:00:00Z'), status: 'POSTPONED' }) // 00:00 PHT Nov 12
 
     expect((await listGames(parseGameListParams({}))).rows.map((g) => g.id)).toEqual([c.id, b.id, a.id])
     expect((await listGames(parseGameListParams({ sort: 'pool' }))).rows.map((g) => g.id)).toEqual([

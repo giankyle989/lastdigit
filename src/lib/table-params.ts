@@ -1,4 +1,4 @@
-import { etDayRange, isEtDate } from './dates'
+import { isLocalDate, localDayRange } from './dates'
 import { firstParam } from './pagination'
 
 /** Rows per admin table page (spec §5.2). */
@@ -32,18 +32,18 @@ export function parseOption<T extends string>(raw: unknown, options: readonly T[
   return options.find((o) => o === v)
 }
 
-/** `?from=` / `?to=` → a valid 'YYYY-MM-DD' ET date or undefined. */
-export function parseEtDateParam(raw: unknown): string | undefined {
+/** `?from=` / `?to=` → a valid 'YYYY-MM-DD' date or undefined. */
+export function parseDateParam(raw: unknown): string | undefined {
   const v = firstParam(raw)
-  return v && isEtDate(v) ? v : undefined
+  return v && isLocalDate(v) ? v : undefined
 }
 
-/** Inclusive ET date range → [from 00:00 ET, day after `to` 00:00 ET) bounds, or undefined. */
-export function etDateBounds(from?: string, to?: string): { gte?: Date; lt?: Date } | undefined {
+/** Inclusive date range → [from 00:00 PHT, day after `to` 00:00 PHT) bounds, or undefined. */
+export function dateBounds(from?: string, to?: string): { gte?: Date; lt?: Date } | undefined {
   if (!from && !to) return undefined
   return {
-    ...(from ? { gte: etDayRange(from).start } : {}),
-    ...(to ? { lt: etDayRange(to).end } : {}),
+    ...(from ? { gte: localDayRange(from).start } : {}),
+    ...(to ? { lt: localDayRange(to).end } : {}),
   }
 }
 

@@ -16,16 +16,16 @@ import { fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 describe('player feed queries', () => {
   beforeEach(resetDb)
 
-  it('lists the games of one ET day with the viewer pick count', async () => {
+  it('lists the games of one PHT day with the viewer pick count', async () => {
     const me = await makeUser()
     const other = await makeUser()
     await fundUser(me.id, 1000)
     await fundUser(other.id, 1000)
-    // ET day 2026-11-11 = [05:00Z Nov 11, 05:00Z Nov 12)
-    const late = await makeGame({ startsAt: new Date('2026-11-12T03:30:00Z') }) // 22:30 ET Nov 11
-    const early = await makeGame({ startsAt: new Date('2026-11-11T05:00:00Z') }) // 00:00 ET Nov 11
-    await makeGame({ startsAt: new Date('2026-11-12T05:00:00Z') }) // Nov 12 ET
-    await makeGame({ startsAt: new Date('2026-11-11T04:59:59Z') }) // Nov 10 ET
+    // PHT day 2026-11-11 = [16:00Z Nov 10, 16:00Z Nov 11)
+    const late = await makeGame({ startsAt: new Date('2026-11-11T15:30:00Z') }) // 23:30 PHT Nov 11
+    const early = await makeGame({ startsAt: new Date('2026-11-10T16:00:00Z') }) // 00:00 PHT Nov 11
+    await makeGame({ startsAt: new Date('2026-11-11T16:00:00Z') }) // 00:00 PHT Nov 12
+    await makeGame({ startsAt: new Date('2026-11-10T15:59:59Z') }) // 23:59:59 PHT Nov 10
     const now = new Date('2026-11-10T12:00:00Z')
     await placeBet(me.id, { gameId: late.id, awayDigit: 1, homeDigit: 1, stake: 10 }, now)
     await placeBet(me.id, { gameId: late.id, awayDigit: 2, homeDigit: 2, stake: 10 }, now)
