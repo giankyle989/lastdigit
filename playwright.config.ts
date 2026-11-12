@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 import { config } from 'dotenv'
 
 config({ path: '.env.test', override: true })
@@ -12,9 +12,14 @@ function requireEnv(name: string): string {
 export default defineConfig({
   testDir: 'e2e',
   workers: 1,
-  timeout: 60_000,
+  timeout: 90_000,
   globalSetup: './e2e/global-setup.ts',
   use: { baseURL: 'http://localhost:3100', trace: 'retain-on-failure' },
+  projects: [
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    // iPhone 13 viewport, touch and user agent on Chromium (only Chromium is installed).
+    { name: 'iphone', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
+  ],
   webServer: {
     command: 'npm run build && npx next start -p 3100',
     url: 'http://localhost:3100/login',

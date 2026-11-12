@@ -21,6 +21,13 @@ describe('runAction', () => {
       }),
     ).toEqual({ error: 'Betting closed' })
   })
+  it('passes a pick index through', async () => {
+    expect(
+      await runAction(async () => {
+        throw new DomainError('BETTING_CLOSED', 'LAL @ GSW 9-6: Betting closed', 1)
+      }),
+    ).toEqual({ error: 'LAL @ GSW 9-6: Betting closed', pickIndex: 1 })
+  })
   it('maps ZodError to its first issue', async () => {
     expect(await runAction(async () => z.string().min(3, 'Too short').parse('a'))).toEqual({
       error: 'Too short',

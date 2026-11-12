@@ -1,20 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { placeBet } from '@/server/bets'
-import { getGameForPlayer, listUpcomingGames } from '@/server/queries/player'
+import { getGameForPlayer } from '@/server/queries/player'
 
 import { fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 describe('player queries', () => {
   beforeEach(resetDb)
-
-  it('lists games from the last 36 hours onward, soonest first', async () => {
-    const now = new Date('2026-11-11T12:00:00Z')
-    await makeGame({ startsAt: new Date('2026-11-09T00:00:00Z') }) // too old
-    const later = await makeGame({ startsAt: new Date('2026-11-12T00:00:00Z') })
-    const recent = await makeGame({ startsAt: new Date('2026-11-11T00:00:00Z') })
-    expect((await listUpcomingGames(now)).map((g) => g.id)).toEqual([recent.id, later.id])
-  })
 
   it('returns only the viewer bets for a game', async () => {
     const me = await makeUser()

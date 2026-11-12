@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { listFiles } from '../architecture/rules'
+
 const SENTINEL = new Error('GUARD_SENTINEL')
 
 vi.mock('@/server/session', () => ({
@@ -10,6 +12,13 @@ vi.mock('@/server/session', () => ({
     throw SENTINEL
   }),
   getCurrentUser: vi.fn(async () => null),
+}))
+
+// Pages that render the Log out form import next-auth, which does not load under Vitest.
+vi.mock('@/app/(auth)/actions', () => ({
+  loginAction: vi.fn(),
+  signupAction: vi.fn(),
+  logoutAction: vi.fn(),
 }))
 
 // Any data access (Prisma) before the guard is a bug: record it.
@@ -26,42 +35,33 @@ vi.mock('@/lib/db', () => ({
   ),
 }))
 
-const adminPages: [string, () => Promise<{ default: (p: never) => Promise<unknown> }>, object][] = [
-  ['admin/page', () => import('@/app/admin/page'), {}],
-  ['admin/players', () => import('@/app/admin/players/page'), { searchParams: Promise.resolve({}) }],
-  [
-    'admin/players/[id]',
-    () => import('@/app/admin/players/[id]/page'),
-    { params: Promise.resolve({ id: 'x' }) },
-  ],
-  ['admin/games', () => import('@/app/admin/games/page'), { searchParams: Promise.resolve({}) }],
-  [
-    'admin/transactions',
-    () => import('@/app/admin/transactions/page'),
-    { searchParams: Promise.resolve({}) },
-  ],
-  ['admin/inquiries', () => import('@/app/admin/inquiries/page'), { searchParams: Promise.resolve({}) }],
-  [
-    'admin/inquiries/[id]',
-    () => import('@/app/admin/inquiries/[id]/page'),
-    { params: Promise.resolve({ id: 'x' }) },
-  ],
-  ['admin/settings', () => import('@/app/admin/settings/page'), {}],
+type PageCase = [string, () => Promise<{ default: (p: never) => Promise<unknown> }>, object]
+
+const sp = (v: object = {}) => ({ searchParams: Promise.resolve(v) })
+const params = (v: object) => ({ params: Promise.resolve(v), searchParams: Promise.resolve({}) })
+
+// Keys are the page's path under src/app (without /page.tsx); the last test checks none is missing.
+const adminPages: PageCase[] = [
+  ['admin', () => import('@/app/admin/page'), sp()],
+  ['admin/players', () => import('@/app/admin/players/page'), sp({ player: 'cplayer123' })],
+  ['admin/games', () => import('@/app/admin/games/page'), sp()],
+  ['admin/ledger', () => import('@/app/admin/ledger/page'), sp()],
+  ['admin/support', () => import('@/app/admin/support/page'), sp({ ticket: 'x' })],
+  ['admin/settings', () => import('@/app/admin/settings/page'), sp()],
 ]
 
-const playerPages: [string, () => Promise<{ default: (p: never) => Promise<unknown> }>, object][] = [
-  ['bets', () => import('@/app/(player)/bets/page'), { searchParams: Promise.resolve({}) }],
-  ['games', () => import('@/app/(player)/games/page'), {}],
-  ['games/[id]', () => import('@/app/(player)/games/[id]/page'), { params: Promise.resolve({ id: 'x' }) }],
-  ['inquiries', () => import('@/app/(player)/inquiries/page'), {}],
-  [
-    'inquiries/[id]',
-    () => import('@/app/(player)/inquiries/[id]/page'),
-    { params: Promise.resolve({ id: 'x' }) },
-  ],
-  ['referral', () => import('@/app/(player)/referral/page'), {}],
-  ['wallet', () => import('@/app/(player)/wallet/page'), {}],
+const playerPages: PageCase[] = [
+  ['(player)/bets', () => import('@/app/(player)/bets/page'), sp()],
+  ['(player)/games', () => import('@/app/(player)/games/page'), sp()],
+  ['(player)/games/[id]', () => import('@/app/(player)/games/[id]/page'), params({ id: 'x' })],
+  ['(player)/more', () => import('@/app/(player)/more/page'), sp()],
+  ['(player)/more/referral', () => import('@/app/(player)/more/referral/page'), sp()],
+  ['(player)/more/support', () => import('@/app/(player)/more/support/page'), sp()],
+  ['(player)/more/support/[id]', () => import('@/app/(player)/more/support/[id]/page'), params({ id: 'x' })],
+  ['(player)/wallet', () => import('@/app/(player)/wallet/page'), sp()],
 ]
+
+const pageKey = (file: string) => file.replace(/^src\/app\//, '').replace(/\/page\.tsx$/, '')
 
 describe('page-level auth guards (layout guards can be skipped by RSC requests)', () => {
   beforeEach(() => {
@@ -78,11 +78,20 @@ describe('page-level auth guards (layout guards can be skipped by RSC requests)'
   )
 
   it.each(playerPages)(
-    '(player)/%s rejects before any data access when requireUser throws',
+    '%s rejects before any data access when requireUser throws',
     async (_n, load, props) => {
       const mod = await load()
       await expect(mod.default(props as never)).rejects.toBe(SENTINEL)
       expect(dataSpies.calls).toEqual([])
     },
   )
+
+  it('covers every admin and player page', () => {
+    const onDisk = [
+      ...listFiles('src/app/admin', /^page\.tsx$/),
+      ...listFiles('src/app/(player)', /^page\.tsx$/),
+    ].map(pageKey)
+    const listed = [...adminPages, ...playerPages].map(([key]) => key)
+    expect(listed.sort()).toEqual(onDisk.sort())
+  })
 })

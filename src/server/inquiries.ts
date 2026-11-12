@@ -1,4 +1,3 @@
-import type { InquiryStatus } from '@prisma/client'
 import { z } from 'zod'
 
 import { prisma, type Tx } from '@/lib/db'
@@ -70,13 +69,4 @@ export async function getInquiryThread(viewerId: string, inquiryId: string) {
 
 export function listInquiriesForUser(userId: string) {
   return prisma.inquiry.findMany({ where: { userId }, orderBy: { updatedAt: 'desc' } })
-}
-
-export function listInquiriesAdmin(status?: InquiryStatus) {
-  return prisma.inquiry.findMany({
-    where: status ? { status } : {},
-    include: { user: { select: { username: true } }, _count: { select: { messages: true } } },
-    orderBy: { updatedAt: 'desc' },
-    take: 200,
-  })
 }

@@ -1,45 +1,39 @@
-import Link from 'next/link'
-
-import { Countdown } from '@/components/countdown'
-import { formatPoints, formatTipoff } from '@/lib/format'
-import { listUpcomingGames } from '@/server/queries/player'
+import { EmptyState } from '@/components/empty-state'
+import { DateStrip } from '@/components/games/date-strip'
+import { GameCard } from '@/components/games/game-card'
+import { etDateStrip, parseStripDate } from '@/lib/dates'
+import { groupIntoSections } from '@/lib/game/sections'
+import type { SearchParams } from '@/lib/table-params'
+import { listGamesForDate } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
 
-export default async function GamesPage() {
-  await requireUser()
-  const games = await listUpcomingGames()
+export default async function GamesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const user = await requireUser()
   const now = new Date()
+  const date = parseStripDate((await searchParams).date, now)
+  const sections = groupIntoSections(await listGamesForDate(date, user.id), now)
   return (
-    <div>
-      <h1 className="mb-4 text-xl font-semibold">Games</h1>
-      {games.length === 0 && <p className="text-gray-500">No games scheduled right now.</p>}
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {games.map((g) => {
-          const open = g.status === 'SCHEDULED' && g.startsAt > now
-          return (
-            <li key={g.id}>
-              <Link href={`/games/${g.id}`} className="card block hover:border-orange-400">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">
-                    {g.awayTeam} @ {g.homeTeam}
-                  </span>
-                  <span className="text-xs text-gray-500">{g.status}</span>
-                </div>
-                <div className="mt-1 text-sm text-gray-600">{formatTipoff(g.startsAt)}</div>
-                {g.awayScore !== null && g.homeScore !== null && (
-                  <div className="mt-1 font-mono">
-                    {g.awayScore} – {g.homeScore}
-                  </div>
-                )}
-                <div className="mt-2 flex justify-between text-sm">
-                  <span>Pool: {formatPoints(g.pool)}</span>
-                  {open && <Countdown to={g.startsAt.toISOString()} />}
-                </div>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+    <div className="space-y-5">
+      <h1 className="sr-only">Games</h1>
+      <DateStrip days={etDateStrip(now)} selected={date} />
+      {sections.length === 0 ? (
+        <EmptyState>No games on this day</EmptyState>
+      ) : (
+        sections.map((s) => (
+          <section key={s.key} aria-labelledby={`section-${s.key}`} className="space-y-2">
+            <h2 id={`section-${s.key}`} className="text-muted-foreground text-xs font-semibold uppercase">
+              {s.title}
+            </h2>
+            <ul className="grid gap-3 lg:grid-cols-2">
+              {s.games.map((g) => (
+                <li key={g.id}>
+                  <GameCard game={g} now={now} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
     </div>
   )
 }

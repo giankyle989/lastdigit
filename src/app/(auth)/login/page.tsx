@@ -1,43 +1,41 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
 import { ActionForm } from '@/components/action-form'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { getCurrentUser } from '@/server/session'
 
 import { loginAction } from '../actions'
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  if (await getCurrentUser()) redirect('/')
   return (
-    <main className="mx-auto mt-16 max-w-sm px-4">
-      <h1 className="mb-6 text-2xl font-bold text-orange-600">LastDigit</h1>
-      <div className="card">
-        <h2 className="mb-4 text-lg font-semibold">Log in</h2>
-        <ActionForm action={loginAction} submitLabel="Log in">
-          <div>
-            <label htmlFor="username" className="label">
-              Username
-            </label>
-            <input id="username" name="username" className="input" autoComplete="username" required />
-          </div>
-          <div>
-            <label htmlFor="password" className="label">
-              Password
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              className="input"
-              autoComplete="current-password"
-              required
-            />
-          </div>
-        </ActionForm>
-      </div>
-      <p className="mt-4 text-sm">
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Log in</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ActionForm action={loginAction} submitLabel="Log in" className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="username">Username</Label>
+              <Input id="username" name="username" autoComplete="username" required />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" name="password" type="password" autoComplete="current-password" required />
+            </div>
+          </ActionForm>
+        </CardContent>
+      </Card>
+      <p className="text-muted-foreground mt-4 text-center text-sm">
         No account?{' '}
-        <Link href="/signup" className="text-orange-600 underline">
+        <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
           Sign up
         </Link>
       </p>
-    </main>
+    </>
   )
 }

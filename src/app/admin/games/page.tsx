@@ -1,93 +1,132 @@
-import { GameStatus } from '@prisma/client'
-import Link from 'next/link'
-
 import { ActionForm } from '@/components/action-form'
-import { formatPoints, formatTipoff } from '@/lib/format'
-import { listGamesAdmin } from '@/server/admin/queries'
+import { DataTable } from '@/components/admin/data-table'
+import { Field } from '@/components/admin/field'
+import { FilterForm } from '@/components/admin/filter-form'
+import { PageHeader } from '@/components/admin/page-header'
+import { SelectField } from '@/components/admin/select-field'
+import { UrlSheet } from '@/components/admin/url-sheet'
+import { PointsAmount } from '@/components/points-amount'
+import { StatusPill } from '@/components/status-pill'
+import { Input } from '@/components/ui/input'
+import { formatTipoff } from '@/lib/format'
+import { displayStatus } from '@/lib/game/status'
+import { firstParam } from '@/lib/pagination'
+import { formatSort, isRecordId, type SearchParams } from '@/lib/table-params'
+import { hrefWith } from '@/lib/url'
+import { getGameDetail } from '@/server/admin/queries'
+import {
+  GAME_STATUSES,
+  type GameListParams,
+  type GameRow,
+  listGames,
+  parseGameListParams,
+} from '@/server/admin/tables/games'
 import { requireAdmin } from '@/server/session'
 
-import { forceSyncAction, voidGameAction } from '../actions'
+import { forceSyncAction } from '../actions'
+import { GameDrawer } from './game-drawer'
 
-const STATUSES = Object.values(GameStatus)
+const BASE = '/admin/games'
 
-export default async function AdminGamesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string }>
-}) {
+export default async function AdminGamesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   await requireAdmin()
-  const { status } = await searchParams
-  const filter = STATUSES.includes(status as GameStatus) ? (status as GameStatus) : undefined
-  const games = await listGamesAdmin(filter)
+  const sp = await searchParams
+  const params = parseGameListParams(sp)
+  const drawerId = firstParam(sp.game)
+  const formKey = JSON.stringify(params)
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-xl font-semibold">Games</h1>
+    <>
+      <PageHeader title="Games">
         <ActionForm action={forceSyncAction} submitLabel="Force sync" className="flex items-center gap-2" />
-      </div>
-      <div className="flex flex-wrap gap-2 text-sm">
-        <Link href="/admin/games" className={!filter ? 'btn' : 'btn-secondary'}>
-          ALL
-        </Link>
-        {STATUSES.map((s) => (
-          <Link key={s} href={`/admin/games?status=${s}`} className={filter === s ? 'btn' : 'btn-secondary'}>
-            {s}
-          </Link>
-        ))}
-      </div>
-      <div className="card overflow-x-auto">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Game</th>
-              <th>Tip-off</th>
-              <th>Status</th>
-              <th>Score</th>
-              <th>Pool</th>
-              <th>House</th>
-              <th>Winners</th>
-              <th>Void</th>
-            </tr>
-          </thead>
-          <tbody>
-            {games.map((g) => (
-              <tr key={g.id} className={g.status === 'POSTPONED' ? 'bg-yellow-50' : ''}>
-                <td>
-                  {g.awayTeam} @ {g.homeTeam}
-                </td>
-                <td>{formatTipoff(g.startsAt)}</td>
-                <td>{g.status}</td>
-                <td className="font-mono">
-                  {g.awayScore ?? '–'}-{g.homeScore ?? '–'}
-                </td>
-                <td>{formatPoints(g.pool)}</td>
-                <td>{formatPoints(g.houseTake)}</td>
-                <td>{g._count.bets}</td>
-                <td>
-                  {g.status === 'VOID' ? (
-                    <span className="text-xs text-gray-500">{g.voidReason}</span>
-                  ) : (
-                    <details>
-                      <summary className="cursor-pointer text-xs text-red-600">Void…</summary>
-                      <ActionForm
-                        action={voidGameAction.bind(null, g.id)}
-                        submitLabel="Void game"
-                        className="mt-2 space-y-2"
-                      >
-                        <label htmlFor={`reason-${g.id}`} className="label">
-                          Reason
-                        </label>
-                        <input id={`reason-${g.id}`} name="reason" className="input" required />
-                      </ActionForm>
-                    </details>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {games.length === 0 && <p className="p-2 text-sm text-gray-500">No games.</p>}
-      </div>
-    </div>
+      </PageHeader>
+      <FilterForm key={formKey} action={BASE} keep={{ sort: formatSort(params.sort) }}>
+        <Field id="q" label="Team">
+          <Input id="q" name="q" defaultValue={params.q ?? ''} placeholder="e.g. LAL" className="w-28" />
+        </Field>
+        <SelectField
+          id="status"
+          name="status"
+          label="Status"
+          defaultValue={params.status ?? 'all'}
+          options={[{ value: 'all', label: 'All' }, ...GAME_STATUSES.map((s) => ({ value: s, label: s }))]}
+        />
+        <Field id="from" label="From (ET)">
+          <Input id="from" name="from" type="date" defaultValue={params.from ?? ''} />
+        </Field>
+        <Field id="to" label="To (ET)">
+          <Input id="to" name="to" type="date" defaultValue={params.to ?? ''} />
+        </Field>
+      </FilterForm>
+      <GamesTable sp={sp} params={params} />
+      {drawerId !== undefined && <GameSheet sp={sp} id={drawerId} />}
+    </>
+  )
+}
+
+async function GamesTable({ sp, params }: { sp: SearchParams; params: GameListParams }) {
+  const result = await listGames(params)
+  const now = new Date()
+  return (
+    <DataTable<GameRow>
+      basePath={BASE}
+      params={{ ...sp, game: undefined }}
+      sort={formatSort(params.sort)}
+      page={result.page}
+      pageCount={result.pageCount}
+      total={result.total}
+      rows={result.rows}
+      rowKey={(g) => g.id}
+      rowLink={(g) => ({ href: hrefWith(BASE, sp, { game: g.id }), label: `${g.awayTeam} @ ${g.homeTeam}` })}
+      rowClassName={(g) => (g.status === 'POSTPONED' ? 'bg-live/10' : undefined)}
+      empty="No games."
+      columns={[
+        { key: 'matchup', header: 'Matchup', cell: (g) => `${g.awayTeam} @ ${g.homeTeam}` },
+        { key: 'tipoff', header: 'Tip-off', sort: 'tipoff', cell: (g) => formatTipoff(g.startsAt) },
+        {
+          key: 'status',
+          header: 'Status',
+          sort: 'status',
+          cell: (g) => <StatusPill status={displayStatus(g, now)} />,
+        },
+        {
+          key: 'score',
+          header: 'Score',
+          align: 'right',
+          cell: (g) => `${g.awayScore ?? '–'}-${g.homeScore ?? '–'}`,
+        },
+        {
+          key: 'pool',
+          header: 'Pool',
+          sort: 'pool',
+          align: 'right',
+          cell: (g) => <PointsAmount value={g.pool} />,
+        },
+        {
+          key: 'houseTake',
+          header: 'House take',
+          sort: 'houseTake',
+          align: 'right',
+          cell: (g) => <PointsAmount value={g.houseTake} />,
+        },
+        { key: 'winners', header: 'Winners', align: 'right', cell: (g) => g._count.bets },
+      ]}
+    />
+  )
+}
+
+async function GameSheet({ sp, id }: { sp: SearchParams; id: string }) {
+  const detail = isRecordId(id) ? await getGameDetail(id) : null
+  return (
+    <UrlSheet
+      key={id}
+      closeHref={hrefWith(BASE, sp, { game: undefined })}
+      title={detail ? `${detail.game.awayTeam} @ ${detail.game.homeTeam}` : 'Not found'}
+    >
+      {detail ? (
+        <GameDrawer detail={detail} now={new Date()} />
+      ) : (
+        <p className="text-muted-foreground">Game not found.</p>
+      )}
+    </UrlSheet>
   )
 }
