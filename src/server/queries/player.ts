@@ -1,7 +1,7 @@
 import type { Bet, Game } from '@prisma/client'
 import { z } from 'zod'
 
-import { etDayRange } from '@/lib/dates'
+import { localDayRange } from '@/lib/dates'
 import { prisma } from '@/lib/db'
 import { formatEnding } from '@/lib/game/ending'
 import { MAX_SLIP_PICKS } from '@/lib/game/limits'
@@ -15,9 +15,9 @@ export const TRANSACTIONS_PER_PAGE = 50
 
 export type FeedGame = Game & { myPickCount: number }
 
-/** Games whose tip-off falls on the ET date, soonest first, with the viewer's pick count. */
-export async function listGamesForDate(etDate: string, userId: string): Promise<FeedGame[]> {
-  const { start, end } = etDayRange(etDate)
+/** Games whose tip-off falls on the PHT date, soonest first, with the viewer's pick count. */
+export async function listGamesForDate(date: string, userId: string): Promise<FeedGame[]> {
+  const { start, end } = localDayRange(date)
   const games = await prisma.game.findMany({
     where: { startsAt: { gte: start, lt: end } },
     orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],

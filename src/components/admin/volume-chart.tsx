@@ -6,7 +6,7 @@ import { shortDayLabel } from '@/lib/dates'
 
 export type VolumePoint = { date: string; volume: number; houseTake: number }
 
-/** Last 14 ET days: BET volume and house take (spec §5.1). */
+/** Last 14 PHT days: BET volume and house take (spec §5.1). */
 export function VolumeChart({ data }: { data: VolumePoint[] }) {
   const rows = data.map((d) => ({ ...d, day: shortDayLabel(d.date) }))
   return (

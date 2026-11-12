@@ -7,7 +7,7 @@ import { BetResult } from '@/components/bet-result'
 import { PointsAmount } from '@/components/points-amount'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatDateTime, formatUtcDate } from '@/lib/format'
+import { formatDate, formatDateTime } from '@/lib/format'
 import { formatEnding } from '@/lib/game/ending'
 import { isSuspended } from '@/lib/suspension'
 import { TX_TYPE_LABELS } from '@/lib/wallet'
@@ -38,7 +38,7 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
           <dt className="text-muted-foreground text-xs">Status</dt>
           <dd className={suspended ? 'text-danger' : 'text-primary'}>
             {suspended
-              ? `Suspended${p.suspendedUntil ? ` until ${formatUtcDate(p.suspendedUntil)}` : ' (indefinite)'}`
+              ? `Suspended${p.suspendedUntil ? ` until ${formatDate(p.suspendedUntil)}` : ' (indefinite)'}`
               : 'Active'}
           </dd>
         </div>
@@ -123,7 +123,7 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
               actionLabel: 'Suspend',
             }}
           >
-            <Field id="until" label="Suspend until (optional, UTC date)">
+            <Field id="until" label="Suspend until (optional, PHT date)">
               <Input id="until" name="until" type="date" />
             </Field>
           </ActionDialog>

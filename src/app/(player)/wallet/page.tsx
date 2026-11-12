@@ -3,8 +3,8 @@ import { FilterChips } from '@/components/filter-chips'
 import { Pagination } from '@/components/pagination'
 import { PointsAmount } from '@/components/points-amount'
 import { TxIcon } from '@/components/tx-icon'
-import { etDateOf } from '@/lib/dates'
-import { formatEtDay, formatTipoffTime } from '@/lib/format'
+import { localDateOf } from '@/lib/dates'
+import { formatDay, formatTipoffTime } from '@/lib/format'
 import { parsePage } from '@/lib/pagination'
 import type { SearchParams } from '@/lib/table-params'
 import {
@@ -56,10 +56,10 @@ async function TransactionDays({
   const result = await listMyTransactions(userId, filter, page)
   if (result.rows.length === 0) return <EmptyState>No transactions yet.</EmptyState>
 
-  // Rows come newest first; group them by ET calendar day.
+  // Rows come newest first; group them by PHT calendar day.
   const days: { date: string; rows: typeof result.rows }[] = []
   for (const t of result.rows) {
-    const date = etDateOf(t.createdAt)
+    const date = localDateOf(t.createdAt)
     const last = days.at(-1)
     if (last?.date === date) last.rows.push(t)
     else days.push({ date, rows: [t] })
@@ -68,9 +68,9 @@ async function TransactionDays({
   return (
     <>
       {days.map((day) => (
-        <section key={day.date} aria-label={formatEtDay(day.date)}>
+        <section key={day.date} aria-label={formatDay(day.date)}>
           <h2 className="text-muted-foreground mb-1 text-xs font-semibold uppercase">
-            {formatEtDay(day.date)}
+            {formatDay(day.date)}
           </h2>
           <ul className="bg-card border-border divide-border divide-y rounded-xl border">
             {day.rows.map((t) => (

@@ -1,3 +1,4 @@
+import { addDays, localDateOf } from '@/lib/dates'
 import { prisma } from '@/lib/db'
 
 import { setLastSyncAt } from '../settings'
@@ -13,20 +14,14 @@ export type SyncResult = {
   errors: number
 }
 
-const easternDate = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/New_York',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-})
-
+/**
+ * balldontlie `dates[]` are US game dates; a US evening game lands on the next PHT day. The feed
+ * strip shows PHT yesterday..today+6 and Overview needs yesterday, so query PHT today-2..today+7.
+ */
 export function syncDates(now: Date): string[] {
-  const today = easternDate.format(now) // YYYY-MM-DD
-  const base = new Date(`${today}T12:00:00Z`)
+  const today = localDateOf(now)
   const dates: string[] = []
-  for (let offset = -1; offset <= 7; offset++) {
-    dates.push(new Date(base.getTime() + offset * 86_400_000).toISOString().slice(0, 10))
-  }
+  for (let offset = -2; offset <= 7; offset++) dates.push(addDays(today, offset))
   return dates
 }
 

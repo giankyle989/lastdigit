@@ -3,8 +3,8 @@ import { type Prisma, TransactionType } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { type Page, pageWindow, parsePage } from '@/lib/pagination'
 import {
-  etDateBounds,
-  parseEtDateParam,
+  dateBounds,
+  parseDateParam,
   parseOption,
   parseSearch,
   parseSort,
@@ -32,8 +32,8 @@ export function parseLedgerListParams(sp: SearchParams): LedgerListParams {
     sort: parseSort(sp.sort, LEDGER_SORTS, { field: 'time', dir: 'desc' }),
     page: parsePage(sp.page),
     type: parseOption(sp.type, LEDGER_TYPES),
-    from: parseEtDateParam(sp.from),
-    to: parseEtDateParam(sp.to),
+    from: parseDateParam(sp.from),
+    to: parseDateParam(sp.to),
   }
 }
 
@@ -43,7 +43,7 @@ export type LedgerRow = Prisma.TransactionGetPayload<{ include: typeof include }
 
 /** Ledger rows plus the sum of amounts for the whole filter (spec §5.5 totals row). */
 export async function listLedger(p: LedgerListParams): Promise<Page<LedgerRow> & { totalAmount: number }> {
-  const createdAt = etDateBounds(p.from, p.to)
+  const createdAt = dateBounds(p.from, p.to)
   const where: Prisma.TransactionWhereInput = {
     ...(p.q ? { user: { usernameKey: { contains: p.q.toLowerCase() } } } : {}),
     ...(p.type ? { type: p.type } : {}),

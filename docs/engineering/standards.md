@@ -42,6 +42,7 @@ Bad: a page that imports `prisma` and updates rows itself.
 - **Errors.** Expected failures throw `DomainError` (shown via `runAction`). Never swallow errors — log and count, or rethrow.
   Good: `catch (e) { console.error('sync: settle failed', g.id, e); result.errors++ }` · Bad: `catch {}`.
 - **Naming.** Functions are verbs (`placeBets`); reads start with `get`/`list`/`search`. Files kebab-case; components PascalCase.
+- **Time.** All dates/times are shown and grouped in Philippine time (PHT) via `TIME_ZONE` in `src/lib/dates.ts`; never hard-code a zone name elsewhere (`tests/unit/timezone-architecture.test.ts` enforces it).
 - **Size.** One responsibility per file; split past ~300 lines. YAGNI — no speculative options.
 - **Types.** No `any`, no non-null `!`, `as` only at validated boundaries, exhaustive `switch`, `import type` for types. `noUncheckedIndexedAccess` is on: handle `rows[0]` being `undefined`.
 - **UI.** Every interactive control has an accessible name; no raw `'` in JSX text; client components never touch the database.

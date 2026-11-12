@@ -50,7 +50,7 @@ async function OverviewBody() {
               <TooltipContent>All time: {formatPoints(s.houseTakeAllTime)}</TooltipContent>
             </Tooltip>
           }
-          sub="Last 7 ET days"
+          sub="Last 7 days (PHT)"
         />
         <KpiTile
           label="Sync"

@@ -97,9 +97,9 @@ describe('createBalldontlieFetcher', () => {
 })
 
 describe('syncDates', () => {
-  it('returns yesterday through +7 days in US Eastern', () => {
-    // 03:00 UTC on Nov 11 is 22:00 ET on Nov 10
-    expect(syncDates(new Date('2026-11-11T03:00:00Z'))).toEqual([
+  it('returns PHT today-2 through today+7', () => {
+    // 17:00 UTC on Nov 10 is 01:00 PHT on Nov 11
+    expect(syncDates(new Date('2026-11-10T17:00:00Z'))).toEqual([
       '2026-11-09',
       '2026-11-10',
       '2026-11-11',
@@ -109,6 +109,7 @@ describe('syncDates', () => {
       '2026-11-15',
       '2026-11-16',
       '2026-11-17',
+      '2026-11-18',
     ])
   })
 })

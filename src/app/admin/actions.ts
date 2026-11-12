@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { type ActionState, runAction } from '@/lib/action-state'
+import { parseSuspendUntil } from '@/lib/suspend-until'
 import {
   adjustPoints,
   resetPassword,
@@ -38,8 +39,8 @@ export async function adjustPointsAction(
 export async function suspendAction(userId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
   const admin = await requireAdmin()
   const v = String(fd.get('until') ?? '').trim()
-  const until = v ? new Date(`${v}T00:00:00Z`) : null
-  if (until && Number.isNaN(until.getTime())) return { error: 'Invalid date' }
+  const until = parseSuspendUntil(v)
+  if (until === 'invalid') return { error: 'Invalid date' }
   const r = await runAction(() => suspendPlayer(admin.id, userId, until), 'Player suspended')
   revalidatePath('/admin', 'layout')
   return r

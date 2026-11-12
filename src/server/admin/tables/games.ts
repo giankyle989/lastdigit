@@ -3,8 +3,8 @@ import { GameStatus, type Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { type Page, pageWindow, parsePage } from '@/lib/pagination'
 import {
-  etDateBounds,
-  parseEtDateParam,
+  dateBounds,
+  parseDateParam,
   parseOption,
   parseSearch,
   parseSort,
@@ -21,7 +21,7 @@ export type GameListParams = {
   sort: Sort<(typeof GAME_SORTS)[number]>
   page: number
   status?: GameStatus
-  /** ET dates, inclusive. */
+  /** PHT dates, inclusive. */
   from?: string
   to?: string
 }
@@ -32,8 +32,8 @@ export function parseGameListParams(sp: SearchParams): GameListParams {
     sort: parseSort(sp.sort, GAME_SORTS, { field: 'tipoff', dir: 'desc' }),
     page: parsePage(sp.page),
     status: parseOption(sp.status, GAME_STATUSES),
-    from: parseEtDateParam(sp.from),
-    to: parseEtDateParam(sp.to),
+    from: parseDateParam(sp.from),
+    to: parseDateParam(sp.to),
   }
 }
 
@@ -56,7 +56,7 @@ export type GameRow = Prisma.GameGetPayload<{ include: typeof include }>
 
 export async function listGames(p: GameListParams): Promise<Page<GameRow>> {
   const team = p.q?.toUpperCase()
-  const startsAt = etDateBounds(p.from, p.to)
+  const startsAt = dateBounds(p.from, p.to)
   const where: Prisma.GameWhereInput = {
     ...(p.status ? { status: p.status } : {}),
     ...(startsAt ? { startsAt } : {}),

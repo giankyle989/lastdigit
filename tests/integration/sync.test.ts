@@ -41,6 +41,20 @@ describe('syncGames', () => {
     expect(await getLastSyncAt()).toEqual(now)
   })
 
+  it('queries PHT today-2 through today+7', async () => {
+    const seen: string[][] = []
+    await syncGames({
+      fetchGames: async (dates) => {
+        seen.push(dates)
+        return []
+      },
+      now: new Date('2026-11-11T16:00:00Z'), // 00:00 PHT Nov 12
+    })
+    expect(seen[0]?.[0]).toBe('2026-11-10')
+    expect(seen[0]?.at(-1)).toBe('2026-11-19')
+    expect(seen[0]).toHaveLength(10)
+  })
+
   it('updates scores and settles games that went final', async () => {
     const u = await makeUser()
     await fundUser(u.id, 100)

@@ -50,10 +50,10 @@ export default async function AdminGamesPage({ searchParams }: { searchParams: P
           defaultValue={params.status ?? 'all'}
           options={[{ value: 'all', label: 'All' }, ...GAME_STATUSES.map((s) => ({ value: s, label: s }))]}
         />
-        <Field id="from" label="From (ET)">
+        <Field id="from" label="From (PHT)">
           <Input id="from" name="from" type="date" defaultValue={params.from ?? ''} />
         </Field>
-        <Field id="to" label="To (ET)">
+        <Field id="to" label="To (PHT)">
           <Input id="to" name="to" type="date" defaultValue={params.to ?? ''} />
         </Field>
       </FilterForm>

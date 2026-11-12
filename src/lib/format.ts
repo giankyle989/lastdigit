@@ -1,25 +1,28 @@
-const ET = 'America/New_York'
+import { TIME_ZONE, TIME_ZONE_LABEL } from './dates'
 
 export function formatTipoff(d: Date): string {
   return (
     d.toLocaleString('en-US', {
-      timeZone: ET,
+      timeZone: TIME_ZONE,
       weekday: 'short',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-    }) + ' ET'
+    }) + ` ${TIME_ZONE_LABEL}`
   )
 }
 
 export function formatDateTime(d: Date): string {
-  return d.toLocaleString('en-US', { timeZone: ET, dateStyle: 'medium', timeStyle: 'short' }) + ' ET'
+  return (
+    d.toLocaleString('en-US', { timeZone: TIME_ZONE, dateStyle: 'medium', timeStyle: 'short' }) +
+    ` ${TIME_ZONE_LABEL}`
+  )
 }
 
-/** "Nov 12, 2026" — the UTC calendar date (for values stored as UTC dates). */
-export function formatUtcDate(d: Date): string {
-  return d.toLocaleDateString('en-US', { timeZone: 'UTC', dateStyle: 'medium' })
+/** "Nov 12, 2026" — the calendar date in TIME_ZONE. */
+export function formatDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { timeZone: TIME_ZONE, dateStyle: 'medium' })
 }
 
 export function formatPoints(n: number): string {
@@ -39,14 +42,17 @@ export function formatCountdown(ms: number): string {
   return h > 0 ? `${h}h ${String(m).padStart(2, '0')}m ${sec}s` : `${m}m ${sec}s`
 }
 
-/** "7:30 PM ET" */
+/** "7:30 AM PHT" */
 export function formatTipoffTime(d: Date): string {
-  return d.toLocaleTimeString('en-US', { timeZone: ET, hour: 'numeric', minute: '2-digit' }) + ' ET'
+  return (
+    d.toLocaleTimeString('en-US', { timeZone: TIME_ZONE, hour: 'numeric', minute: '2-digit' }) +
+    ` ${TIME_ZONE_LABEL}`
+  )
 }
 
-/** 'YYYY-MM-DD' (an ET date) → "Wed, Nov 11" */
-export function formatEtDay(etDate: string): string {
-  return new Date(`${etDate}T12:00:00Z`).toLocaleDateString('en-US', {
+/** 'YYYY-MM-DD' (a calendar date) → "Wed, Nov 11" */
+export function formatDay(date: string): string {
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', {
     timeZone: 'UTC',
     weekday: 'short',
     month: 'short',

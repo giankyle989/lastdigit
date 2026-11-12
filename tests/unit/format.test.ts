@@ -2,17 +2,18 @@ import { describe, expect, it } from 'vitest'
 
 import {
   formatCountdown,
-  formatEtDay,
+  formatDate,
+  formatDateTime,
+  formatDay,
   formatPoints,
   formatRelative,
   formatSignedPoints,
   formatTipoffTime,
-  formatUtcDate,
 } from '@/lib/format'
 
 describe('format', () => {
-  it('formats ET tip-off times', () => {
-    expect(formatTipoffTime(new Date('2026-11-12T00:30:00Z'))).toBe('7:30 PM ET')
+  it('formats PHT tip-off times', () => {
+    expect(formatTipoffTime(new Date('2026-11-12T00:30:00Z'))).toBe('8:30 AM PHT')
   })
 
   it('formats points with separators and signs', () => {
@@ -28,8 +29,8 @@ describe('format', () => {
     expect(formatCountdown(-5)).toBe('0m 00s')
   })
 
-  it('formats ET days', () => {
-    expect(formatEtDay('2026-11-11')).toBe('Wed, Nov 11')
+  it('formats days', () => {
+    expect(formatDay('2026-11-11')).toBe('Wed, Nov 11')
   })
 
   it('formats relative times', () => {
@@ -40,7 +41,13 @@ describe('format', () => {
     expect(formatRelative(new Date('2026-11-08T12:00:00Z'), now)).toBe('3 d ago')
   })
 
-  it('formats the UTC calendar date regardless of ET', () => {
-    expect(formatUtcDate(new Date('2026-11-12T00:00:00Z'))).toBe('Nov 12, 2026')
+  it('formats the PHT calendar date', () => {
+    expect(formatDate(new Date('2026-11-12T00:00:00Z'))).toBe('Nov 12, 2026')
+    expect(formatDate(new Date('2026-11-11T16:00:00Z'))).toBe('Nov 12, 2026') // 00:00 PHT
+    expect(formatDate(new Date('2026-11-11T15:59:59Z'))).toBe('Nov 11, 2026')
+  })
+
+  it('formats date-times in PHT', () => {
+    expect(formatDateTime(new Date('2026-11-12T00:30:00Z'))).toBe('Nov 12, 2026, 8:30 AM PHT')
   })
 })

@@ -1,7 +1,7 @@
 import { EmptyState } from '@/components/empty-state'
 import { DateStrip } from '@/components/games/date-strip'
 import { GameCard } from '@/components/games/game-card'
-import { etDateStrip, parseStripDate } from '@/lib/dates'
+import { dateStrip, parseStripDate } from '@/lib/dates'
 import { groupIntoSections } from '@/lib/game/sections'
 import type { SearchParams } from '@/lib/table-params'
 import { listGamesForDate } from '@/server/queries/player'
@@ -15,7 +15,7 @@ export default async function GamesPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-5">
       <h1 className="sr-only">Games</h1>
-      <DateStrip days={etDateStrip(now)} selected={date} />
+      <DateStrip days={dateStrip(now)} selected={date} />
       {sections.length === 0 ? (
         <EmptyState>No games on this day</EmptyState>
       ) : (
