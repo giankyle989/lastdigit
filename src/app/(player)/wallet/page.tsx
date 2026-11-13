@@ -1,3 +1,4 @@
+import { ActionForm } from '@/components/action-form'
 import { EmptyState } from '@/components/empty-state'
 import { FilterChips } from '@/components/filter-chips'
 import { Pagination } from '@/components/pagination'
@@ -14,14 +15,19 @@ import {
   WALLET_FILTERS,
   type WalletFilter,
 } from '@/lib/wallet'
+import { canClaimDailyBonus } from '@/server/bonuses'
 import { listMyTransactions } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
+import { getBonus } from '@/server/settings'
+
+import { claimDailyBonusAction } from '../actions'
 
 export default async function WalletPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await requireUser()
   const sp = await searchParams
   const filter = parseWalletFilter(sp.type)
   const page = parsePage(sp.page)
+  const daily = await getBonus('dailyBonus')
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Wallet</h1>
@@ -31,6 +37,22 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
           <PointsAmount value={user.balance} unit />
         </div>
       </section>
+      {daily > 0 && (
+        <section className="bg-card border-border flex items-center justify-between gap-3 rounded-xl border p-4">
+          <div>
+            <div className="text-sm font-medium">Daily bonus</div>
+            <div className="text-muted-foreground text-xs">
+              {canClaimDailyBonus(user)
+                ? `Claim ${daily.toLocaleString('en-US')} free points once a day.`
+                : 'Claimed today — come back tomorrow (resets at midnight PHT).'}
+            </div>
+          </div>
+          {/* Kept mounted after a claim (only hidden) so its success toast still fires. */}
+          <div hidden={!canClaimDailyBonus(user)}>
+            <ActionForm action={claimDailyBonusAction} submitLabel="Claim" />
+          </div>
+        </section>
+      )}
       <FilterChips
         label="Transaction type"
         chips={WALLET_FILTERS.map((f) => ({

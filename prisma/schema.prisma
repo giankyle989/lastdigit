@@ -35,6 +35,8 @@ enum BetResult {
 
 enum TransactionType {
   REFERRAL_BONUS
+  SIGNUP_BONUS
+  DAILY_BONUS
   ADMIN_GRANT
   ADMIN_DEDUCT
   BET
@@ -49,27 +51,31 @@ enum InquiryStatus {
 }
 
 model User {
-  id                String           @id @default(cuid())
-  username          String
-  usernameKey       String           @unique
-  passwordHash      String
-  role              Role             @default(PLAYER)
-  status            UserStatus       @default(ACTIVE)
-  suspendedUntil    DateTime?
-  stakeLimitPerGame Int?
-  balance           Int              @default(0)
-  referralCode      String           @unique
-  referredById      String?
-  referredBy        User?            @relation("Referrals", fields: [referredById], references: [id])
-  referrals         User[]           @relation("Referrals")
-  bets              Bet[]
-  transactions      Transaction[]    @relation("UserTransactions")
-  adminTransactions Transaction[]    @relation("AdminTransactions")
-  inquiries         Inquiry[]
-  inquiryMessages   InquiryMessage[]
-  adminActions      AdminAction[]    @relation("ActionsByAdmin")
-  targetedActions   AdminAction[]    @relation("ActionsOnUser")
-  createdAt         DateTime         @default(now())
+  id                  String           @id @default(cuid())
+  username            String
+  usernameKey         String           @unique
+  passwordHash        String
+  role                Role             @default(PLAYER)
+  status              UserStatus       @default(ACTIVE)
+  suspendedUntil      DateTime?
+  stakeLimitPerGame   Int?
+  balance             Int              @default(0)
+  referralCode        String           @unique
+  referredById        String?
+  /// Set when the referrer was paid (after this player's first settled bet).
+  referralBonusPaidAt DateTime?
+  /// PHT calendar date ('YYYY-MM-DD') of the last daily bonus claim.
+  lastDailyBonusOn    String?
+  referredBy          User?            @relation("Referrals", fields: [referredById], references: [id])
+  referrals           User[]           @relation("Referrals")
+  bets                Bet[]
+  transactions        Transaction[]    @relation("UserTransactions")
+  adminTransactions   Transaction[]    @relation("AdminTransactions")
+  inquiries           Inquiry[]
+  inquiryMessages     InquiryMessage[]
+  adminActions        AdminAction[]    @relation("ActionsByAdmin")
+  targetedActions     AdminAction[]    @relation("ActionsOnUser")
+  createdAt           DateTime         @default(now())
 }
 
 model Game {

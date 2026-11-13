@@ -5,8 +5,9 @@ import { DomainError } from '@/lib/errors'
 import { intFromForm } from '@/lib/validation'
 
 import { logAdminAction } from '../audit'
-import { postEntry } from '../ledger'
+import { lockUsers, postEntry } from '../ledger'
 import { hashPassword } from '../passwords'
+import { getBonus } from '../settings'
 import { passwordSchema } from '../users'
 
 async function requirePlayer(tx: Tx, userId: string) {
@@ -21,11 +22,22 @@ const adjustSchema = z.object({
   note: z.string({ required_error: 'A note is required' }).trim().min(1, 'A note is required').max(500),
 })
 
-export async function adjustPoints(adminId: string, userId: string, input: unknown): Promise<void> {
+/**
+ * Grants or deducts points. A player's first grant is their first top-up: it is matched 1:1 as a
+ * welcome bonus, up to the `welcomeBonusCap` setting. Returns the welcome bonus credited (0 if none).
+ */
+export async function adjustPoints(
+  adminId: string,
+  userId: string,
+  input: unknown,
+): Promise<{ welcomeBonus: number }> {
   const { direction, amount, note } = adjustSchema.parse(input)
-  await prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx) => {
     await requirePlayer(tx, userId)
     const grant = direction === 'GRANT'
+    // Lock the player first so two concurrent first grants can't both see "no earlier grant".
+    await lockUsers(tx, [userId])
+    const firstTopUp = grant && (await tx.transaction.count({ where: { userId, type: 'ADMIN_GRANT' } })) === 0
     await postEntry(
       tx,
       {
@@ -43,6 +55,18 @@ export async function adjustPoints(adminId: string, userId: string, input: unkno
       targetUserId: userId,
       details: { amount, note },
     })
+    if (!firstTopUp) return { welcomeBonus: 0 }
+    const welcomeBonus = Math.min(amount, await getBonus('welcomeBonusCap', tx))
+    if (welcomeBonus > 0) {
+      await postEntry(tx, {
+        userId,
+        type: 'SIGNUP_BONUS',
+        amount: welcomeBonus,
+        adminId,
+        note: 'Welcome bonus: first top-up matched',
+      })
+    }
+    return { welcomeBonus }
   })
 }
 

@@ -33,6 +33,8 @@ export default defineConfig({
       BALLDONTLIE_API_KEY: 'unused',
       // never call balldontlie from E2E; the test seeds its own games
       SYNC_INTERVAL_MINUTES: '0',
+      // every E2E signup comes from localhost
+      SIGNUP_LIMIT_PER_HOUR: '100',
     },
   },
 })

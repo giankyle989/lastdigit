@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { firstParam } from '@/lib/pagination'
 import { getCurrentUser } from '@/server/session'
+import { getBonus } from '@/server/settings'
 
 import { signupAction } from '../actions'
 
@@ -17,11 +18,17 @@ export default async function SignupPage({
 }) {
   if (await getCurrentUser()) redirect('/')
   const ref = firstParam((await searchParams).ref)?.slice(0, 32) ?? ''
+  const welcomeCap = await getBonus('welcomeBonusCap')
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Sign up</CardTitle>
+          {welcomeCap > 0 && (
+            <p className="text-muted-foreground text-sm">
+              Your first top-up is doubled, up to {welcomeCap.toLocaleString('en-US')} bonus points.
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <ActionForm action={signupAction} submitLabel="Sign up" className="grid gap-4">

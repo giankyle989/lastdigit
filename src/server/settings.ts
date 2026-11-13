@@ -1,28 +1,44 @@
+import { z } from 'zod'
+
 import { prisma, type Tx } from '@/lib/db'
 import { intFromForm } from '@/lib/validation'
 
 import { logAdminAction } from './audit'
 
-const DEFAULT_REFERRAL_BONUS = 500
+/** Admin-configurable point bonuses (Admin → Settings) and their defaults. */
+/**
+ * welcomeBonusCap: a player's first top-up (admin grant) is matched 1:1 up to this.
+ * dailyBonus is off (0) by default while the game is in its starting phase.
+ */
+export const BONUS_DEFAULTS = { welcomeBonusCap: 1000, referralBonus: 500, dailyBonus: 0 } as const
+export type BonusKey = keyof typeof BONUS_DEFAULTS
+export type Bonuses = Record<BonusKey, number>
+const BONUS_KEYS = Object.keys(BONUS_DEFAULTS) as BonusKey[]
 
-export async function getReferralBonus(db: Tx = prisma): Promise<number> {
-  const row = await db.setting.findUnique({ where: { key: 'referralBonus' } })
-  return row ? Number(row.value) : DEFAULT_REFERRAL_BONUS
+export async function getBonuses(db: Tx = prisma): Promise<Bonuses> {
+  const rows = await db.setting.findMany({ where: { key: { in: BONUS_KEYS } } })
+  const stored = new Map(rows.map((r) => [r.key, Number(r.value)]))
+  return Object.fromEntries(BONUS_KEYS.map((k) => [k, stored.get(k) ?? BONUS_DEFAULTS[k]])) as Bonuses
 }
 
-export async function setReferralBonus(adminId: string, value: unknown): Promise<void> {
-  const bonus = intFromForm('Referral bonus', 0, 1_000_000).parse(value)
+export async function getBonus(key: BonusKey, db: Tx = prisma): Promise<number> {
+  return (await getBonuses(db))[key]
+}
+
+const bonusesSchema = z.object({
+  welcomeBonusCap: intFromForm('Welcome bonus cap', 0, 1_000_000),
+  referralBonus: intFromForm('Referral bonus', 0, 1_000_000),
+  dailyBonus: intFromForm('Daily bonus', 0, 1_000_000),
+})
+
+export async function setBonuses(adminId: string, input: unknown): Promise<void> {
+  const bonuses = bonusesSchema.parse(input)
   await prisma.$transaction(async (tx) => {
-    await tx.setting.upsert({
-      where: { key: 'referralBonus' },
-      update: { value: String(bonus) },
-      create: { key: 'referralBonus', value: String(bonus) },
-    })
-    await logAdminAction(tx, {
-      adminId,
-      action: 'UPDATE_SETTING',
-      details: { key: 'referralBonus', value: bonus },
-    })
+    for (const key of BONUS_KEYS) {
+      const value = String(bonuses[key])
+      await tx.setting.upsert({ where: { key }, update: { value }, create: { key, value } })
+    }
+    await logAdminAction(tx, { adminId, action: 'UPDATE_SETTING', details: bonuses })
   })
 }
 

@@ -42,3 +42,13 @@ export async function postEntry(tx: Tx, entry: LedgerEntry, opts: { requireFunds
 
   return tx.transaction.create({ data: { ...entry, balanceAfter } })
 }
+
+/**
+ * Locks the given users FOR UPDATE in ascending id order (the same order settlement and void post
+ * entries in), so a transaction that credits several users can't deadlock with another.
+ */
+export async function lockUsers(tx: Tx, userIds: string[]): Promise<void> {
+  const ids = [...new Set(userIds)]
+  if (ids.length === 0) return
+  await tx.$queryRaw`SELECT id FROM "User" WHERE id = ANY(${ids}) ORDER BY id FOR UPDATE`
+}
