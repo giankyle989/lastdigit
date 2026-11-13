@@ -56,7 +56,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   expect(aliceRow.balance).toBe(0)
 
   // admin tops bob up with 1000 from the player drawer: his first top-up is matched (+1000)
-  // and alice, who referred him, gets 50% of it (capped at 500)
+  // and alice, who referred him, gets 50% of it (capped at 200)
   await login(page, 'admin', 'admin12345')
   await page.waitForURL('**/admin')
   await page.goto(`/admin/players?q=${bob}`)
@@ -66,8 +66,8 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await page.getByLabel('Amount').fill('1000')
   await page.getByLabel('Note').fill('Welcome bonus')
   await page.getByRole('button', { name: 'Grant points', exact: true }).click()
-  await expect(page.getByText('Points updated (+1,000 welcome bonus, +500 to their referrer)')).toBeVisible()
-  expect((await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })).balance).toBe(500)
+  await expect(page.getByText('Points updated (+1,000 welcome bonus, +200 to their referrer)')).toBeVisible()
+  expect((await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })).balance).toBe(200)
   await logout(page, 'admin')
 
   // a game exists; bob picks 9-6 with the pickers, adds it to the slip and confirms
@@ -92,7 +92,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await setBonuses(adminRow.id, {
     welcomeBonusCap: 1000,
     referralPercent: 50,
-    referralBonusCap: 500,
+    referralBonusCap: 200,
     dailyBonus: 100,
   })
   await page.goto('/wallet')
@@ -128,9 +128,9 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await expect(page.getByTestId('balance')).toHaveText('2,180 pts')
   await expect(page.getByText('Payout', { exact: true })).toBeVisible()
 
-  // alice: 500 referral + 100 top-up + 100 matched - 100 stake (her bet lost)
+  // alice: 200 referral + 100 top-up + 100 matched - 100 stake (her bet lost)
   const aliceAfter = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect(aliceAfter.balance).toBe(600)
+  expect(aliceAfter.balance).toBe(300)
 })
 
 test.afterAll(async () => {
