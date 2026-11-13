@@ -35,5 +35,6 @@ npx prisma migrate dev --name <name>   # schema change (never migrate reset)
 
 - Features: spec (`docs/superpowers/specs/`) → plan (`docs/superpowers/plans/`) → tasks with review → whole-branch review → PR.
 - Small fixes: branch → failing test → fix → PR.
+- UI work (HTML/CSS/client JS in `src/app`, `src/components`): use the `modern-web-guidance` skill (Google Chrome plugin, enabled in `.claude/settings.json`) to look up current platform patterns first. Not for server code, Prisma or tests.
 - Tests: TDD; server logic tested against real Postgres (`tests/integration`), no DB mocks.
 - Hooks: an edited file is auto-formatted and linted; remaining lint errors are fed back — fix them before moving on. Shell commands that reset the database, skip git hooks, force-push to master or add AI attribution to a commit are blocked; fix the underlying problem instead.
