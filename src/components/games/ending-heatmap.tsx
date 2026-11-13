@@ -42,7 +42,7 @@ export function EndingHeatmap({
 }: Props) {
   const max = maxCell(cells)
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto pt-1 pr-1">
       <table className="border-separate border-spacing-0.5 text-[10px]">
         <caption className="text-muted-foreground mb-1 text-left text-xs">
           Rows: {awayTeam} last digit · Columns: {homeTeam} last digit

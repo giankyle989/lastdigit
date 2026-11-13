@@ -7,9 +7,11 @@ import { PointsAmount } from '@/components/points-amount'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { estimatePayout } from '@/lib/game/payout'
+import { type Ending, endingKey } from '@/lib/slip'
 
 import { DigitPicker } from './digit-picker'
 import { EndingHeatmap } from './ending-heatmap'
+import { MultiAddTray } from './multi-add-tray'
 
 type Props = {
   gameId: string
@@ -25,12 +27,31 @@ export function EndingPicker({ gameId, awayTeam, homeTeam, open, pool, cells }: 
   const slip = useSlip()
   const [away, setAway] = useState<number | null>(null)
   const [home, setHome] = useState<number | null>(null)
-  const selected = away !== null && home !== null ? { awayDigit: away, homeDigit: home } : null
+  const [tab, setTab] = useState<'pickers' | 'heatmap'>('pickers')
+  const [multi, setMulti] = useState<Map<string, Ending>>(new Map())
+  const [lastTapped, setLastTapped] = useState<Ending | null>(null)
+  const selectedKeys = open ? new Set(multi.keys()) : new Set<string>()
+  const toggle = (awayDigit: number, homeDigit: number) => {
+    const e = { awayDigit, homeDigit }
+    setMulti((prev) => {
+      const next = new Map(prev)
+      if (next.has(endingKey(e))) next.delete(endingKey(e))
+      else next.set(endingKey(e), e)
+      return next
+    })
+    setLastTapped(e)
+  }
+  const clearMulti = () => {
+    setMulti(new Map())
+    setLastTapped(null)
+  }
+  const pickerSelected = away !== null && home !== null ? { awayDigit: away, homeDigit: home } : null
+  const selected = tab === 'heatmap' ? (selectedKeys.size > 0 ? lastTapped : null) : pickerSelected
   const endingStake = selected ? (cells[selected.awayDigit]?.[selected.homeDigit] ?? 0) : 0
 
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="pickers">
+      <Tabs value={tab} onValueChange={(v) => setTab(v === 'heatmap' ? 'heatmap' : 'pickers')}>
         <TabsList aria-label="Pick mode">
           <TabsTrigger value="pickers">Pickers</TabsTrigger>
           <TabsTrigger value="heatmap">Heatmap</TabsTrigger>
@@ -44,18 +65,21 @@ export function EndingPicker({ gameId, awayTeam, homeTeam, open, pool, cells }: 
             awayTeam={awayTeam}
             homeTeam={homeTeam}
             cells={cells}
-            selected={selected}
-            onSelect={
-              open
-                ? (a, h) => {
-                    setAway(a)
-                    setHome(h)
-                  }
-                : undefined
-            }
+            selectedKeys={selectedKeys}
+            onToggle={open ? toggle : undefined}
           />
         </TabsContent>
       </Tabs>
+
+      {tab === 'heatmap' && open && selectedKeys.size > 0 && (
+        <MultiAddTray
+          gameId={gameId}
+          matchup={`${awayTeam} @ ${homeTeam}`}
+          endings={[...multi.values()]}
+          onAdded={clearMulti}
+          onClear={clearMulti}
+        />
+      )}
 
       <div className="bg-surface-2 border-border rounded-lg border p-3" aria-live="polite">
         <div className="flex items-baseline justify-between gap-2">
@@ -79,21 +103,26 @@ export function EndingPicker({ gameId, awayTeam, homeTeam, open, pool, cells }: 
         <p className="text-muted-foreground mt-2 text-xs">Estimate — changes as others bet</p>
       </div>
 
-      <Button
-        type="button"
-        size="lg"
-        className="w-full"
-        disabled={!open || !selected}
-        onClick={() => {
-          if (selected) slip.add({ gameId, ...selected, matchup: `${awayTeam} @ ${homeTeam}` })
-        }}
-      >
-        {open ? 'Add to slip' : 'Betting closed'}
-      </Button>
-      {open && (
-        <p className="text-muted-foreground text-center text-xs">
-          Adds at your last stake: <PointsAmount value={slip.lastStake} unit />
-        </p>
+      {(tab === 'pickers' || !open) && (
+        <>
+          <Button
+            type="button"
+            size="lg"
+            className="w-full"
+            disabled={!open || !pickerSelected}
+            onClick={() => {
+              if (pickerSelected)
+                slip.add({ gameId, ...pickerSelected, matchup: `${awayTeam} @ ${homeTeam}` })
+            }}
+          >
+            {open ? 'Add to slip' : 'Betting closed'}
+          </Button>
+          {open && (
+            <p className="text-muted-foreground text-center text-xs">
+              Adds at your last stake: <PointsAmount value={slip.lastStake} unit />
+            </p>
+          )}
+        </>
       )}
     </div>
   )
