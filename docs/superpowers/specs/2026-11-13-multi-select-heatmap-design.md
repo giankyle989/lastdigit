@@ -27,7 +27,7 @@ several games at once, grouping slip rows by game, any change to payouts or sett
 ### 2.1 Selecting cells
 
 - On an open game, the Heatmap tab's cells toggle on tap. A selected cell shows a ring and a check
-  mark; its accessible name ends in ", selected" and it carries `aria-pressed="true"`.
+  mark and carries `aria-pressed="true"`; the state is not repeated in its accessible name.
 - On a closed game the heatmap stays read-only, as today.
 - The selection is local UI state: it is not saved and is cleared when the player leaves the page.
 - The Pickers tab is unchanged: one ending at a time through Add to slip.
@@ -78,7 +78,10 @@ afford, as today.
 - Phone: the tray sits directly under the grid, then the panel; the slip bar keeps floating above
   the tab bar.
 - Desktop: same order in the game column; the slip stays in the right column.
-- The grid keeps its 10 × 10 layout and 32 px cells.
+- The grid keeps its 10 × 10 layout and 32 px cells (above the 24 px WCAG 2.5.8 minimum; 44 px
+  cells cannot fit ten across a phone).
+- The stake mode is a native radio group in a `fieldset` with a legend; the selection count is a
+  polite live region.
 
 ## 3. Rules
 
@@ -99,7 +102,7 @@ and the server (`placeBetsSchema`, the slip status query), as it does today.
 | File                                          | Change                                                                                                                                                                                                                                                                                            |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/lib/game/limits.ts`                      | `MAX_SLIP_PICKS = 100`                                                                                                                                                                                                                                                                            |
-| `src/lib/slip.ts`                             | `splitStake(total, n)`; `slipRoom(slip, picks)` = MAX_SLIP_PICKS minus picks already held, counting only endings not yet in the slip; reducer action `{ type: 'addMany', picks: SlipPick[], lastStake: number }` that merges or appends every pick, or returns the slip unchanged if room is short |
+| `src/lib/slip.ts`                             | `splitStake(total, n)`; `slipRoom(slip)` = MAX_SLIP_PICKS minus picks held; `newPickCount(slip, picks)` = picks whose ending is not yet in the slip; `planMultiAdd(...)` computes the tray's picks, cost and blocked reason; reducer action `{ type: 'addMany', picks: SlipPick[], lastStake: number }` that merges or appends every pick, or returns the slip unchanged if room is short |
 | `src/components/bet-slip/slip-provider.tsx`   | `addMany(picks, lastStake)` on the context, with the success toast; the single-add "slip is full" toast uses the new limit                                                                                                                                                                         |
 | `src/components/games/ending-heatmap.tsx`     | Optional `selectedSet` (set of "a-h" keys) and `onToggle(a, h)` for multi-select; the existing `selected`/`winning`/read-only modes keep working for other callers                                                                                                                                  |
 | `src/components/games/multi-add-tray.tsx` (new) | The tray in §2.2–2.3; pure props in, `onAdd(picks, lastStake)` out                                                                                                                                                                                                                                 |
@@ -123,7 +126,7 @@ No schema change and no migration. When building the tray and the toggling grid,
 
 - **Unit (`tests/unit`)**
   - `splitStake`: even split, remainder order, n = 1, total = n, total < n rejected.
-  - `slipRoom` and `addMany`: append new endings; merge into existing ones without using room;
+  - `slipRoom`, `newPickCount`, `planMultiAdd` and `addMany`: append new endings; merge into existing ones without using room;
     all-or-nothing when room is short; last stake updated; 100-pick cap.
   - Stored-slip parsing accepts 100 picks and rejects 101.
 - **Integration (`tests/integration`)**
