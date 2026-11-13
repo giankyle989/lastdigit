@@ -6,7 +6,14 @@ import { useSlip } from '@/components/bet-slip/slip-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatPoints } from '@/lib/format'
-import { type Ending, parseStakeInput, planMultiAdd, QUICK_STAKES, type StakeMode } from '@/lib/slip'
+import {
+  type Ending,
+  parseStakeInput,
+  parseTotalInput,
+  planMultiAdd,
+  QUICK_STAKES,
+  type StakeMode,
+} from '@/lib/slip'
 
 type Props = {
   gameId: string
@@ -87,7 +94,9 @@ export function MultiAddTray({ gameId, matchup, endings, onAdded, onClear }: Pro
           aria-label={mode === 'perEnding' ? 'Stake per ending' : 'Total stake'}
           className="num h-9 w-28"
           value={stake === 0 ? '' : stake}
-          onChange={(e) => setTyped(parseStakeInput(e.target.value))}
+          onChange={(e) =>
+            setTyped((mode === 'perEnding' ? parseStakeInput : parseTotalInput)(e.target.value))
+          }
         />
         {QUICK_STAKES.map((amount) => (
           <Button
@@ -103,7 +112,7 @@ export function MultiAddTray({ gameId, matchup, endings, onAdded, onClear }: Pro
         ))}
       </div>
 
-      <p className="num text-muted-foreground text-sm">{cost}</p>
+      <p className="num text-muted-foreground text-sm">{plan.blocked ? '–' : cost}</p>
 
       <Button
         type="button"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { useSlip } from '@/components/bet-slip/slip-provider'
 import { PointsAmount } from '@/components/points-amount'
@@ -30,6 +30,13 @@ export function EndingPicker({ gameId, awayTeam, homeTeam, open, pool, cells }: 
   const [tab, setTab] = useState<'pickers' | 'heatmap'>('pickers')
   const [multi, setMulti] = useState<Map<string, Ending>>(new Map())
   const [lastTapped, setLastTapped] = useState<Ending | null>(null)
+  // The game closing drops the selection for good, not just hides it (spec §5).
+  useEffect(() => {
+    if (!open) {
+      setMulti(new Map())
+      setLastTapped(null)
+    }
+  }, [open])
   const selectedKeys = open ? new Set(multi.keys()) : new Set<string>()
   const toggle = (awayDigit: number, homeDigit: number) => {
     const e = { awayDigit, homeDigit }

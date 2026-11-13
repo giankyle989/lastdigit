@@ -115,7 +115,10 @@ export function planMultiAdd(input: {
     total: stakes.reduce((sum, x) => sum + x, 0),
     perEnding: { min, max },
     lastStake: min,
-    blocked: newPickCount(slip, picks) > room ? `The slip has room for ${room} more endings` : null,
+    blocked:
+      newPickCount(slip, picks) > room
+        ? `The slip has room for ${room} more ${room === 1 ? 'ending' : 'endings'}`
+        : null,
   }
 }
 
@@ -129,6 +132,12 @@ export function maxStakeFor(picks: SlipPick[], index: number, balance: number): 
 export function parseStakeInput(text: string): number {
   const t = text.trim()
   return /^\d{1,10}$/.test(t) ? Math.min(MAX_STAKE, Number(t)) : 0
+}
+
+/** Split-total input text → whole number; no cap here, planMultiAdd enforces n × MAX_STAKE. */
+export function parseTotalInput(text: string): number {
+  const t = text.trim()
+  return /^\d{1,10}$/.test(t) ? Number(t) : 0
 }
 
 function updateAt(slip: Slip, index: number, stake: number, remember: boolean): Slip {

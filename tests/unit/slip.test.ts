@@ -8,6 +8,7 @@ import {
   newPickCount,
   parseStakeInput,
   parseStoredSlip,
+  parseTotalInput,
   planMultiAdd,
   type Slip,
   slipReducer,
@@ -86,6 +87,12 @@ describe('slip input and storage', () => {
     expect(parseStakeInput(' 7 ')).toBe(7)
     for (const bad of ['', '-5', '1.5', '1e3', 'abc']) expect(parseStakeInput(bad)).toBe(0)
     expect(parseStakeInput('99999999999')).toBe(0)
+  })
+
+  it('parses a split total as whole digits without the per-ending cap', () => {
+    expect(parseTotalInput('250')).toBe(250)
+    expect(parseTotalInput(' 3500000 ')).toBe(3500000)
+    for (const bad of ['', '-5', '1.5', '1e3', 'abc', '99999999999']) expect(parseTotalInput(bad)).toBe(0)
   })
 
   it('round-trips a saved slip and treats missing or broken values as empty', () => {
@@ -173,6 +180,12 @@ describe('addMany and the multi-add plan', () => {
     ).toBe(1)
     expect(plan(s, [e(0, 0)], 'perEnding', 10).blocked).toBeNull() // merges, needs no room
     expect(plan(s, [e(0, 0), e(0, 1)], 'perEnding', 10).blocked).toBe('The slip has room for 0 more endings')
+  })
+
+  it('says "1 more ending" when exactly one slot is left', () => {
+    let s = EMPTY_SLIP
+    for (let i = 0; i < 99; i++) s = add(s, pick(`x${i}`))
+    expect(plan(s, [e(0, 0), e(0, 1)], 'perEnding', 10).blocked).toBe('The slip has room for 1 more ending')
   })
 
   it('addMany merges and appends all picks and sets the last stake', () => {
