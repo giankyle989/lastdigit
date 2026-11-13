@@ -7,10 +7,17 @@ import { logAdminAction } from './audit'
 
 /** Admin-configurable point bonuses (Admin → Settings) and their defaults. */
 /**
- * welcomeBonusCap: a player's first top-up (admin grant) is matched 1:1 up to this.
- * dailyBonus is off (0) by default while the game is in its starting phase.
+ * - welcomeBonusCap: a player's first top-up (admin grant) is matched 1:1 up to this.
+ * - referralPercent / referralBonusCap: when a referred player first tops up, their referrer gets
+ *   this percent of the top-up, up to the cap.
+ * - dailyBonus: off (0) by default while the game is in its starting phase.
  */
-export const BONUS_DEFAULTS = { welcomeBonusCap: 1000, referralBonus: 500, dailyBonus: 0 } as const
+export const BONUS_DEFAULTS = {
+  welcomeBonusCap: 1000,
+  referralPercent: 50,
+  referralBonusCap: 500,
+  dailyBonus: 0,
+} as const
 export type BonusKey = keyof typeof BONUS_DEFAULTS
 export type Bonuses = Record<BonusKey, number>
 const BONUS_KEYS = Object.keys(BONUS_DEFAULTS) as BonusKey[]
@@ -27,7 +34,8 @@ export async function getBonus(key: BonusKey, db: Tx = prisma): Promise<number> 
 
 const bonusesSchema = z.object({
   welcomeBonusCap: intFromForm('Welcome bonus cap', 0, 1_000_000),
-  referralBonus: intFromForm('Referral bonus', 0, 1_000_000),
+  referralPercent: intFromForm('Referral percent', 0, 100),
+  referralBonusCap: intFromForm('Referral bonus cap', 0, 1_000_000),
   dailyBonus: intFromForm('Daily bonus', 0, 1_000_000),
 })
 

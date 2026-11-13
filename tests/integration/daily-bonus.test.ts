@@ -52,9 +52,19 @@ describe('daily bonus', () => {
   it('uses the configured amount and refuses when it is 0', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const u = await makeUser()
-    await setBonuses(admin.id, { welcomeBonusCap: 1000, referralBonus: 500, dailyBonus: 0 })
+    await setBonuses(admin.id, {
+      welcomeBonusCap: 1000,
+      referralPercent: 50,
+      referralBonusCap: 500,
+      dailyBonus: 0,
+    })
     await expect(claimDailyBonus(u.id, NOV_12_0900_PHT)).rejects.toMatchObject({ code: 'CONFLICT' })
-    await setBonuses(admin.id, { welcomeBonusCap: 1000, referralBonus: 500, dailyBonus: 25 })
+    await setBonuses(admin.id, {
+      welcomeBonusCap: 1000,
+      referralPercent: 50,
+      referralBonusCap: 500,
+      dailyBonus: 25,
+    })
     expect(await claimDailyBonus(u.id, NOV_12_0900_PHT)).toBe(25)
   })
 

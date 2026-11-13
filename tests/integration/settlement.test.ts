@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { prisma } from '@/lib/db'
 import { placeBet } from '@/server/bets'
-import { setBonuses } from '@/server/settings'
 import { settleGame, voidGame } from '@/server/settlement'
 import { registerPlayer } from '@/server/users'
 
@@ -166,65 +165,25 @@ describe('settleGame', () => {
   })
 })
 
-describe('referral bonus on the first settled bet', () => {
+describe('settlement and referrals', () => {
   beforeEach(resetDb)
 
-  async function referredPair() {
+  it("settling a referred player's bets pays the referrer nothing (the bonus comes with the top-up)", async () => {
     const alice = await registerPlayer({ username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
       username: 'bob',
       password: 'secret123',
       referralCode: alice.referralCode,
     })
-    const carol = await registerPlayer({ username: 'carol', password: 'secret123' })
+    const carol = await makeUser({ username: 'carol' })
     for (const u of [bob, carol]) await fundUser(u.id, 1000)
-    return { alice, bob, carol }
-  }
-
-  async function playGame(bobDigit: number, carolDigit: number) {
-    const bob = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'bob' } })
-    const carol = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'carol' } })
     const g = await makeGame()
-    await placeBet(bob.id, { gameId: g.id, awayDigit: bobDigit, homeDigit: 6, stake: 100 })
-    await placeBet(carol.id, { gameId: g.id, awayDigit: carolDigit, homeDigit: 6, stake: 100 })
+    await placeBet(bob.id, { gameId: g.id, awayDigit: 1, homeDigit: 6, stake: 100 })
+    await placeBet(carol.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
     await finish(g.id)
     await settleGame(g.id)
-    return g
-  }
-
-  it('pays the referrer once, when the referred player first settles (win or lose)', async () => {
-    const { alice, bob } = await referredPair()
-    await playGame(1, 9) // bob loses
-    expect(await balanceOf(alice.id)).toBe(500)
-    const t = await prisma.transaction.findFirstOrThrow({ where: { type: 'REFERRAL_BONUS' } })
-    expect(t).toMatchObject({ userId: alice.id, amount: 500, note: 'Referral: bob' })
-    expect(
-      (await prisma.user.findUniqueOrThrow({ where: { id: bob.id } })).referralBonusPaidAt,
-    ).not.toBeNull()
-
-    await playGame(9, 1) // bob wins: no second bonus
-    expect(await balanceOf(alice.id)).toBe(500)
-    expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(1)
-    await expectLedgerConsistent()
-  })
-
-  it('a refunded pool does not count as a settled bet', async () => {
-    const { alice } = await referredPair()
-    await playGame(9, 9) // both on the winning ending: refunded
     expect(await balanceOf(alice.id)).toBe(0)
     expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(0)
-  })
-
-  it('pays nothing while the referral bonus is 0, and pays later once it is turned back on', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
-    const { alice } = await referredPair()
-    await setBonuses(admin.id, { welcomeBonusCap: 1000, referralBonus: 0, dailyBonus: 100 })
-    await playGame(1, 9)
-    expect(await balanceOf(alice.id)).toBe(0)
-    await setBonuses(admin.id, { welcomeBonusCap: 1000, referralBonus: 300, dailyBonus: 100 })
-    await playGame(1, 9)
-    expect(await balanceOf(alice.id)).toBe(300)
-    await expectLedgerConsistent()
   })
 })
 

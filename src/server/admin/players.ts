@@ -7,7 +7,7 @@ import { intFromForm } from '@/lib/validation'
 import { logAdminAction } from '../audit'
 import { lockUsers, postEntry } from '../ledger'
 import { hashPassword } from '../passwords'
-import { getBonus } from '../settings'
+import { getBonuses } from '../settings'
 import { passwordSchema } from '../users'
 
 async function requirePlayer(tx: Tx, userId: string) {
@@ -23,20 +23,24 @@ const adjustSchema = z.object({
 })
 
 /**
- * Grants or deducts points. A player's first grant is their first top-up: it is matched 1:1 as a
- * welcome bonus, up to the `welcomeBonusCap` setting. Returns the welcome bonus credited (0 if none).
+ * Grants or deducts points. A player's first grant is their first top-up:
+ * - it is matched 1:1 as a welcome bonus, up to `welcomeBonusCap`;
+ * - if they were referred, the referrer gets `referralPercent`% of it, up to `referralBonusCap`
+ *   (once per referred player, guarded by `referralBonusPaidAt`).
+ * Returns the bonuses credited (0 when none).
  */
 export async function adjustPoints(
   adminId: string,
   userId: string,
   input: unknown,
-): Promise<{ welcomeBonus: number }> {
+): Promise<{ welcomeBonus: number; referralBonus: number }> {
   const { direction, amount, note } = adjustSchema.parse(input)
   return prisma.$transaction(async (tx) => {
-    await requirePlayer(tx, userId)
+    const player = await requirePlayer(tx, userId)
     const grant = direction === 'GRANT'
-    // Lock the player first so two concurrent first grants can't both see "no earlier grant".
-    await lockUsers(tx, [userId])
+    // Lock the player (and referrer) first so two concurrent first grants can't both see
+    // "no earlier grant".
+    await lockUsers(tx, player.referredById ? [userId, player.referredById] : [userId])
     const firstTopUp = grant && (await tx.transaction.count({ where: { userId, type: 'ADMIN_GRANT' } })) === 0
     await postEntry(
       tx,
@@ -55,8 +59,9 @@ export async function adjustPoints(
       targetUserId: userId,
       details: { amount, note },
     })
-    if (!firstTopUp) return { welcomeBonus: 0 }
-    const welcomeBonus = Math.min(amount, await getBonus('welcomeBonusCap', tx))
+    if (!firstTopUp) return { welcomeBonus: 0, referralBonus: 0 }
+    const bonuses = await getBonuses(tx)
+    const welcomeBonus = Math.min(amount, bonuses.welcomeBonusCap)
     if (welcomeBonus > 0) {
       await postEntry(tx, {
         userId,
@@ -66,7 +71,23 @@ export async function adjustPoints(
         note: 'Welcome bonus: first top-up matched',
       })
     }
-    return { welcomeBonus }
+
+    let referralBonus = 0
+    const fresh = await tx.user.findUniqueOrThrow({ where: { id: userId } })
+    if (fresh.referredById && !fresh.referralBonusPaidAt) {
+      referralBonus = Math.min(Math.floor((amount * bonuses.referralPercent) / 100), bonuses.referralBonusCap)
+      if (referralBonus > 0) {
+        await tx.user.update({ where: { id: userId }, data: { referralBonusPaidAt: new Date() } })
+        await postEntry(tx, {
+          userId: fresh.referredById,
+          type: 'REFERRAL_BONUS',
+          amount: referralBonus,
+          adminId,
+          note: `Referral: ${fresh.username} topped up ${amount.toLocaleString('en-US')}`,
+        })
+      }
+    }
+    return { welcomeBonus, referralBonus }
   })
 }
 

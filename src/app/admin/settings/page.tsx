@@ -29,10 +29,11 @@ const BONUS_FIELDS: { key: BonusKey; label: string; hint: string }[] = [
     hint: "A player's first top-up is matched 1:1 up to this; 0 turns it off",
   },
   {
-    key: 'referralBonus',
-    label: 'Referral bonus',
-    hint: "Paid to the referrer when the new player's first bet settles",
+    key: 'referralPercent',
+    label: 'Referral percent',
+    hint: "Share of a referred player's first top-up paid to their referrer (0–100)",
   },
+  { key: 'referralBonusCap', label: 'Referral bonus cap', hint: 'Most a referrer earns per referred player' },
   {
     key: 'dailyBonus',
     label: 'Daily bonus',

@@ -30,10 +30,13 @@ export async function adjustPointsAction(
         amount: fd.get('amount'),
         note: fd.get('note'),
       }),
-    ({ welcomeBonus }) =>
-      welcomeBonus > 0
-        ? `Points updated (+${welcomeBonus.toLocaleString('en-US')} welcome bonus)`
-        : 'Points updated',
+    ({ welcomeBonus, referralBonus }) => {
+      const extras = [
+        welcomeBonus > 0 && `+${welcomeBonus.toLocaleString('en-US')} welcome bonus`,
+        referralBonus > 0 && `+${referralBonus.toLocaleString('en-US')} to their referrer`,
+      ].filter(Boolean)
+      return extras.length ? `Points updated (${extras.join(', ')})` : 'Points updated'
+    },
   )
   revalidatePath('/admin', 'layout')
   return r
@@ -123,7 +126,8 @@ export async function bonusesAction(_prev: ActionState, fd: FormData): Promise<A
     () =>
       setBonuses(admin.id, {
         welcomeBonusCap: fd.get('welcomeBonusCap'),
-        referralBonus: fd.get('referralBonus'),
+        referralPercent: fd.get('referralPercent'),
+        referralBonusCap: fd.get('referralBonusCap'),
         dailyBonus: fd.get('dailyBonus'),
       }),
     'Bonuses saved',

@@ -29,7 +29,7 @@ async function logout(page: Page, from: 'player' | 'admin') {
   await page.waitForURL('**/login')
 }
 
-test('referral → first top-up matched → daily bonus → slip bet → settle → payout + referral bonus', async ({
+test('referral → first top-up matched + referral bonus → daily bonus → slip bet → settle → payout', async ({
   page,
 }, testInfo) => {
   // Each project (desktop, iphone) runs against the same database: keep its users and game apart.
@@ -51,11 +51,12 @@ test('referral → first top-up matched → daily bonus → slip bet → settle 
   await page.goto('/login')
   await page.waitForURL('**/games')
   await logout(page, 'player')
-  // players start at 0; alice's referral bonus waits for bob's first settled bet
+  // players start at 0; alice's referral bonus waits for bob's first top-up
   const aliceRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
   expect(aliceRow.balance).toBe(0)
 
-  // admin tops bob up with 1000 from the player drawer; his first top-up is matched (+1000)
+  // admin tops bob up with 1000 from the player drawer: his first top-up is matched (+1000)
+  // and alice, who referred him, gets 50% of it (capped at 500)
   await login(page, 'admin', 'admin12345')
   await page.waitForURL('**/admin')
   await page.goto(`/admin/players?q=${bob}`)
@@ -65,7 +66,8 @@ test('referral → first top-up matched → daily bonus → slip bet → settle 
   await page.getByLabel('Amount').fill('1000')
   await page.getByLabel('Note').fill('Welcome bonus')
   await page.getByRole('button', { name: 'Grant points', exact: true }).click()
-  await expect(page.getByText('Points updated (+1,000 welcome bonus)')).toBeVisible()
+  await expect(page.getByText('Points updated (+1,000 welcome bonus, +500 to their referrer)')).toBeVisible()
+  expect((await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })).balance).toBe(500)
   await logout(page, 'admin')
 
   // a game exists; bob picks 9-6 with the pickers, adds it to the slip and confirms
@@ -87,7 +89,12 @@ test('referral → first top-up matched → daily bonus → slip bet → settle 
   await page.waitForURL('**/games')
 
   // the daily bonus is off by default; turn it on, then bob claims it from the wallet
-  await setBonuses(adminRow.id, { welcomeBonusCap: 1000, referralBonus: 500, dailyBonus: 100 })
+  await setBonuses(adminRow.id, {
+    welcomeBonusCap: 1000,
+    referralPercent: 50,
+    referralBonusCap: 500,
+    dailyBonus: 100,
+  })
   await page.goto('/wallet')
   await page.getByRole('button', { name: 'Claim', exact: true }).click()
   await expect(page.getByText('+100 pts daily bonus')).toBeVisible()
@@ -121,7 +128,7 @@ test('referral → first top-up matched → daily bonus → slip bet → settle 
   await expect(page.getByTestId('balance')).toHaveText('2,180 pts')
   await expect(page.getByText('Payout', { exact: true })).toBeVisible()
 
-  // bob's first settled bet pays alice the referral bonus: 200 - 100 + 500
+  // alice: 500 referral + 100 top-up + 100 matched - 100 stake (her bet lost)
   const aliceAfter = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
   expect(aliceAfter.balance).toBe(600)
 })
