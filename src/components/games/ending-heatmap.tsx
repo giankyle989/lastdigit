@@ -43,7 +43,12 @@ export function EndingHeatmap({
   const max = maxCell(cells)
   return (
     <div className="overflow-x-auto pt-1 pr-1">
-      <table className="border-separate border-spacing-0.5 text-[10px]">
+      {/* Cells fill the card as squares: 24 px (min-w, then the wrapper scrolls) to 32 px (max-w).
+          Widths = 20 px label column + 10 cells + 12 × 2 px spacing. */}
+      <table className="w-full max-w-[364px] min-w-[284px] table-fixed border-separate border-spacing-0.5 text-[10px]">
+        <colgroup>
+          <col className="w-5" />
+        </colgroup>
         <caption className="text-muted-foreground mb-1 text-left text-xs">
           Rows: {awayTeam} last digit · Columns: {homeTeam} last digit
         </caption>
@@ -53,7 +58,7 @@ export function EndingHeatmap({
               {awayTeam} digit
             </th>
             {DIGITS.map((h) => (
-              <th key={h} scope="col" className="num text-muted-foreground w-8 font-normal">
+              <th key={h} scope="col" className="num text-muted-foreground font-normal">
                 {h}
               </th>
             ))}
@@ -74,7 +79,7 @@ export function EndingHeatmap({
                 const isWinning = winning?.awayDigit === a && winning.homeDigit === h
                 const onPress = onToggle ?? onSelect
                 const className = cn(
-                  'num relative flex size-8 items-center justify-center rounded-md',
+                  'num relative flex aspect-square w-full items-center justify-center rounded-md',
                   SHADES[heatLevel(stake, max)],
                   isSelected && 'ring-foreground ring-2',
                   isWinning && 'ring-live ring-2',

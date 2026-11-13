@@ -78,8 +78,9 @@ afford, as today.
 - Phone: the tray sits directly under the grid, then the panel; the slip bar keeps floating above
   the tab bar.
 - Desktop: same order in the game column; the slip stays in the right column.
-- The grid keeps its 10 × 10 layout and 32 px cells (above the 24 px WCAG 2.5.8 minimum; 44 px
-  cells cannot fit ten across a phone).
+- The grid keeps its 10 × 10 layout. Square cells fit the card width, never larger than 32 px and
+  never smaller than 24 px (the WCAG 2.5.8 minimum; 44 px cells cannot fit ten across a phone).
+  Below the 24 px floor (about 320 px viewports) the grid scrolls horizontally inside its wrapper.
 - The stake mode is a native radio group in a `fieldset` with a legend; the selection count is a
   polite live region.
 
@@ -117,8 +118,9 @@ No schema change and no migration. When building the tray and the toggling grid,
 - **Game closes while cells are selected:** the page refreshes at tip-off (existing `Countdown`),
   the grid turns read-only and the selection is dropped. Picks already in the slip are flagged by
   the existing slip status check.
-- **Slip changes in another tab:** room is computed from the current slip at tap time; `addMany`
-  re-checks room in the reducer, so a stale count cannot overfill it.
+- **Slip changes in another tab:** each tab keeps its own in-memory slip. The reducer re-checks
+  room against the slip state it reduces, so a stale tray cannot overfill the slip; cross-tab
+  edits are last-write-wins, as before this feature.
 - **Server rejects a pick** (balance, stake limit, closed game): unchanged — the slip keeps all
   picks, highlights the failing one and shows the error.
 
