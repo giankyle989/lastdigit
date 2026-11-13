@@ -54,15 +54,15 @@ describe('slipReducer', () => {
     expect(maxStakeFor([], 0, -10)).toBe(0)
   })
 
-  it('caps the slip at 20 picks but still merges into existing ones', () => {
+  it('caps the slip at 100 picks but still merges into existing ones', () => {
     let s = EMPTY_SLIP
-    for (let i = 0; i < 20; i++) s = add(s, pick(`g${i}`))
-    expect(s.picks).toHaveLength(20)
-    expect(canAdd(s, pick('g20'))).toBe(false)
-    expect(add(s, pick('g20'))).toBe(s)
+    for (let i = 0; i < 100; i++) s = add(s, pick(`g${i}`))
+    expect(s.picks).toHaveLength(100)
+    expect(canAdd(s, pick('g100'))).toBe(false)
+    expect(add(s, pick('g100'))).toBe(s)
     expect(canAdd(s, pick('g3'))).toBe(true)
     expect(add(s, pick('g3')).picks[3]?.stake).toBe(200)
-    expect(slipTotal(s.picks)).toBe(2000)
+    expect(slipTotal(s.picks)).toBe(10_000)
   })
 })
 
@@ -95,8 +95,10 @@ describe('slip input and storage', () => {
       parseStoredSlip(JSON.stringify({ picks: [{ gameId: 'g', awayDigit: 12 }], lastStake: 1 })),
     ).toEqual(EMPTY_SLIP)
     expect(parseStoredSlip('[]')).toEqual(EMPTY_SLIP)
-    const tooMany = Array.from({ length: 21 }, (_, i) => ({ ...pick(`g${i}`), stake: 1 }))
+    const tooMany = Array.from({ length: 101 }, (_, i) => ({ ...pick(`g${i}`), stake: 1 }))
     expect(parseStoredSlip(JSON.stringify({ picks: tooMany, lastStake: 100 }))).toEqual(EMPTY_SLIP)
+    const full = Array.from({ length: 100 }, (_, i) => ({ ...pick(`g${i}`), stake: 1 }))
+    expect(parseStoredSlip(JSON.stringify({ picks: full, lastStake: 100 })).picks).toHaveLength(100)
     expect(slipStorageKey('u1')).toBe('lastdigit.slip.u1')
   })
 })

@@ -128,11 +128,28 @@ describe('placeBets', () => {
 
   it.each([
     [[]],
-    [Array.from({ length: 21 }, () => ({ gameId: 'g', awayDigit: 1, homeDigit: 1, stake: 1 }))],
+    [Array.from({ length: 101 }, () => ({ gameId: 'g', awayDigit: 1, homeDigit: 1, stake: 1 }))],
     ['nope'],
   ])('rejects an empty, oversized or malformed slip (%#)', async (input) => {
     const u = await makeUser()
     await expect(placeBets(u.id, input)).rejects.toBeInstanceOf(ZodError)
+  })
+
+  it('places a 100-pick slip covering every ending of a game', async () => {
+    const u = await makeUser()
+    await fundUser(u.id, 100)
+    const g = await makeGame()
+    const picks = Array.from({ length: 100 }, (_, i) => ({
+      gameId: g.id,
+      awayDigit: Math.floor(i / 10),
+      homeDigit: i % 10,
+      stake: 1,
+    }))
+    const bets = await placeBets(u.id, picks)
+    expect(bets).toHaveLength(100)
+    expect(await balanceOf(u.id)).toBe(0)
+    expect(await poolOf(g.id)).toBe(100)
+    await expectLedgerConsistent()
   })
 
   it('concurrent overlapping slips neither deadlock nor overspend', async () => {
