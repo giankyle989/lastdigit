@@ -92,7 +92,7 @@ describe('admin player management', () => {
     expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(300)
   })
 
-  it("pays the referrer 50% of the referred friend's first top-up, capped at 500", async () => {
+  it("pays the referrer 50% of the referred friend's first top-up, capped at 200", async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const alice = await registerPlayer({ username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
@@ -127,9 +127,9 @@ describe('admin player management', () => {
     await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 1000, note: 'again' })
     expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(150)
 
-    // 50% of 2000 is capped at 500
+    // 50% of 2000 is capped at 200 (the default cap)
     await adjustPoints(admin.id, cara.id, { direction: 'GRANT', amount: 2000, note: 'top-up' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(650)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(350)
     await expectLedgerConsistent()
   })
 

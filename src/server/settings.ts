@@ -15,7 +15,7 @@ import { logAdminAction } from './audit'
 export const BONUS_DEFAULTS = {
   welcomeBonusCap: 1000,
   referralPercent: 50,
-  referralBonusCap: 500,
+  referralBonusCap: 200,
   dailyBonus: 0,
 } as const
 export type BonusKey = keyof typeof BONUS_DEFAULTS

@@ -13,10 +13,10 @@ describe('settings', () => {
     expect(await getBonuses()).toEqual({
       welcomeBonusCap: 1000,
       referralPercent: 50,
-      referralBonusCap: 500,
+      referralBonusCap: 200,
       dailyBonus: 0,
     })
-    expect(await getBonus('referralBonusCap')).toBe(500)
+    expect(await getBonus('referralBonusCap')).toBe(200)
   })
 
   it('admin can change the bonuses, and it is audited', async () => {
