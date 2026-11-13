@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { prisma, type Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
+import { MAX_GRANT, MAX_STAKE } from '@/lib/game/limits'
 import { intFromForm } from '@/lib/validation'
 
 import { logAdminAction } from '../audit'
@@ -18,7 +19,7 @@ async function requirePlayer(tx: Tx, userId: string) {
 
 const adjustSchema = z.object({
   direction: z.enum(['GRANT', 'DEDUCT'], { errorMap: () => ({ message: 'Choose grant or deduct' }) }),
-  amount: intFromForm('Amount', 1, 1_000_000_000),
+  amount: intFromForm('Amount', 1, MAX_GRANT),
   note: z.string({ required_error: 'A note is required' }).trim().min(1, 'A note is required').max(500),
 })
 
@@ -118,7 +119,7 @@ export async function unsuspendPlayer(adminId: string, userId: string): Promise<
   })
 }
 
-const stakeLimitSchema = z.union([z.null(), intFromForm('Stake limit', 1, 1_000_000_000)])
+const stakeLimitSchema = z.union([z.null(), intFromForm('Stake limit', 1, MAX_STAKE)])
 
 export async function setStakeLimit(adminId: string, userId: string, limit: unknown): Promise<void> {
   const value = stakeLimitSchema.parse(limit)

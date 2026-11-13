@@ -188,6 +188,15 @@ describe('admin player management', () => {
     ).rejects.toBeInstanceOf(ZodError)
   })
 
+  it('rejects a grant above 10,000,000 points', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const p = await makeUser()
+    await expect(
+      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: '10000001', note: 'typo' }),
+    ).rejects.toBeInstanceOf(ZodError)
+    expect(await prisma.transaction.count()).toBe(0)
+  })
+
   it('only targets players', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const other = await makeUser({ role: 'ADMIN' })
@@ -224,6 +233,7 @@ describe('admin player management', () => {
     await setStakeLimit(admin.id, p.id, null)
     expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).stakeLimitPerGame).toBeNull()
     await expect(setStakeLimit(admin.id, p.id, '0')).rejects.toBeInstanceOf(ZodError)
+    await expect(setStakeLimit(admin.id, p.id, '1000001')).rejects.toBeInstanceOf(ZodError)
   })
 
   it('resets the password', async () => {

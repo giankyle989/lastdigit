@@ -6,6 +6,13 @@ import { getLastSyncAt } from '../settings'
 const SYNC_STALE_MS = 30 * 60 * 1000
 const DAY_MS = 86_400_000
 const ATTENTION_LIMIT = 10
+/** A FINAL game normally settles on the next sync; one still FINAL after this keeps failing. */
+const SETTLE_STUCK_MS = 15 * 60 * 1000
+
+/** FINAL games whose settlement has failed for SETTLE_STUCK_MS (sync never moves a FINAL game). */
+function stuckSettlementWhere(now: Date) {
+  return { status: 'FINAL' as const, updatedAt: { lt: new Date(now.getTime() - SETTLE_STUCK_MS) } }
+}
 
 export async function getOverviewStats(now: Date = new Date()) {
   const weekStart = localDayRange(addDays(localDateOf(now), -6)).start
@@ -17,6 +24,7 @@ export async function getOverviewStats(now: Date = new Date()) {
     houseTakeAllTime,
     lastSyncAt,
     postponed,
+    stuckSettlements,
     negativeBalances,
     openTickets,
     openTicketCount,
@@ -38,6 +46,12 @@ export async function getOverviewStats(now: Date = new Date()) {
     getLastSyncAt(),
     prisma.game.findMany({
       where: { status: 'POSTPONED' },
+      select: { id: true, awayTeam: true, homeTeam: true, startsAt: true },
+      orderBy: { startsAt: 'asc' },
+      take: ATTENTION_LIMIT,
+    }),
+    prisma.game.findMany({
+      where: stuckSettlementWhere(now),
       select: { id: true, awayTeam: true, homeTeam: true, startsAt: true },
       orderBy: { startsAt: 'asc' },
       take: ATTENTION_LIMIT,
@@ -66,6 +80,7 @@ export async function getOverviewStats(now: Date = new Date()) {
     lastSyncAt,
     syncStale: !lastSyncAt || now.getTime() - lastSyncAt.getTime() > SYNC_STALE_MS,
     postponed,
+    stuckSettlements,
     negativeBalances,
     openTickets: openTickets.map((t) => ({ id: t.id, subject: t.subject, username: t.user.username })),
     openTicketCount,
@@ -130,11 +145,12 @@ export async function getTopBettorsToday(now: Date = new Date()) {
 }
 
 /** Sidebar badges: open ticket count, and whether the overview has anything needing attention. */
-export async function getAdminBadges() {
-  const [openTickets, postponed, negative] = await Promise.all([
+export async function getAdminBadges(now: Date = new Date()) {
+  const [openTickets, postponed, stuck, negative] = await Promise.all([
     prisma.inquiry.count({ where: { status: 'OPEN' } }),
     prisma.game.count({ where: { status: 'POSTPONED' } }),
+    prisma.game.count({ where: stuckSettlementWhere(now) }),
     prisma.user.count({ where: { balance: { lt: 0 } } }),
   ])
-  return { openTickets, needsAttention: openTickets + postponed + negative > 0 }
+  return { openTickets, needsAttention: openTickets + postponed + stuck + negative > 0 }
 }

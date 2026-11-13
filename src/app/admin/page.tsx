@@ -27,7 +27,11 @@ async function OverviewBody() {
     getDailyVolume(14, now),
     getTopBettorsToday(now),
   ])
-  const allClear = s.postponed.length === 0 && s.negativeBalances.length === 0 && s.openTickets.length === 0
+  const allClear =
+    s.postponed.length === 0 &&
+    s.stuckSettlements.length === 0 &&
+    s.negativeBalances.length === 0 &&
+    s.openTickets.length === 0
 
   return (
     <>
@@ -86,6 +90,16 @@ async function OverviewBody() {
                         Postponed: {g.awayTeam} @ {g.homeTeam}
                       </span>
                       <span className="text-live">Review</span>
+                    </Link>
+                  </li>
+                ))}
+                {s.stuckSettlements.map((g) => (
+                  <li key={g.id}>
+                    <Link href={`/admin/games?game=${g.id}`} className="flex justify-between gap-2 py-2">
+                      <span>
+                        Settlement failing: {g.awayTeam} @ {g.homeTeam}
+                      </span>
+                      <span className="text-danger">Review</span>
                     </Link>
                   </li>
                 ))}

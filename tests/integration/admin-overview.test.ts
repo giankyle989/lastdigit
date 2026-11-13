@@ -86,6 +86,18 @@ describe('admin overview', () => {
     expect(await getAdminBadges()).toEqual({ openTickets: 1, needsAttention: true })
   })
 
+  it('flags FINAL games that have not settled for 15 minutes', async () => {
+    const now = new Date('2026-11-11T17:00:00Z')
+    const stuck = await makeGame({ status: 'FINAL', awayTeam: 'BOS', homeTeam: 'NYK' })
+    const fresh = await makeGame({ status: 'FINAL' })
+    await prisma.$executeRaw`UPDATE "Game" SET "updatedAt" = ${new Date('2026-11-11T16:44:59Z')} WHERE id = ${stuck.id}`
+    await prisma.$executeRaw`UPDATE "Game" SET "updatedAt" = ${new Date('2026-11-11T16:50:00Z')} WHERE id = ${fresh.id}`
+
+    const s = await getOverviewStats(now)
+    expect(s.stuckSettlements.map((g) => g.id)).toEqual([stuck.id])
+    expect(await getAdminBadges(now)).toEqual({ openTickets: 0, needsAttention: true })
+  })
+
   it('flags a stale or missing sync and reports all clear', async () => {
     const now = new Date('2026-11-11T17:00:00Z')
     expect((await getOverviewStats(now)).syncStale).toBe(true)

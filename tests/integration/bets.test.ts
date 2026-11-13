@@ -59,6 +59,16 @@ describe('placeBet', () => {
     expect(await balanceOf(u.id)).toBe(50)
   })
 
+  it('rejects a stake above 1,000,000 points', async () => {
+    const u = await makeUser()
+    await fundUser(u.id, 2_000_000)
+    const g = await makeGame()
+    await expect(
+      placeBet(u.id, { gameId: g.id, awayDigit: '9', homeDigit: '6', stake: '1000001' }),
+    ).rejects.toBeInstanceOf(ZodError)
+    expect(await balanceOf(u.id)).toBe(2_000_000)
+  })
+
   it('closes betting exactly at tip-off', async () => {
     const u = await makeUser()
     await fundUser(u.id, 100)
