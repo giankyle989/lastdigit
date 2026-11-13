@@ -27,11 +27,6 @@ async function main() {
       referralCode: generateReferralCode(),
     },
   })
-  await prisma.setting.upsert({
-    where: { key: 'referralBonus' },
-    update: {},
-    create: { key: 'referralBonus', value: '500' },
-  })
   console.log(`Seeded admin "${username}"`)
 }
 

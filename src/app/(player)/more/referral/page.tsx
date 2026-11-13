@@ -6,15 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDateTime } from '@/lib/format'
 import { listMyReferrals } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
-import { getBonus } from '@/server/settings'
+import { getBonuses } from '@/server/settings'
 
 export default async function ReferralPage() {
   const user = await requireUser()
-  const [referrals, bonus, h] = await Promise.all([
-    listMyReferrals(user.id),
-    getBonus('referralBonus'),
-    headers(),
-  ])
+  const [referrals, bonuses, h] = await Promise.all([listMyReferrals(user.id), getBonuses(), headers()])
   const origin = `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('host')}`
   const link = `${origin}/signup?ref=${user.referralCode}`
   return (
@@ -23,8 +19,10 @@ export default async function ReferralPage() {
       <Card>
         <CardContent className="space-y-3">
           <p className="text-sm">
-            Earn <PointsAmount value={bonus} unit className="text-primary font-semibold" /> for each friend
-            who signs up with your code, once their first bet settles.
+            Earn <strong className="text-primary">{bonuses.referralPercent}%</strong> of your friend&apos;s
+            first top-up, up to{' '}
+            <PointsAmount value={bonuses.referralBonusCap} unit className="text-primary font-semibold" />, for
+            each friend who signs up with your code.
           </p>
           <div className="bg-surface-2 border-border rounded-lg border p-3 text-center">
             <div className="text-muted-foreground text-xs">Your code</div>

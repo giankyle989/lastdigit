@@ -62,7 +62,7 @@ model User {
   balance             Int              @default(0)
   referralCode        String           @unique
   referredById        String?
-  /// Set when the referrer was paid (after this player's first settled bet).
+  /// Set when the referrer was paid (on this player's first top-up).
   referralBonusPaidAt DateTime?
   /// PHT calendar date ('YYYY-MM-DD') of the last daily bonus claim.
   lastDailyBonusOn    String?

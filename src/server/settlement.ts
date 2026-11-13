@@ -7,7 +7,6 @@ import { computeSplit, REFUND_NOTES, refundReason } from '@/lib/game/payout'
 
 import { logAdminAction } from './audit'
 import { lockUsers, postEntry } from './ledger'
-import { getBonus } from './settings'
 
 export async function settleGame(gameId: string, now: Date = new Date()): Promise<{ settled: boolean }> {
   return prisma.$transaction(
@@ -58,20 +57,7 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
         return { settled: true }
       }
 
-      // Referred players settling their first bet earn their referrer the referral bonus (spec §5).
-      const referralBonus = await getBonus('referralBonus', tx)
-      const referred =
-        referralBonus > 0
-          ? await tx.user.findMany({
-              where: { id: { in: bettorIds }, referredById: { not: null }, referralBonusPaidAt: null },
-              select: { id: true, username: true, referredById: true },
-              orderBy: { id: 'asc' },
-            })
-          : []
-      await lockUsers(tx, [
-        ...bettorIds,
-        ...referred.flatMap((r) => (r.referredById ? [r.referredById] : [])),
-      ])
+      await lockUsers(tx, bettorIds)
 
       const split = computeSplit(entries)
 
@@ -85,21 +71,6 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
         if (payout > 0) {
           await postEntry(tx, { userId: bet.userId, type: 'PAYOUT', amount: payout, gameId, betId: bet.id })
         }
-      }
-
-      for (const r of referred) {
-        if (!r.referredById) continue
-        const claimed = await tx.user.updateMany({
-          where: { id: r.id, referralBonusPaidAt: null },
-          data: { referralBonusPaidAt: now },
-        })
-        if (claimed.count === 0) continue
-        await postEntry(tx, {
-          userId: r.referredById,
-          type: 'REFERRAL_BONUS',
-          amount: referralBonus,
-          note: `Referral: ${r.username}`,
-        })
       }
 
       await tx.game.update({ where: { id: gameId }, data: { pool: split.pool, houseTake: split.houseTake } })
