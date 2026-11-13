@@ -15,7 +15,17 @@ async function balanceOf(id: string) {
 }
 
 describe('daily bonus', () => {
-  beforeEach(resetDb)
+  beforeEach(async () => {
+    await resetDb()
+    // off by default; these tests turn it on at 100
+    await prisma.setting.create({ data: { key: 'dailyBonus', value: '100' } })
+  })
+
+  it('is off by default', async () => {
+    await prisma.setting.deleteMany()
+    const u = await makeUser()
+    await expect(claimDailyBonus(u.id, NOV_12_0900_PHT)).rejects.toMatchObject({ code: 'CONFLICT' })
+  })
 
   it('credits the bonus once per PHT day', async () => {
     const u = await makeUser()
@@ -42,9 +52,9 @@ describe('daily bonus', () => {
   it('uses the configured amount and refuses when it is 0', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const u = await makeUser()
-    await setBonuses(admin.id, { signupBonus: 1000, referralBonus: 500, dailyBonus: 0 })
+    await setBonuses(admin.id, { welcomeBonusCap: 1000, referralBonus: 500, dailyBonus: 0 })
     await expect(claimDailyBonus(u.id, NOV_12_0900_PHT)).rejects.toMatchObject({ code: 'CONFLICT' })
-    await setBonuses(admin.id, { signupBonus: 1000, referralBonus: 500, dailyBonus: 25 })
+    await setBonuses(admin.id, { welcomeBonusCap: 1000, referralBonus: 500, dailyBonus: 25 })
     expect(await claimDailyBonus(u.id, NOV_12_0900_PHT)).toBe(25)
   })
 

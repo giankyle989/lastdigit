@@ -5,10 +5,8 @@ import { prisma } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 import { isSuspended } from '@/lib/suspension'
 
-import { postEntry } from './ledger'
 import { hashPassword, verifyPassword } from './passwords'
 import { generateReferralCode } from './referral-code'
-import { getBonus } from './settings'
 
 export const usernameSchema = z
   .string({ required_error: 'Username is required' })
@@ -62,11 +60,6 @@ export async function registerPlayer(input: unknown): Promise<User> {
           },
         })
         // The referrer is paid later, when this player's first bet settles (see settlement.ts).
-        const bonus = await getBonus('signupBonus', tx)
-        if (bonus > 0) {
-          await postEntry(tx, { userId: user.id, type: 'SIGNUP_BONUS', amount: bonus, note: 'Welcome bonus' })
-          return tx.user.findUniqueOrThrow({ where: { id: user.id } })
-        }
         return user
       })
     } catch (e) {

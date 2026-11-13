@@ -177,6 +177,7 @@ describe('referral bonus on the first settled bet', () => {
       referralCode: alice.referralCode,
     })
     const carol = await registerPlayer({ username: 'carol', password: 'secret123' })
+    for (const u of [bob, carol]) await fundUser(u.id, 1000)
     return { alice, bob, carol }
   }
 
@@ -194,7 +195,7 @@ describe('referral bonus on the first settled bet', () => {
   it('pays the referrer once, when the referred player first settles (win or lose)', async () => {
     const { alice, bob } = await referredPair()
     await playGame(1, 9) // bob loses
-    expect(await balanceOf(alice.id)).toBe(1000 + 500)
+    expect(await balanceOf(alice.id)).toBe(500)
     const t = await prisma.transaction.findFirstOrThrow({ where: { type: 'REFERRAL_BONUS' } })
     expect(t).toMatchObject({ userId: alice.id, amount: 500, note: 'Referral: bob' })
     expect(
@@ -202,7 +203,7 @@ describe('referral bonus on the first settled bet', () => {
     ).not.toBeNull()
 
     await playGame(9, 1) // bob wins: no second bonus
-    expect(await balanceOf(alice.id)).toBe(1500)
+    expect(await balanceOf(alice.id)).toBe(500)
     expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(1)
     await expectLedgerConsistent()
   })
@@ -210,19 +211,19 @@ describe('referral bonus on the first settled bet', () => {
   it('a refunded pool does not count as a settled bet', async () => {
     const { alice } = await referredPair()
     await playGame(9, 9) // both on the winning ending: refunded
-    expect(await balanceOf(alice.id)).toBe(1000)
+    expect(await balanceOf(alice.id)).toBe(0)
     expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(0)
   })
 
   it('pays nothing while the referral bonus is 0, and pays later once it is turned back on', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const { alice } = await referredPair()
-    await setBonuses(admin.id, { signupBonus: 1000, referralBonus: 0, dailyBonus: 100 })
+    await setBonuses(admin.id, { welcomeBonusCap: 1000, referralBonus: 0, dailyBonus: 100 })
     await playGame(1, 9)
-    expect(await balanceOf(alice.id)).toBe(1000)
-    await setBonuses(admin.id, { signupBonus: 1000, referralBonus: 300, dailyBonus: 100 })
+    expect(await balanceOf(alice.id)).toBe(0)
+    await setBonuses(admin.id, { welcomeBonusCap: 1000, referralBonus: 300, dailyBonus: 100 })
     await playGame(1, 9)
-    expect(await balanceOf(alice.id)).toBe(1300)
+    expect(await balanceOf(alice.id)).toBe(300)
     await expectLedgerConsistent()
   })
 })

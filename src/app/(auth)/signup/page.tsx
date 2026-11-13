@@ -18,15 +18,15 @@ export default async function SignupPage({
 }) {
   if (await getCurrentUser()) redirect('/')
   const ref = firstParam((await searchParams).ref)?.slice(0, 32) ?? ''
-  const welcome = await getBonus('signupBonus')
+  const welcomeCap = await getBonus('welcomeBonusCap')
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Sign up</CardTitle>
-          {welcome > 0 && (
+          {welcomeCap > 0 && (
             <p className="text-muted-foreground text-sm">
-              New players start with {welcome.toLocaleString('en-US')} points.
+              Your first top-up is doubled, up to {welcomeCap.toLocaleString('en-US')} bonus points.
             </p>
           )}
         </CardHeader>

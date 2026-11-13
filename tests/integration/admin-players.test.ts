@@ -9,6 +9,7 @@ import {
   suspendPlayer,
   unsuspendPlayer,
 } from '@/server/admin/players'
+import { setBonuses } from '@/server/settings'
 import { registerPlayer, verifyCredentials } from '@/server/users'
 
 import { expectLedgerConsistent, makeUser, resetDb } from '../helpers/db'
@@ -19,7 +20,12 @@ describe('admin player management', () => {
   it('grants points with a note and audits it', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const p = await makeUser()
-    await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: '1000', note: 'Welcome' })
+    await setBonuses(admin.id, { welcomeBonusCap: 0, referralBonus: 500, dailyBonus: 0 })
+    expect(
+      await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: '1000', note: 'Welcome' }),
+    ).toEqual({
+      welcomeBonus: 0,
+    })
     expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(1000)
     expect(await prisma.transaction.findFirstOrThrow()).toMatchObject({
       type: 'ADMIN_GRANT',
@@ -27,21 +33,65 @@ describe('admin player management', () => {
       adminId: admin.id,
       note: 'Welcome',
     })
-    expect(await prisma.adminAction.findFirstOrThrow()).toMatchObject({
+    expect(await prisma.adminAction.findFirstOrThrow({ where: { action: 'GRANT_POINTS' } })).toMatchObject({
       action: 'GRANT_POINTS',
       targetUserId: p.id,
     })
     await expectLedgerConsistent()
   })
 
+  it('matches the first top-up 1:1 as a welcome bonus, up to the cap, once', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const small = await makeUser()
+    const big = await makeUser()
+    expect(
+      await adjustPoints(admin.id, small.id, { direction: 'GRANT', amount: 300, note: 'top-up' }),
+    ).toEqual({
+      welcomeBonus: 300,
+    })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: small.id } })).balance).toBe(600)
+    const bonus = await prisma.transaction.findFirstOrThrow({
+      where: { userId: small.id, type: 'SIGNUP_BONUS' },
+    })
+    expect(bonus).toMatchObject({
+      amount: 300,
+      adminId: admin.id,
+      note: 'Welcome bonus: first top-up matched',
+    })
+
+    // a second top-up is not matched
+    expect(
+      await adjustPoints(admin.id, small.id, { direction: 'GRANT', amount: 300, note: 'again' }),
+    ).toEqual({
+      welcomeBonus: 0,
+    })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: small.id } })).balance).toBe(900)
+
+    // capped at 1000 by default
+    await adjustPoints(admin.id, big.id, { direction: 'GRANT', amount: 2000, note: 'top-up' })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: big.id } })).balance).toBe(3000)
+    await expectLedgerConsistent()
+  })
+
+  it('concurrent first top-ups match only once', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const p = await makeUser()
+    await Promise.all([
+      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'a' }),
+      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'b' }),
+    ])
+    expect(await prisma.transaction.count({ where: { type: 'SIGNUP_BONUS' } })).toBe(1)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(300)
+  })
+
   it('deducts points but not below zero', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
     const p = await makeUser()
-    await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'x' })
+    await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'x' }) // +100 match
     await adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 40, note: 'correction' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(60)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(160)
     await expect(
-      adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 61, note: 'too much' }),
+      adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 161, note: 'too much' }),
     ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' })
   })
 

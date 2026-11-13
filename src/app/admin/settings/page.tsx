@@ -23,7 +23,11 @@ import { bonusesAction } from '../actions'
 const BASE = '/admin/settings'
 
 const BONUS_FIELDS: { key: BonusKey; label: string; hint: string }[] = [
-  { key: 'signupBonus', label: 'Signup bonus', hint: 'Given to every new player' },
+  {
+    key: 'welcomeBonusCap',
+    label: 'Welcome bonus cap',
+    hint: "A player's first top-up is matched 1:1 up to this; 0 turns it off",
+  },
   {
     key: 'referralBonus',
     label: 'Referral bonus',

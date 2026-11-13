@@ -1,7 +1,9 @@
 import { expect, type Page, test } from '@playwright/test'
 
 import { prisma } from '../src/lib/db'
+import { adjustPoints } from '../src/server/admin/players'
 import { placeBet } from '../src/server/bets'
+import { setBonuses } from '../src/server/settings'
 import type { ApiGame } from '../src/server/sync/balldontlie'
 import { syncGames } from '../src/server/sync/sync'
 
@@ -27,7 +29,7 @@ async function logout(page: Page, from: 'player' | 'admin') {
   await page.waitForURL('**/login')
 }
 
-test('signup bonus → referral → admin grant → daily bonus → slip bet → settle → payout + referral bonus', async ({
+test('referral → first top-up matched → daily bonus → slip bet → settle → payout + referral bonus', async ({
   page,
 }, testInfo) => {
   // Each project (desktop, iphone) runs against the same database: keep its users and game apart.
@@ -49,11 +51,11 @@ test('signup bonus → referral → admin grant → daily bonus → slip bet →
   await page.goto('/login')
   await page.waitForURL('**/games')
   await logout(page, 'player')
-  // both start with the 1000-point welcome bonus; alice's referral bonus waits for bob's first settled bet
+  // players start at 0; alice's referral bonus waits for bob's first settled bet
   const aliceRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect(aliceRow.balance).toBe(1000)
+  expect(aliceRow.balance).toBe(0)
 
-  // admin grants bob 1000 from the player drawer
+  // admin tops bob up with 1000 from the player drawer; his first top-up is matched (+1000)
   await login(page, 'admin', 'admin12345')
   await page.waitForURL('**/admin')
   await page.goto(`/admin/players?q=${bob}`)
@@ -63,7 +65,7 @@ test('signup bonus → referral → admin grant → daily bonus → slip bet →
   await page.getByLabel('Amount').fill('1000')
   await page.getByLabel('Note').fill('Welcome bonus')
   await page.getByRole('button', { name: 'Grant points', exact: true }).click()
-  await expect(page.getByText('Points updated')).toBeVisible()
+  await expect(page.getByText('Points updated (+1,000 welcome bonus)')).toBeVisible()
   await logout(page, 'admin')
 
   // a game exists; bob picks 9-6 with the pickers, adds it to the slip and confirms
@@ -76,13 +78,16 @@ test('signup bonus → referral → admin grant → daily bonus → slip bet →
       status: 'SCHEDULED',
     },
   })
-  // alice is also in the pool (on a losing ending), so it is not a solo pool
+  // alice tops up 100 (+100 matched) and joins the pool on a losing ending, so it is not a solo pool
+  const adminRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
+  await adjustPoints(adminRow.id, aliceRow.id, { direction: 'GRANT', amount: 100, note: 'top-up' })
   await placeBet(aliceRow.id, { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
 
   await login(page, bob, 'secret123')
   await page.waitForURL('**/games')
 
-  // bob claims today's daily bonus from the wallet
+  // the daily bonus is off by default; turn it on, then bob claims it from the wallet
+  await setBonuses(adminRow.id, { welcomeBonusCap: 1000, referralBonus: 500, dailyBonus: 100 })
   await page.goto('/wallet')
   await page.getByRole('button', { name: 'Claim', exact: true }).click()
   await expect(page.getByText('+100 pts daily bonus')).toBeVisible()
@@ -111,14 +116,14 @@ test('signup bonus → referral → admin grant → daily bonus → slip bet →
   const result = await syncGames({ fetchGames: async () => [final] })
   expect(result.settled).toBe(1)
 
-  // bob: 1000 welcome + 1000 grant + 100 daily - 100 stake + 180 (sole winner: 90% of a 200 pool)
+  // bob: 1000 top-up + 1000 matched + 100 daily - 100 stake + 180 (sole winner: 90% of a 200 pool)
   await page.goto('/wallet')
   await expect(page.getByTestId('balance')).toHaveText('2,180 pts')
   await expect(page.getByText('Payout', { exact: true })).toBeVisible()
 
-  // bob's first settled bet pays alice the referral bonus: 1000 - 100 + 500
+  // bob's first settled bet pays alice the referral bonus: 200 - 100 + 500
   const aliceAfter = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect(aliceAfter.balance).toBe(1400)
+  expect(aliceAfter.balance).toBe(600)
 })
 
 test.afterAll(async () => {
