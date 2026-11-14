@@ -47,72 +47,75 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
   const picks = placeBetsSchema.parse(input)
   const single = picks.length === 1
 
-  return prisma.$transaction(async (tx) => {
-    const user = await tx.user.findUniqueOrThrow({ where: { id: userId } })
-    if (isSuspended(user, now)) throw new DomainError('SUSPENDED', 'Account suspended')
+  return prisma.$transaction(
+    async (tx) => {
+      const user = await tx.user.findUniqueOrThrow({ where: { id: userId } })
+      if (isSuspended(user, now)) throw new DomainError('SUSPENDED', 'Account suspended')
 
-    const games = await lockGames(
-      tx,
-      picks.map((p) => p.gameId),
-    )
-    const fail = (index: number, pick: Pick, e: DomainError): DomainError => {
-      const game = games.get(pick.gameId)
-      const label = game ? `${game.awayTeam} @ ${game.homeTeam} ${formatEnding(pick)}` : `Pick ${index + 1}`
-      return new DomainError(e.code, single ? e.message : `${label}: ${e.message}`, index)
-    }
-
-    // Stake already on each game (before this slip), for the per-game limit.
-    const existing = new Map<string, number>()
-    if (user.stakeLimitPerGame !== null) {
-      const sums = await tx.bet.groupBy({
-        by: ['gameId'],
-        where: { userId, gameId: { in: [...games.keys()] } },
-        _sum: { stake: true },
-      })
-      for (const s of sums) existing.set(s.gameId, s._sum.stake ?? 0)
-    }
-
-    const bets: Bet[] = []
-    for (const [index, pick] of picks.entries()) {
-      const game = games.get(pick.gameId)
-      if (!game) throw fail(index, pick, new DomainError('NOT_FOUND', 'Game not found'))
-      if (game.status !== 'SCHEDULED' || now >= game.startsAt) {
-        throw fail(index, pick, new DomainError('BETTING_CLOSED', 'Betting closed'))
+      const games = await lockGames(
+        tx,
+        picks.map((p) => p.gameId),
+      )
+      const fail = (index: number, pick: Pick, e: DomainError): DomainError => {
+        const game = games.get(pick.gameId)
+        const label = game ? `${game.awayTeam} @ ${game.homeTeam} ${formatEnding(pick)}` : `Pick ${index + 1}`
+        return new DomainError(e.code, single ? e.message : `${label}: ${e.message}`, index)
       }
 
+      // Stake already on each game (before this slip), for the per-game limit.
+      const existing = new Map<string, number>()
       if (user.stakeLimitPerGame !== null) {
-        const already = existing.get(pick.gameId) ?? 0
-        if (already + pick.stake > user.stakeLimitPerGame) {
-          const remaining = Math.max(0, user.stakeLimitPerGame - already)
-          throw fail(
-            index,
-            pick,
-            new DomainError('STAKE_LIMIT', `Stake limit exceeded (remaining: ${remaining})`),
-          )
-        }
-        existing.set(pick.gameId, already + pick.stake)
+        const sums = await tx.bet.groupBy({
+          by: ['gameId'],
+          where: { userId, gameId: { in: [...games.keys()] } },
+          _sum: { stake: true },
+        })
+        for (const s of sums) existing.set(s.gameId, s._sum.stake ?? 0)
       }
 
-      const { gameId, awayDigit, homeDigit, stake } = pick
-      const bet = await tx.bet.upsert({
-        where: { userId_gameId_awayDigit_homeDigit: { userId, gameId, awayDigit, homeDigit } },
-        create: { userId, gameId, awayDigit, homeDigit, stake },
-        update: { stake: { increment: stake } },
-      })
-      try {
-        await postEntry(
-          tx,
-          { userId, type: 'BET', amount: -stake, gameId, betId: bet.id },
-          { requireFunds: true },
-        )
-      } catch (e) {
-        throw e instanceof DomainError ? fail(index, pick, e) : e
+      const bets: Bet[] = []
+      for (const [index, pick] of picks.entries()) {
+        const game = games.get(pick.gameId)
+        if (!game) throw fail(index, pick, new DomainError('NOT_FOUND', 'Game not found'))
+        if (game.status !== 'SCHEDULED' || now >= game.startsAt) {
+          throw fail(index, pick, new DomainError('BETTING_CLOSED', 'Betting closed'))
+        }
+
+        if (user.stakeLimitPerGame !== null) {
+          const already = existing.get(pick.gameId) ?? 0
+          if (already + pick.stake > user.stakeLimitPerGame) {
+            const remaining = Math.max(0, user.stakeLimitPerGame - already)
+            throw fail(
+              index,
+              pick,
+              new DomainError('STAKE_LIMIT', `Stake limit exceeded (remaining: ${remaining})`),
+            )
+          }
+          existing.set(pick.gameId, already + pick.stake)
+        }
+
+        const { gameId, awayDigit, homeDigit, stake } = pick
+        const bet = await tx.bet.upsert({
+          where: { userId_gameId_awayDigit_homeDigit: { userId, gameId, awayDigit, homeDigit } },
+          create: { userId, gameId, awayDigit, homeDigit, stake },
+          update: { stake: { increment: stake } },
+        })
+        try {
+          await postEntry(
+            tx,
+            { userId, type: 'BET', amount: -stake, gameId, betId: bet.id },
+            { requireFunds: true },
+          )
+        } catch (e) {
+          throw e instanceof DomainError ? fail(index, pick, e) : e
+        }
+        await tx.game.update({ where: { id: gameId }, data: { pool: { increment: stake } } })
+        bets.push(bet)
       }
-      await tx.game.update({ where: { id: gameId }, data: { pool: { increment: stake } } })
-      bets.push(bet)
-    }
-    return bets
-  })
+      return bets
+    },
+    { timeout: 30_000 },
+  ) // a 100-pick slip is ~300 writes, beyond Prisma's 5 s default
 }
 
 /** Single-pick wrapper kept for existing callers and tests. */

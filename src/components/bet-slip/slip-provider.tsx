@@ -20,6 +20,8 @@ type SlipContextValue = {
   /** Balance from the last server render; the slip refreshes it via getSlipStatusAction. */
   balance: number
   add: (pick: NewPick) => void
+  /** Adds several picks at once, or none if the slip lacks room (multi-select spec §2.4). */
+  addMany: (picks: SlipPick[], lastStake: number) => void
   remove: (index: number) => void
   setStake: (index: number, stake: number) => void
   addStake: (index: number, amount: number) => void
@@ -93,6 +95,10 @@ export function SlipProvider({
       lastStake: slip.lastStake,
       balance,
       add,
+      addMany: (picks, lastStake) => {
+        dispatch({ type: 'addMany', picks, lastStake })
+        toast.success(`${picks.length} ${picks.length === 1 ? 'ending' : 'endings'} added to the slip`)
+      },
       remove: (index) => dispatch({ type: 'remove', index }),
       setStake: (index, stake) => dispatch({ type: 'setStake', index, stake }),
       addStake: (index, amount) => dispatch({ type: 'addStake', index, amount }),

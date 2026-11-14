@@ -104,9 +104,21 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await page.getByRole('button', { name: 'LAL digit 9' }).click()
   await page.getByRole('button', { name: 'GSW digit 6' }).click()
   await page.getByRole('button', { name: 'Add to slip', exact: true }).click()
+
+  // then three more endings from the heatmap, splitting 300 across them
+  await page.getByRole('tab', { name: 'Heatmap' }).click()
+  for (const ending of ['0-0', '0-1', '0-2']) {
+    await page.getByRole('button', { name: new RegExp(`^Ending ${ending},`) }).click()
+  }
+  await expect(page.getByText('3 endings selected')).toBeVisible()
+  await page.getByRole('radio', { name: 'Split total' }).check()
+  await page.getByLabel('Total stake').fill('300')
+  await expect(page.getByText('300 split → 100 each')).toBeVisible()
+  await page.getByRole('button', { name: 'Add 3 to slip' }).click()
+  await expect(page.getByText('3 endings added to the slip')).toBeVisible()
   if (mobile) await page.getByRole('button', { name: /^Open bet slip/ }).click()
   await page.getByRole('button', { name: 'Confirm bets' }).click()
-  await expect(page.getByText('1 bet placed')).toBeVisible()
+  await expect(page.getByText('4 bets placed')).toBeVisible()
 
   // the API reports the game final: LAL 99 @ GSW 106 → ending 9-6
   const final: ApiGame = {
@@ -123,9 +135,9 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   const result = await syncGames({ fetchGames: async () => [final] })
   expect(result.settled).toBe(1)
 
-  // bob: 1000 top-up + 1000 matched + 100 daily - 100 stake + 180 (sole winner: 90% of a 200 pool)
+  // bob: 1000 top-up + 1000 matched + 100 daily - 400 staked + 450 (sole winner: 90% of a 500 pool)
   await page.goto('/wallet')
-  await expect(page.getByTestId('balance')).toHaveText('2,180 pts')
+  await expect(page.getByTestId('balance')).toHaveText('2,150 pts')
   await expect(page.getByText('Payout', { exact: true })).toBeVisible()
 
   // alice: 200 referral + 100 top-up + 100 matched - 100 stake (her bet lost)
