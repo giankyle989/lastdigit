@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  bestCaseReturn,
   canAdd,
   EMPTY_SLIP,
   endingKey,
+  estimatePickReturns,
   maxStakeFor,
   newPickCount,
   parseStakeInput,
@@ -204,5 +206,61 @@ describe('addMany and the multi-add plan', () => {
     for (let i = 0; i < 99; i++) s = add(s, pick(`x${i}`))
     const p = plan(EMPTY_SLIP, [e(0, 0), e(0, 1)], 'perEnding', 10) // planned against an emptier slip
     expect(slipReducer(s, { type: 'addMany', picks: p.picks, lastStake: 10 })).toBe(s)
+  })
+})
+
+describe('clear and restore', () => {
+  const full: Slip = {
+    picks: [
+      { ...pick('g1'), stake: 100 },
+      { ...pick('g2'), stake: 50 },
+    ],
+    lastStake: 50,
+  }
+
+  it('clear empties the picks and keeps the last stake', () => {
+    expect(slipReducer(full, { type: 'clear' })).toEqual({ picks: [], lastStake: 50 })
+  })
+
+  it('restore puts the cleared picks back into an empty slip', () => {
+    const cleared = slipReducer(full, { type: 'clear' })
+    expect(slipReducer(cleared, { type: 'restore', picks: full.picks })).toEqual(full)
+  })
+
+  it('restore does nothing once the slip has new picks', () => {
+    const fresh = add(slipReducer(full, { type: 'clear' }), pick('g3'))
+    expect(slipReducer(fresh, { type: 'restore', picks: full.picks })).toBe(fresh)
+  })
+})
+
+describe('estimated returns', () => {
+  const picks = [
+    { ...pick('g1', 9, 6), stake: 100 },
+    { ...pick('g1', 0, 0), stake: 100 },
+    { ...pick('g2', 3, 4), stake: 100 },
+  ]
+  const pools: Record<string, { pool: number; endingStake: number }> = {
+    'g1:9-6': { pool: 1000, endingStake: 300 },
+    'g1:0-0': { pool: 1000, endingStake: 0 },
+    'g2:3-4': { pool: 0, endingStake: 0 },
+  }
+  const poolOf = (p: { gameId: string; awayDigit: number; homeDigit: number }) =>
+    pools[`${p.gameId}:${p.awayDigit}-${p.homeDigit}`]
+
+  it("counts the player's other picks on the same game as losing stake in the pool", () => {
+    // 9-6: pool 1000 + 100 (the 0-0 pick) + 100 = 1200, 90% = 1080, split over 400 → 270
+    // 0-0: same pool, only this stake on the ending → 1080
+    // g2: nobody else, the stake comes back → 100
+    expect(estimatePickReturns(picks, poolOf)).toEqual([270, 1080, 100])
+  })
+
+  it('returns null for a pick whose pool is not known yet', () => {
+    expect(estimatePickReturns(picks, () => undefined)).toEqual([null, null, null])
+  })
+
+  it('the best case takes only the best pick of each game, since one ending wins per game', () => {
+    expect(bestCaseReturn(picks, [270, 1080, 100])).toBe(1180)
+    expect(bestCaseReturn(picks, [270, null, null])).toBe(270)
+    expect(bestCaseReturn([], [])).toBe(0)
   })
 })
