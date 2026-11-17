@@ -11,8 +11,14 @@ import { PointsAmount } from '@/components/points-amount'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatEnding } from '@/lib/game/ending'
-import { estimatePayout } from '@/lib/game/payout'
-import { parseStakeInput, QUICK_STAKES, type SlipPick, slipTotal } from '@/lib/slip'
+import {
+  bestCaseReturn,
+  estimatePickReturns,
+  parseStakeInput,
+  QUICK_STAKES,
+  type SlipPick,
+  slipTotal,
+} from '@/lib/slip'
 import { cn } from '@/lib/utils'
 
 import { useSlip } from './slip-provider'
@@ -33,12 +39,23 @@ export function BetSlipPanel() {
   const [failedIndex, setFailedIndex] = useState<number | null>(null)
   const [pending, startTransition] = useTransition()
   const picksRef = useRef(slip.picks)
+  const listRef = useRef<HTMLUListElement>(null)
+  // Picks removed by Clear all, kept for Undo. Undo lives in the slip, not a toast: the phone
+  // sheet is modal, so a toast's button cannot be tapped while it is open.
+  const [cleared, setCleared] = useState<SlipPick[] | null>(null)
 
   useEffect(() => {
     picksRef.current = slip.picks
+    if (slip.picks.length > 0) setCleared(null)
     // Any edit (remove, stake change) moves rows around; drop the failure highlight.
     setFailedIndex(null)
   }, [slip.picks])
+
+  // The picks list scrolls on its own; bring a rejected pick into view.
+  useEffect(() => {
+    if (failedIndex === null) return
+    listRef.current?.children[failedIndex]?.scrollIntoView({ block: 'nearest' })
+  }, [failedIndex])
 
   // Fresh status whenever the slip opens (mounts) or the set of picks changes — not on stake edits.
   const pickKeys = slip.picks.map(keyOf).join('|')
@@ -57,9 +74,16 @@ export function BetSlipPanel() {
 
   if (slip.picks.length === 0) {
     return (
-      <p className="text-muted-foreground py-6 text-center text-sm">
-        Your slip is empty. Pick an ending on a game to add it.
-      </p>
+      <div className="flex flex-col items-center gap-2 py-6 text-center text-sm">
+        <p className="text-muted-foreground" role="status">
+          {cleared ? 'Bet slip cleared.' : 'Your slip is empty. Pick an ending on a game to add it.'}
+        </p>
+        {cleared && (
+          <Button type="button" variant="outline" size="sm" onClick={() => slip.restore(cleared)}>
+            Undo
+          </Button>
+        )}
+      </div>
     )
   }
 
@@ -68,10 +92,9 @@ export function BetSlipPanel() {
   const total = slipTotal(slip.picks)
   const anyClosed = slip.picks.some((p) => statusByKey.get(keyOf(p))?.open === false)
   const anyInvalid = slip.picks.some((p) => p.stake < 1)
-  const estimatedReturn = slip.picks.reduce((sum, p) => {
-    const s = statusByKey.get(keyOf(p))
-    return sum + (s ? estimatePayout(s.pool, s.endingStake, p.stake) : 0)
-  }, 0)
+  const returns = estimatePickReturns(slip.picks, (p) => statusByKey.get(keyOf(p)))
+  const bestReturn = bestCaseReturn(slip.picks, returns)
+  const count = slip.picks.length
   const disabled = pending || total > balance || anyClosed || anyInvalid
 
   function confirm() {
@@ -109,7 +132,31 @@ export function BetSlipPanel() {
 
   return (
     <div className="flex flex-col gap-3">
-      <ul className="flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-sm">
+          {count} {count === 1 ? 'pick' : 'picks'}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setCleared(slip.picks)
+            slip.clear()
+          }}
+          disabled={pending}
+        >
+          Clear all
+        </Button>
+      </div>
+      {/* Only the picks scroll, so totals and Confirm bets stay in view. Focusable so keyboard
+          users can scroll it even when every row's inputs are disabled. */}
+      <ul
+        ref={listRef}
+        aria-label="Picks"
+        tabIndex={0}
+        className="-mr-1 flex max-h-[30dvh] flex-col gap-2 overflow-y-auto overscroll-contain pr-1 md:max-h-[min(26rem,45dvh)]"
+      >
         {slip.picks.map((p, i) => {
           const s = statusByKey.get(keyOf(p))
           const closed = s?.open === false
@@ -177,9 +224,9 @@ export function BetSlipPanel() {
                   Max
                 </Button>
               </div>
-              {s && !closed && (
+              {returns[i] != null && !closed && (
                 <div className="text-muted-foreground mt-1 text-xs">
-                  Est. return <PointsAmount value={estimatePayout(s.pool, s.endingStake, p.stake)} />
+                  Est. return if it hits <PointsAmount value={returns[i]} />
                 </div>
               )}
             </li>
@@ -196,12 +243,15 @@ export function BetSlipPanel() {
         <dd className="text-right">
           <PointsAmount value={balance} unit />
         </dd>
-        <dt className="text-muted-foreground">Est. return if all hit</dt>
+        <dt className="text-muted-foreground">Est. max return</dt>
         <dd className="text-primary text-right">
-          <PointsAmount value={estimatedReturn} unit />
+          <PointsAmount value={bestReturn} unit />
         </dd>
       </dl>
-      <p className="text-muted-foreground text-xs">Estimate — changes as others bet</p>
+      <p className="text-muted-foreground text-xs">
+        Only one ending per game can win, so this counts your best pick in each game. Estimate — changes as
+        others bet.
+      </p>
       <Button type="button" size="lg" className="w-full" disabled={disabled} onClick={confirm}>
         {pending ? 'Placing…' : 'Confirm bets'}
       </Button>

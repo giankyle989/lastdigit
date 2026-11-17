@@ -117,6 +117,15 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await page.getByRole('button', { name: 'Add 3 to slip' }).click()
   await expect(page.getByText('3 endings added to the slip')).toBeVisible()
   if (mobile) await page.getByRole('button', { name: /^Open bet slip/ }).click()
+  // the desktop column and the phone sheet both render the slip; only one is shown
+  const slipText = (text: string) => page.getByText(text, { exact: true }).filter({ visible: true })
+  await expect(slipText('Est. max return')).toBeVisible()
+
+  // Clear all empties the slip; Undo brings every pick back
+  await page.getByRole('button', { name: 'Clear all' }).click()
+  await expect(slipText('Bet slip cleared.')).toBeVisible()
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await expect(slipText('4 picks')).toBeVisible()
   await page.getByRole('button', { name: 'Confirm bets' }).click()
   await expect(page.getByText('4 bets placed')).toBeVisible()
 

@@ -27,6 +27,8 @@ type SlipContextValue = {
   addStake: (index: number, amount: number) => void
   setMax: (index: number, balance: number) => void
   clear: () => void
+  /** Undo for clear: puts the picks back, but only while the slip is still empty. */
+  restore: (picks: SlipPick[]) => void
   /** Removes the given picks (matched by game and ending), keeping any others. */
   removePicks: (picks: Omit<NewPick, 'matchup'>[]) => void
   /** Phone bottom-sheet state. */
@@ -104,6 +106,7 @@ export function SlipProvider({
       addStake: (index, amount) => dispatch({ type: 'addStake', index, amount }),
       setMax: (index, bal) => dispatch({ type: 'setMax', index, balance: bal }),
       clear: () => dispatch({ type: 'clear' }),
+      restore: (picks) => dispatch({ type: 'restore', picks }),
       removePicks: (picks) => dispatch({ type: 'removePicks', picks }),
       sheetOpen,
       setSheetOpen,

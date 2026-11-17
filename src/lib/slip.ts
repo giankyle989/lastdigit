@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { formatPoints } from './format'
 import { MAX_SLIP_PICKS, MAX_STAKE } from './game/limits'
+import { estimatePayout } from './game/payout'
 
 export const DEFAULT_STAKE = 100
 export const QUICK_STAKES = [10, 50, 100] as const
@@ -28,6 +29,8 @@ export type SlipAction =
   | { type: 'removePicks'; picks: Omit<NewPick, 'matchup'>[] }
   | { type: 'addMany'; picks: SlipPick[]; lastStake: number }
   | { type: 'clear' }
+  /** Undo for clear: puts picks back, but only into a slip that is still empty. */
+  | { type: 'restore'; picks: SlipPick[] }
   | { type: 'load'; slip: Slip }
 
 export const EMPTY_SLIP: Slip = { picks: [], lastStake: DEFAULT_STAKE }
@@ -123,6 +126,38 @@ export function planMultiAdd(input: {
 }
 
 /** Max = balance minus the other picks' stakes, never below 0 (spec §4.3). */
+export type PoolView = { pool: number; endingStake: number }
+
+/**
+ * Est. return of each pick if its ending wins, or null while its pool is unknown. Only one ending
+ * per game can win, so the player's other picks on that game would lose and join its pool.
+ */
+export function estimatePickReturns(
+  picks: SlipPick[],
+  poolOf: (p: SlipPick) => PoolView | undefined,
+): (number | null)[] {
+  const stakeByGame = new Map<string, number>()
+  for (const p of picks) stakeByGame.set(p.gameId, (stakeByGame.get(p.gameId) ?? 0) + p.stake)
+  return picks.map((p) => {
+    const view = poolOf(p)
+    if (!view) return null
+    const otherStakes = (stakeByGame.get(p.gameId) ?? 0) - p.stake
+    return estimatePayout(view.pool + otherStakes, view.endingStake, p.stake)
+  })
+}
+
+/** Best case for the whole slip: one ending wins per game, so the best pick of each game. */
+export function bestCaseReturn(picks: SlipPick[], returns: (number | null)[]): number {
+  const best = new Map<string, number>()
+  picks.forEach((p, i) => {
+    const r = returns[i]
+    if (r != null) best.set(p.gameId, Math.max(best.get(p.gameId) ?? 0, r))
+  })
+  let sum = 0
+  for (const r of best.values()) sum += r
+  return sum
+}
+
 export function maxStakeFor(picks: SlipPick[], index: number, balance: number): number {
   const others = picks.reduce((sum, p, i) => (i === index ? sum : sum + p.stake), 0)
   return Math.max(0, Math.min(MAX_STAKE, balance - others))
@@ -181,6 +216,8 @@ export function slipReducer(slip: Slip, action: SlipAction): Slip {
     }
     case 'clear':
       return { ...slip, picks: [] }
+    case 'restore':
+      return slip.picks.length > 0 ? slip : { ...slip, picks: action.picks }
     case 'load':
       return action.slip
   }
