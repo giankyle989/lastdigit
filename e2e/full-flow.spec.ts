@@ -117,6 +117,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await expect(slipText('Bet slip cleared.')).toBeVisible()
   await page.getByRole('button', { name: 'Undo' }).click()
   await expect(slipText('4 picks')).toBeVisible()
+  await expect(slipText('Uses 400 points')).toBeVisible()
   await page.getByRole('button', { name: 'Confirm bets' }).click()
   await expect(page.getByText('4 bets placed')).toBeVisible()
 
@@ -135,14 +136,21 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   const result = await syncGames({ fetchGames: async () => [final] })
   expect(result.settled).toBe(1)
 
-  // bob: 1000 top-up + 1000 matched + 100 daily - 400 staked + 450 (sole winner: 90% of a 500 pool)
+  // bob: wallet 1000 top-up + 350 (payout 450 minus the 100 points stake on 9-6);
+  // points 1000 welcome + 100 daily - 400 staked + 100 points stake back
   await page.goto('/wallet')
-  await expect(page.getByTestId('balance')).toHaveText('2,150 pts')
-  await expect(page.getByText('Payout', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('wallet-balance')).toHaveText('1,350 pts')
+  await expect(page.getByTestId('points-balance')).toHaveText('800 pts')
+  await expect(
+    page
+      .getByRole('listitem')
+      .filter({ hasText: /^Payout/ })
+      .first(),
+  ).toBeVisible()
 
-  // alice: 200 referral + 100 top-up + 100 matched - 100 stake (her bet lost)
+  // alice: wallet 100 top-up; points 200 referral + 100 welcome - 100 stake (her bet lost)
   const aliceAfter = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect(aliceAfter.walletBalance).toBe(300)
+  expect([aliceAfter.walletBalance, aliceAfter.pointsBalance]).toEqual([100, 200])
 })
 
 test.afterAll(async () => {

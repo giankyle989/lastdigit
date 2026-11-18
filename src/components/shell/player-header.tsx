@@ -13,7 +13,16 @@ export function Logo({ href = '/' }: { href?: string }) {
   )
 }
 
-export function PlayerHeader({ balance, isAdmin }: { balance: number; isAdmin: boolean }) {
+export function PlayerHeader({
+  wallet,
+  points,
+  isAdmin,
+}: {
+  wallet: number
+  points: number
+  isAdmin: boolean
+}) {
+  const total = wallet + points
   return (
     <header className="bg-background/95 border-border sticky top-0 z-40 border-b backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
@@ -27,10 +36,10 @@ export function PlayerHeader({ balance, isAdmin }: { balance: number; isAdmin: b
           )}
           <Link
             href="/wallet"
-            aria-label={`Balance: ${formatPoints(balance)} points`}
+            aria-label={`Balance: ${formatPoints(total)} (wallet ${formatPoints(wallet)}, points ${formatPoints(points)})`}
             className="bg-surface-2 border-border hover:border-primary/60 rounded-full border px-3 py-1 text-sm"
           >
-            <PointsAmount value={balance} unit className="text-primary font-semibold" />
+            <PointsAmount value={total} unit className="text-primary font-semibold" />
           </Link>
         </div>
       </div>

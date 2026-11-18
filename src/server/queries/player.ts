@@ -115,9 +115,9 @@ export type PickStatus = {
   endingStake: number
 }
 
-export type SlipStatus = { balance: number; picks: PickStatus[] }
+export type SlipStatus = { walletBalance: number; pointsBalance: number; picks: PickStatus[] }
 
-/** Fresh data for the bet slip: balance plus, per pick, whether its game is open, the pool and the ending stake. */
+/** Fresh data for the bet slip: both balances plus, per pick, whether its game is open, the pool and the ending stake. */
 export async function getSlipStatus(
   userId: string,
   input: unknown,
@@ -126,7 +126,10 @@ export async function getSlipStatus(
   const keys = slipKeysSchema.parse(input)
   const gameIds = [...new Set(keys.map((k) => k.gameId))]
   const [user, games, sums] = await Promise.all([
-    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { walletBalance: true } }),
+    prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { walletBalance: true, pointsBalance: true },
+    }),
     prisma.game.findMany({ where: { id: { in: gameIds } } }),
     prisma.bet.groupBy({
       by: ['gameId', 'awayDigit', 'homeDigit'],
@@ -137,7 +140,8 @@ export async function getSlipStatus(
   const gameById = new Map(games.map((g) => [g.id, g]))
   const stakeBy = new Map(sums.map((s) => [`${s.gameId}:${formatEnding(s)}`, s._sum.stake ?? 0]))
   return {
-    balance: user.walletBalance,
+    walletBalance: user.walletBalance,
+    pointsBalance: user.pointsBalance,
     picks: keys.map((k) => {
       const game = gameById.get(k.gameId)
       return {

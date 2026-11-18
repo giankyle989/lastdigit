@@ -31,7 +31,7 @@ export async function claimDailyBonusAction(): Promise<ActionState> {
   return result
 }
 
-/** Fresh open/pool/ending-stake data for the slip's picks, plus the balance. */
+/** Fresh open/pool/ending-stake data for the slip's picks, plus both balances. */
 export async function getSlipStatusAction(picks: unknown) {
   const user = await requireUser()
   return getSlipStatus(user.id, picks)

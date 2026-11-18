@@ -111,6 +111,7 @@ describe('player feed queries', () => {
     const other = await makeUser()
     await fundUser(me.id, 500)
     await fundUser(other.id, 500)
+    await fundUser(me.id, 70, 'POINTS')
     const open = await makeGame()
     const live = await makeGame({ awayTeam: 'BOS', homeTeam: 'NYK' })
     await placeBet(other.id, { gameId: open.id, awayDigit: 9, homeDigit: 6, stake: 120 })
@@ -122,7 +123,7 @@ describe('player feed queries', () => {
       { gameId: live.id, awayDigit: 1, homeDigit: 1 },
       { gameId: 'gone', awayDigit: 1, homeDigit: 1 },
     ])
-    expect(s.balance).toBe(500)
+    expect([s.walletBalance, s.pointsBalance]).toEqual([500, 70])
     expect(s.picks).toEqual([
       {
         gameId: open.id,

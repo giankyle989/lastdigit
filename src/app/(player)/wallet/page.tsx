@@ -9,6 +9,7 @@ import { formatDay, formatTipoffTime } from '@/lib/format'
 import { parsePage } from '@/lib/pagination'
 import type { SearchParams } from '@/lib/table-params'
 import {
+  ACCOUNT_LABELS,
   parseWalletFilter,
   TX_TYPE_LABELS,
   WALLET_FILTER_LABELS,
@@ -31,12 +32,22 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Wallet</h1>
-      <section className="from-primary/20 to-card border-border rounded-xl border bg-gradient-to-br p-5">
-        <div className="text-muted-foreground text-sm">Balance</div>
-        <div className="mt-1 text-4xl font-bold" data-testid="balance">
-          <PointsAmount value={user.walletBalance} unit />
-        </div>
-      </section>
+      <div className="grid grid-cols-2 gap-3">
+        <section className="from-primary/20 to-card border-border rounded-xl border bg-gradient-to-br p-4">
+          <h2 className="text-muted-foreground text-sm">Wallet</h2>
+          <div className="mt-1 text-2xl font-bold sm:text-3xl" data-testid="wallet-balance">
+            <PointsAmount value={user.walletBalance} unit />
+          </div>
+          <p className="text-muted-foreground mt-1 text-xs">Can be cashed out</p>
+        </section>
+        <section className="bg-card border-border rounded-xl border p-4">
+          <h2 className="text-muted-foreground text-sm">Points</h2>
+          <div className="mt-1 text-2xl font-bold sm:text-3xl" data-testid="points-balance">
+            <PointsAmount value={user.pointsBalance} unit />
+          </div>
+          <p className="text-muted-foreground mt-1 text-xs">Bonus credit, for betting only</p>
+        </section>
+      </div>
       {daily > 0 && (
         <section className="bg-card border-border flex items-center justify-between gap-3 rounded-xl border p-4">
           <div>
@@ -99,7 +110,12 @@ async function TransactionDays({
               <li key={t.id} className="flex items-center gap-3 p-3">
                 <TxIcon type={t.type} />
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{TX_TYPE_LABELS[t.type]}</div>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    {TX_TYPE_LABELS[t.type]}
+                    <span className="bg-surface-2 text-muted-foreground rounded px-1.5 text-[11px] font-normal">
+                      {ACCOUNT_LABELS[t.account]}
+                    </span>
+                  </div>
                   <div className="text-muted-foreground truncate text-xs">
                     {t.game ? `${t.game.awayTeam} @ ${t.game.homeTeam}` : (t.note ?? '')} ·{' '}
                     {formatTipoffTime(t.createdAt)}
