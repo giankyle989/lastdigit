@@ -1,12 +1,13 @@
 'use server'
 
-import { headers } from 'next/headers'
 import { AuthError } from 'next-auth'
 
 import { signIn, signOut } from '@/auth'
 import { type ActionState, runAction } from '@/lib/action-state'
 import { createRateLimiter, positiveIntOr } from '@/lib/rate-limit'
 import { registerPlayer } from '@/server/users'
+
+import { clientIp } from '../request-info'
 
 export async function loginAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   try {
@@ -32,11 +33,6 @@ function signupLimiter() {
     windowMs: 3_600_000,
   })
   return g[SIGNUP_KEY]
-}
-
-async function clientIp(): Promise<string> {
-  const h = await headers()
-  return h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
 }
 
 export async function signupAction(_prev: ActionState, fd: FormData): Promise<ActionState> {

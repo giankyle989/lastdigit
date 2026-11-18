@@ -21,11 +21,13 @@ export default defineConfig({
     { name: 'iphone', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
   ],
   webServer: {
-    command: 'npm run build && npx next start -p 3100',
+    command: 'npm run build && node server.mjs',
     url: 'http://localhost:3100/login',
     timeout: 240_000,
     reuseExistingServer: false,
     env: {
+      PORT: '3100',
+      HOST: '127.0.0.1',
       DATABASE_URL: requireEnv('DATABASE_URL'),
       AUTH_SECRET: requireEnv('AUTH_SECRET'),
       AUTH_TRUST_HOST: 'true',
