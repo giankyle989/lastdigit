@@ -64,13 +64,13 @@ Today the IP comes from `x-forwarded-for`. Next.js fills that header from the so
 the request does not already carry one, so any client can fake it and bypass the signup rate
 limit.
 
-- A small custom server, `server.js` at the repo root, wraps Next.js. For each request it
+- A small custom server, `server.mjs` at the repo root, wraps Next.js. For each request it
   deletes any incoming `x-lastdigit-client-ip` header and sets it from
   `req.socket.remoteAddress`. With `TRUSTED_PROXY=1` (for a future HTTPS proxy in front) it
   uses the right-most `x-forwarded-for` entry instead, which the proxy adds.
-- `clientIp()` in `src/server/request-info.ts` reads only `x-lastdigit-client-ip`; it falls
+- `clientIp()` in `src/app/request-info.ts` reads only `x-lastdigit-client-ip`; it falls
   back to `'unknown'` (dev server, tests).
-- `lastdigit.service` runs `node server.js` instead of `next start`; the same host and port
+- `lastdigit.service` runs `node server.mjs` instead of `next start`; the same host and port
   flags move to env (`HOST=0.0.0.0`, `PORT=3000`). `npm start` does the same. The e2e web
   server keeps `next dev`/`next start` and gets `'unknown'`, which is fine for its checks.
 - The signup rate limit uses this IP.
@@ -123,12 +123,12 @@ Unique on (`userId`, `kind`, `fingerprint`); index on (`kind`, `fingerprint`).
 | `src/server/users.ts`                    | `registerPlayer` takes and validates `phone`; unique violation → `PHONE_TAKEN`           |
 | `src/server/admin/players.ts`            | `setPhone`, `confirmPhone` (audited); `adjustPoints` GRANT requires a confirmed phone     |
 | `src/server/sightings.ts` (new)          | `recordSighting(userId, { deviceId, ip })`, `linkedAccounts(userId)`, `sharedDeviceCount()` |
-| `src/server/request-info.ts` (new)       | `clientIp()` and `deviceId()` (reads or creates the cookie)                             |
-| `server.js` (new)                        | custom server setting `x-lastdigit-client-ip`                                           |
+| `src/app/request-info.ts` (new)          | `clientIp()` and `deviceId()` (reads or creates the cookie)                             |
+| `server.mjs` (new)                        | custom server setting `x-lastdigit-client-ip`                                           |
 | `src/app/(auth)/actions.ts`, signup form | phone field; real IP for the rate limit; record sightings                               |
 | `src/app/admin/players/*`, `src/app/admin/page.tsx` | phone row, edit/confirm, Grant gating, linked accounts, badge, filter, Needs attention item |
 | `src/server/admin/overview.ts`           | shared-device count in the overview and admin badges                                    |
-| `package.json`, `lastdigit.service`, `.env.example` | `start` runs `node server.js`; `TRUSTED_PROXY` documented                     |
+| `package.json`, `lastdigit.service`, `.env.example` | `start` runs `node server.mjs`; `TRUSTED_PROXY` documented                     |
 
 Every new admin action calls `requireAdmin()` and validates input with zod. Confirmation,
 phone edits and grants run in transactions as today.
