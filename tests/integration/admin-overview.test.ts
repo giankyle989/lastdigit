@@ -88,7 +88,9 @@ describe('admin overview', () => {
       openTicketCount: 1,
     })
     expect(s.postponed.map((g) => g.id)).toEqual([pp.id])
-    expect(s.negativeBalances).toEqual([{ id: neg.id, username: 'neg', walletBalance: -50 }])
+    expect(s.negativeBalances).toEqual([
+      { id: neg.id, username: 'neg', walletBalance: -50, pointsBalance: 0 },
+    ])
     expect(s.openTickets).toEqual([{ id: ticket.id, subject: 'Help', username: 'neg' }])
     expect(await getAdminBadges()).toEqual({ openTickets: 1, needsAttention: true })
   })
@@ -103,6 +105,16 @@ describe('admin overview', () => {
     const s = await getOverviewStats(now)
     expect(s.stuckSettlements.map((g) => g.id)).toEqual([stuck.id])
     expect(await getAdminBadges(now)).toEqual({ openTickets: 0, needsAttention: true })
+  })
+
+  it('lists a player with negative points and flags attention', async () => {
+    const u = await makeUser({ username: 'pts' })
+    await prisma.$transaction((tx) =>
+      postEntry(tx, { userId: u.id, account: 'POINTS', type: 'REFUND', amount: -20 }),
+    )
+    const s = await getOverviewStats()
+    expect(s.negativeBalances).toEqual([{ id: u.id, username: 'pts', walletBalance: 0, pointsBalance: -20 }])
+    expect((await getAdminBadges()).needsAttention).toBe(true)
   })
 
   it('flags a stale or missing sync and reports all clear', async () => {

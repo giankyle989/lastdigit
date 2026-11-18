@@ -11,7 +11,7 @@ import { formatDate, formatDateTime } from '@/lib/format'
 import { formatEnding } from '@/lib/game/ending'
 import { formatPhPhone } from '@/lib/phone'
 import { isSuspended } from '@/lib/suspension'
-import { TX_TYPE_LABELS } from '@/lib/wallet'
+import { ACCOUNT_LABELS, TX_TYPE_LABELS } from '@/lib/wallet'
 import type { getPlayerDetail } from '@/server/admin/queries'
 import type { LinkedAccount } from '@/server/sightings'
 
@@ -53,9 +53,15 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground text-xs">Balance</dt>
+          <dt className="text-muted-foreground text-xs">Wallet</dt>
           <dd>
             <PointsAmount value={p.walletBalance} unit className={p.walletBalance < 0 ? 'text-danger' : ''} />
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground text-xs">Points</dt>
+          <dd>
+            <PointsAmount value={p.pointsBalance} unit className={p.pointsBalance < 0 ? 'text-danger' : ''} />
           </dd>
         </div>
         <div>
@@ -273,7 +279,7 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
             {p.transactions.map((t) => (
               <li key={t.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2">
                 <span>
-                  {TX_TYPE_LABELS[t.type]}
+                  {TX_TYPE_LABELS[t.type]} · {ACCOUNT_LABELS[t.account]}
                   <span className="text-muted-foreground block text-xs">
                     {formatDateTime(t.createdAt)}
                     {t.note ? ` · ${t.note}` : ''}

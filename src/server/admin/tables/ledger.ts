@@ -1,4 +1,4 @@
-import { type Prisma, TransactionType } from '@prisma/client'
+import { Account, type Prisma, TransactionType } from '@prisma/client'
 
 import { prisma } from '@/lib/db'
 import { type Page, pageWindow, parsePage } from '@/lib/pagination'
@@ -15,6 +15,7 @@ import {
 
 export const LEDGER_SORTS = ['time', 'amount'] as const
 export const LEDGER_TYPES = Object.values(TransactionType)
+export const LEDGER_ACCOUNTS = Object.values(Account)
 
 export type LedgerListParams = {
   /** Username search (contains, case-insensitive). */
@@ -22,6 +23,7 @@ export type LedgerListParams = {
   sort: Sort<(typeof LEDGER_SORTS)[number]>
   page: number
   type?: TransactionType
+  account?: Account
   from?: string
   to?: string
 }
@@ -32,6 +34,7 @@ export function parseLedgerListParams(sp: SearchParams): LedgerListParams {
     sort: parseSort(sp.sort, LEDGER_SORTS, { field: 'time', dir: 'desc' }),
     page: parsePage(sp.page),
     type: parseOption(sp.type, LEDGER_TYPES),
+    account: parseOption(sp.account, LEDGER_ACCOUNTS),
     from: parseDateParam(sp.from),
     to: parseDateParam(sp.to),
   }
@@ -47,6 +50,7 @@ export async function listLedger(p: LedgerListParams): Promise<Page<LedgerRow> &
   const where: Prisma.TransactionWhereInput = {
     ...(p.q ? { user: { usernameKey: { contains: p.q.toLowerCase() } } } : {}),
     ...(p.type ? { type: p.type } : {}),
+    ...(p.account ? { account: p.account } : {}),
     ...(createdAt ? { createdAt } : {}),
   }
   const [total, sum] = await Promise.all([

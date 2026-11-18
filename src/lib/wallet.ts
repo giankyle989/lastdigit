@@ -1,4 +1,4 @@
-import type { TransactionType } from '@prisma/client'
+import type { Account, TransactionType } from '@prisma/client'
 
 export const WALLET_FILTERS = ['all', 'bets', 'payouts', 'bonuses', 'admin', 'refunds'] as const
 export type WalletFilter = (typeof WALLET_FILTERS)[number]
@@ -21,6 +21,8 @@ export const WALLET_FILTER_TYPES: Record<WalletFilter, TransactionType[] | null>
   admin: ['ADMIN_GRANT', 'ADMIN_DEDUCT'],
   refunds: ['REFUND'],
 }
+
+export const ACCOUNT_LABELS: Record<Account, string> = { WALLET: 'Wallet', POINTS: 'Points' }
 
 export const TX_TYPE_LABELS: Record<TransactionType, string> = {
   BET: 'Bet',
