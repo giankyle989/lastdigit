@@ -95,13 +95,14 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
       </dl>
 
       <div className="flex flex-wrap gap-2">
-        {p.phone && !p.phoneConfirmedAt && (
+        {/* Stays mounted (hidden, not removed) so the success toast survives the revalidated render. */}
+        <div className={p.phone && !p.phoneConfirmedAt ? 'contents' : 'hidden'}>
           <ActionForm
             action={confirmPhoneAction.bind(null, p.id)}
             submitLabel="Confirm phone"
             className="contents"
           />
-        )}
+        </div>
         <ActionDialog
           triggerLabel="Edit number"
           title={`Phone number for ${p.username}`}

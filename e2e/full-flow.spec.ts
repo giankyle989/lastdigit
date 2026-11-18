@@ -68,6 +68,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await expect(page.getByRole('dialog', { name: bob })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: 'Confirm phone' }).click()
+  await expect(page.getByText('Phone confirmed')).toBeVisible()
   await expect(page.getByText(/^Confirmed .+ by /)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeEnabled()
   await page.getByRole('button', { name: 'Grant', exact: true }).click()
