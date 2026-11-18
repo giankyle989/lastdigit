@@ -35,6 +35,28 @@ Server settings (in `.env` or the environment): `HOST` (default `0.0.0.0`), `POR
 
 **Upgrading to admin levels.** Take a `pg_dump` first, then do these together: `npm run build` → `npx prisma migrate deploy` → `systemctl --user restart lastdigit`. The migration renames the `ADMIN` role to `SUPERADMIN`, so the old running build cannot read it and the admin cannot log in until the restart. `npm run db:seed` afterwards is optional (it upserts the SUPERADMIN). To roll back to the old build, first delete or demote any MANAGER accounts, then run `ALTER TYPE "Role" RENAME VALUE 'SUPERADMIN' TO 'ADMIN';` (the extra MANAGER enum value is harmless).
 
+**Upgrading to wallet and points.** The migration renames `User.balance` to `walletBalance` (today's balances become wallet money) and adds `pointsBalance`, `Transaction.account` and `Bet.pointsStake`.
+
+1. Back up: `pg_dump` the database.
+2. `npm run build`
+3. `npx prisma migrate deploy`
+4. `systemctl --user restart lastdigit`
+
+Run steps 2-4 together: after the migration the old running build can't read `balance`.
+
+**Rollback** (before anyone has points):
+
+```sql
+ALTER TABLE "User" DROP COLUMN "pointsBalance";
+ALTER TABLE "User" RENAME COLUMN "walletBalance" TO "balance";
+ALTER TABLE "Transaction" DROP COLUMN "account";
+ALTER TABLE "Bet" DROP COLUMN "pointsStake";
+DROP TYPE "Account";
+DELETE FROM "_prisma_migrations" WHERE migration_name = '20261118000003_wallet_and_points';
+```
+
+Then deploy the previous build. Once points have been used, first add each player's `pointsBalance` into `walletBalance`.
+
 Rotating `AUTH_SECRET` also changes the device and network fingerprints, so old sightings stop matching new ones.
 
 ## Tests
