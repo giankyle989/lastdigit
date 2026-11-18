@@ -3,12 +3,13 @@ import { z } from 'zod'
 
 import { prisma, type Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
+import { splitStake } from '@/lib/funding'
 import { formatEnding } from '@/lib/game/ending'
 import { MAX_SLIP_PICKS, MAX_STAKE } from '@/lib/game/limits'
 import { isSuspended } from '@/lib/suspension'
 import { intFromForm } from '@/lib/validation'
 
-import { postEntry } from './ledger'
+import { lockUsers, postEntry } from './ledger'
 
 export const placeBetSchema = z.object({
   gameId: z.string().min(1, 'Game is required'),
@@ -41,7 +42,8 @@ async function lockGames(tx: Tx, gameIds: string[]): Promise<Map<string, LockedG
  * Places every pick or none (spec §6.1). One transaction: games are locked in ascending id
  * order, then each pick is checked and written. A failing pick throws a DomainError carrying
  * `pickIndex`; with more than one pick its message is prefixed with the pick label
- * (`LAL @ GSW 9-6: Betting closed`).
+ * (`LAL @ GSW 9-6: Betting closed`). Each stake is paid from points first, then the wallet
+ * (wallet-and-points spec §4).
  */
 export async function placeBets(userId: string, input: unknown, now: Date = new Date()): Promise<Bet[]> {
   const picks = placeBetsSchema.parse(input)
@@ -61,6 +63,16 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
         const label = game ? `${game.awayTeam} @ ${game.homeTeam} ${formatEnding(pick)}` : `Pick ${index + 1}`
         return new DomainError(e.code, single ? e.message : `${label}: ${e.message}`, index)
       }
+
+      // Games first, then the player (the order settlement and void use), so concurrent
+      // slips queue on the player row and can't spend the same points twice.
+      await lockUsers(tx, [userId])
+      const funds = await tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { walletBalance: true, pointsBalance: true },
+      })
+      let pointsLeft = Math.max(0, funds.pointsBalance)
+      let walletLeft = Math.max(0, funds.walletBalance)
 
       // Stake already on each game (before this slip), for the per-game limit.
       const existing = new Map<string, number>()
@@ -95,20 +107,35 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
         }
 
         const { gameId, awayDigit, homeDigit, stake } = pick
+        if (stake > pointsLeft + walletLeft) {
+          throw fail(index, pick, new DomainError('INSUFFICIENT_BALANCE', 'Not enough balance'))
+        }
+        const paid = splitStake(stake, pointsLeft)
         const bet = await tx.bet.upsert({
           where: { userId_gameId_awayDigit_homeDigit: { userId, gameId, awayDigit, homeDigit } },
-          create: { userId, gameId, awayDigit, homeDigit, stake },
-          update: { stake: { increment: stake } },
+          create: { userId, gameId, awayDigit, homeDigit, stake, pointsStake: paid.points },
+          update: { stake: { increment: stake }, pointsStake: { increment: paid.points } },
         })
         try {
-          await postEntry(
-            tx,
-            { userId, account: 'WALLET', type: 'BET', amount: -stake, gameId, betId: bet.id },
-            { requireFunds: true },
-          )
+          if (paid.points > 0) {
+            await postEntry(
+              tx,
+              { userId, account: 'POINTS', type: 'BET', amount: -paid.points, gameId, betId: bet.id },
+              { requireFunds: true },
+            )
+          }
+          if (paid.wallet > 0) {
+            await postEntry(
+              tx,
+              { userId, account: 'WALLET', type: 'BET', amount: -paid.wallet, gameId, betId: bet.id },
+              { requireFunds: true },
+            )
+          }
         } catch (e) {
           throw e instanceof DomainError ? fail(index, pick, e) : e
         }
+        pointsLeft -= paid.points
+        walletLeft -= paid.wallet
         await tx.game.update({ where: { id: gameId }, data: { pool: { increment: stake } } })
         bets.push(bet)
       }
