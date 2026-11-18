@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 import { prisma } from '../src/lib/db'
-import { adjustPoints, confirmPhone } from '../src/server/admin/players'
+import { adjustBalance, confirmPhone } from '../src/server/admin/players'
 import { placeBet } from '../src/server/bets'
 import { setBonuses } from '../src/server/settings'
 import type { ApiGame } from '../src/server/sync/balldontlie'
@@ -47,17 +47,19 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await page.goto(`/admin/players?q=${bob}`)
   await page.getByRole('link', { name: bob, exact: true }).click()
   await expect(page.getByRole('dialog', { name: bob })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Cash in', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: 'Confirm phone' }).click()
   await expect(page.getByText('Phone confirmed')).toBeVisible()
   await expect(page.getByText(/^Confirmed .+ by /)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeEnabled()
-  await page.getByRole('button', { name: 'Grant', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Cash in', exact: true })).toBeEnabled()
+  await page.getByRole('button', { name: 'Cash in', exact: true }).click()
   await page.getByLabel('Amount').fill('1000')
   await page.getByLabel('Note').fill('Welcome bonus')
-  await page.getByRole('button', { name: 'Grant points', exact: true }).click()
-  await expect(page.getByText('Points updated (+1,000 welcome bonus, +200 to their referrer)')).toBeVisible()
-  expect((await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })).walletBalance).toBe(200)
+  await page.getByRole('button', { name: 'Record cash in', exact: true }).click()
+  await expect(
+    page.getByText('Cash in recorded (+1,000 welcome bonus points, +200 points to their referrer)'),
+  ).toBeVisible()
+  expect((await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })).pointsBalance).toBe(200)
   await logout(page, 'admin')
 
   // a game exists; bob picks 9-6 with the pickers, adds it to the slip and confirms
@@ -71,7 +73,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
     },
   })
   // alice tops up 100 (+100 matched) and joins the pool on a losing ending, so it is not a solo pool
-  await adjustPoints(adminRow.id, aliceRow.id, { direction: 'GRANT', amount: 100, note: 'top-up' })
+  await adjustBalance(adminRow.id, aliceRow.id, { kind: 'CASH_IN', amount: 100, note: 'top-up' })
   await placeBet(aliceRow.id, { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
 
   await login(page, bob, 'secret123')

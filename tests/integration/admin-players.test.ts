@@ -3,7 +3,7 @@ import { ZodError } from 'zod'
 
 import { prisma } from '@/lib/db'
 import {
-  adjustPoints,
+  adjustBalance,
   confirmPhone,
   resetPassword,
   setPhone,
@@ -14,12 +14,17 @@ import {
 import { setBonuses } from '@/server/settings'
 import { registerPlayer, verifyCredentials } from '@/server/users'
 
-import { expectLedgerConsistent, makeUser, nextPhone, resetDb } from '../helpers/db'
+import { expectLedgerConsistent, fundUser, makeUser, nextPhone, resetDb } from '../helpers/db'
 
 describe('admin player management', () => {
   beforeEach(resetDb)
 
-  it('grants points with a note and audits it', async () => {
+  async function balancesOf(id: string) {
+    const u = await prisma.user.findUniqueOrThrow({ where: { id } })
+    return { wallet: u.walletBalance, points: u.pointsBalance }
+  }
+
+  it('cashes in with a note and audits it with a note and audits it', async () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await setBonuses(admin.id, {
@@ -28,12 +33,13 @@ describe('admin player management', () => {
       referralBonusCap: 500,
       dailyBonus: 0,
     })
-    expect(
-      await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: '1000', note: 'Welcome' }),
-    ).toEqual({
-      welcomeBonus: 0,
-      referralBonus: 0,
-    })
+    expect(await adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: '1000', note: 'Welcome' })).toEqual(
+      {
+        kind: 'CASH_IN',
+        welcomeBonus: 0,
+        referralBonus: 0,
+      },
+    )
     expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).walletBalance).toBe(1000)
     expect(await prisma.transaction.findFirstOrThrow()).toMatchObject({
       type: 'ADMIN_GRANT',
@@ -41,8 +47,8 @@ describe('admin player management', () => {
       adminId: admin.id,
       note: 'Welcome',
     })
-    expect(await prisma.adminAction.findFirstOrThrow({ where: { action: 'GRANT_POINTS' } })).toMatchObject({
-      action: 'GRANT_POINTS',
+    expect(await prisma.adminAction.findFirstOrThrow({ where: { action: 'CASH_IN' } })).toMatchObject({
+      action: 'CASH_IN',
       targetUserId: p.id,
     })
     await expectLedgerConsistent()
@@ -52,13 +58,15 @@ describe('admin player management', () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const small = await makeUser()
     const big = await makeUser()
-    expect(
-      await adjustPoints(admin.id, small.id, { direction: 'GRANT', amount: 300, note: 'top-up' }),
-    ).toEqual({
-      welcomeBonus: 300,
-      referralBonus: 0,
-    })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: small.id } })).walletBalance).toBe(600)
+    expect(await adjustBalance(admin.id, small.id, { kind: 'CASH_IN', amount: 300, note: 'top-up' })).toEqual(
+      {
+        kind: 'CASH_IN',
+        welcomeBonus: 300,
+        referralBonus: 0,
+      },
+    )
+    // 300 in the wallet, the 300 welcome match in points
+    expect(await balancesOf(small.id)).toEqual({ wallet: 300, points: 300 })
     const bonus = await prisma.transaction.findFirstOrThrow({
       where: { userId: small.id, type: 'SIGNUP_BONUS' },
     })
@@ -69,17 +77,16 @@ describe('admin player management', () => {
     })
 
     // a second top-up is not matched
-    expect(
-      await adjustPoints(admin.id, small.id, { direction: 'GRANT', amount: 300, note: 'again' }),
-    ).toEqual({
+    expect(await adjustBalance(admin.id, small.id, { kind: 'CASH_IN', amount: 300, note: 'again' })).toEqual({
+      kind: 'CASH_IN',
       welcomeBonus: 0,
       referralBonus: 0,
     })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: small.id } })).walletBalance).toBe(900)
+    expect(await balancesOf(small.id)).toEqual({ wallet: 600, points: 300 })
 
     // capped at 1000 by default
-    await adjustPoints(admin.id, big.id, { direction: 'GRANT', amount: 2000, note: 'top-up' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: big.id } })).walletBalance).toBe(3000)
+    await adjustBalance(admin.id, big.id, { kind: 'CASH_IN', amount: 2000, note: 'top-up' })
+    expect(await balancesOf(big.id)).toEqual({ wallet: 2000, points: 1000 })
     await expectLedgerConsistent()
   })
 
@@ -87,11 +94,11 @@ describe('admin player management', () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await Promise.all([
-      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'a' }),
-      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'b' }),
+      adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: 100, note: 'a' }),
+      adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: 100, note: 'b' }),
     ])
     expect(await prisma.transaction.count({ where: { type: 'SIGNUP_BONUS' } })).toBe(1)
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).walletBalance).toBe(300)
+    expect(await balancesOf(p.id)).toEqual({ wallet: 200, points: 100 })
   })
 
   it("pays the referrer 50% of the referred friend's first top-up, capped at 200", async () => {
@@ -112,13 +119,12 @@ describe('admin player management', () => {
 
     await confirmPhone(admin.id, alice.id)
     await confirmPhone(admin.id, bob.id)
-    expect(await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })).toEqual(
-      {
-        welcomeBonus: 300,
-        referralBonus: 150,
-      },
-    )
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(150)
+    expect(await adjustBalance(admin.id, bob.id, { kind: 'CASH_IN', amount: 300, note: 'top-up' })).toEqual({
+      kind: 'CASH_IN',
+      welcomeBonus: 300,
+      referralBonus: 150,
+    })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).pointsBalance).toBe(150)
     expect(await prisma.transaction.findFirstOrThrow({ where: { type: 'REFERRAL_BONUS' } })).toMatchObject({
       userId: alice.id,
       amount: 150,
@@ -130,13 +136,14 @@ describe('admin player management', () => {
     ).not.toBeNull()
 
     // only the first top-up counts
-    await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 1000, note: 'again' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(150)
+    await adjustBalance(admin.id, bob.id, { kind: 'CASH_IN', amount: 1000, note: 'again' })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).pointsBalance).toBe(150)
 
     // 50% of 2000 is capped at 200 (the default cap)
     await confirmPhone(admin.id, cara.id)
-    await adjustPoints(admin.id, cara.id, { direction: 'GRANT', amount: 2000, note: 'top-up' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(350)
+    await adjustBalance(admin.id, cara.id, { kind: 'CASH_IN', amount: 2000, note: 'top-up' })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).pointsBalance).toBe(350)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(0)
     await expectLedgerConsistent()
   })
 
@@ -151,13 +158,12 @@ describe('admin player management', () => {
     })
     await prisma.user.update({ where: { id: bob.id }, data: { referralBonusPaidAt: new Date() } })
     await confirmPhone(admin.id, bob.id)
-    expect(await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })).toEqual(
-      {
-        welcomeBonus: 300,
-        referralBonus: 0,
-      },
-    )
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(0)
+    expect(await adjustBalance(admin.id, bob.id, { kind: 'CASH_IN', amount: 300, note: 'top-up' })).toEqual({
+      kind: 'CASH_IN',
+      welcomeBonus: 300,
+      referralBonus: 0,
+    })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).pointsBalance).toBe(0)
   })
 
   it('pays no referral bonus to a referrer whose phone is not confirmed', async () => {
@@ -170,10 +176,12 @@ describe('admin player management', () => {
       referralCode: alice.referralCode,
     })
     await confirmPhone(admin.id, bob.id)
-    expect(await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })).toEqual(
-      { welcomeBonus: 300, referralBonus: 0 },
-    )
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(0)
+    expect(await adjustBalance(admin.id, bob.id, { kind: 'CASH_IN', amount: 300, note: 'top-up' })).toEqual({
+      kind: 'CASH_IN',
+      welcomeBonus: 300,
+      referralBonus: 0,
+    })
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).pointsBalance).toBe(0)
     expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(0)
     expect((await prisma.user.findUniqueOrThrow({ where: { id: bob.id } })).referralBonusPaidAt).toBeNull()
   })
@@ -194,18 +202,18 @@ describe('admin player management', () => {
       dailyBonus: 0,
     })
     await confirmPhone(admin.id, bob.id)
-    await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })
+    await adjustBalance(admin.id, bob.id, { kind: 'CASH_IN', amount: 300, note: 'top-up' })
     expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(0)
   })
 
-  it('deducts points but not below zero', async () => {
+  it('cashes out but not below zero', async () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
-    await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'x' }) // +100 match
-    await adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 40, note: 'correction' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).walletBalance).toBe(160)
+    await adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: 100, note: 'x' }) // +100 match in points
+    await adjustBalance(admin.id, p.id, { kind: 'CASH_OUT', amount: 40, note: 'correction' })
+    expect(await balancesOf(p.id)).toEqual({ wallet: 60, points: 100 })
     await expect(
-      adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 161, note: 'too much' }),
+      adjustBalance(admin.id, p.id, { kind: 'CASH_OUT', amount: 61, note: 'too much' }),
     ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' })
   })
 
@@ -213,15 +221,110 @@ describe('admin player management', () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await expect(
-      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 1, note: '  ' }),
+      adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: 1, note: '  ' }),
     ).rejects.toBeInstanceOf(ZodError)
   })
 
-  it('rejects a grant above 10,000,000 points', async () => {
+  it('gives and takes points without touching the wallet, auditing each', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const p = await makeUser()
+    expect(await adjustBalance(admin.id, p.id, { kind: 'GIVE_POINTS', amount: 300, note: 'promo' })).toEqual({
+      kind: 'GIVE_POINTS',
+      welcomeBonus: 0,
+      referralBonus: 0,
+    })
+    await adjustBalance(admin.id, p.id, { kind: 'TAKE_POINTS', amount: 100, note: 'fix' })
+    expect(await balancesOf(p.id)).toEqual({ wallet: 0, points: 200 })
+    const actions = await prisma.adminAction.findMany({ orderBy: { createdAt: 'asc' } })
+    expect(actions.map((a) => a.action)).toEqual(['GRANT_POINTS', 'DEDUCT_POINTS'])
+    await expectLedgerConsistent()
+  })
+
+  it('giving points never triggers the welcome or referral bonus', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    await setBonuses(admin.id, {
+      welcomeBonusCap: 1000,
+      referralPercent: 50,
+      referralBonusCap: 500,
+      dailyBonus: 0,
+    })
+    const ref = await makeUser()
+    const p = await makeUser({ referredById: ref.id })
+    await adjustBalance(admin.id, p.id, { kind: 'GIVE_POINTS', amount: 400, note: 'promo' })
+    expect(await balancesOf(p.id)).toEqual({ wallet: 0, points: 400 })
+    expect(await balancesOf(ref.id)).toEqual({ wallet: 0, points: 0 })
+    // the later first cash in still pays both bonuses, as points
+    expect(await adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: 300, note: 'top-up' })).toEqual({
+      kind: 'CASH_IN',
+      welcomeBonus: 300,
+      referralBonus: 150,
+    })
+    expect(await balancesOf(p.id)).toEqual({ wallet: 300, points: 700 })
+    expect(await balancesOf(ref.id)).toEqual({ wallet: 0, points: 150 })
+  })
+
+  it('cash out cannot dip into points', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const p = await makeUser()
+    await adjustBalance(admin.id, p.id, { kind: 'GIVE_POINTS', amount: 500, note: 'promo' })
+    await expect(
+      adjustBalance(admin.id, p.id, { kind: 'CASH_OUT', amount: 1, note: 'payout' }),
+    ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE', message: 'Not enough in the wallet' })
+    expect(await balancesOf(p.id)).toEqual({ wallet: 0, points: 500 })
+  })
+
+  it('cannot take more points than the player has', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const p = await makeUser()
+    await adjustBalance(admin.id, p.id, { kind: 'GIVE_POINTS', amount: 50, note: 'promo' })
+    await expect(
+      adjustBalance(admin.id, p.id, { kind: 'TAKE_POINTS', amount: 51, note: 'fix' }),
+    ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE', message: 'Not enough points' })
+  })
+
+  it('both grants need a confirmed phone; deductions do not', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const p = await makeUser({ phoneConfirmedAt: null })
+    for (const kind of ['CASH_IN', 'GIVE_POINTS'] as const) {
+      await expect(adjustBalance(admin.id, p.id, { kind, amount: 10, note: 'x' })).rejects.toMatchObject({
+        code: 'PHONE_NOT_CONFIRMED',
+      })
+    }
+    await fundUser(p.id, 20, 'POINTS')
+    await adjustBalance(admin.id, p.id, { kind: 'TAKE_POINTS', amount: 20, note: 'fix' })
+    expect(await balancesOf(p.id)).toEqual({ wallet: 0, points: 0 })
+  })
+
+  it('a player with a grant from before the split gets no second welcome bonus', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    await setBonuses(admin.id, {
+      welcomeBonusCap: 1000,
+      referralPercent: 0,
+      referralBonusCap: 0,
+      dailyBonus: 0,
+    })
+    const p = await makeUser()
+    await fundUser(p.id, 100, 'WALLET') // an old ADMIN_GRANT row, now on WALLET
+    expect(await adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: 300, note: 'top-up' })).toEqual({
+      kind: 'CASH_IN',
+      welcomeBonus: 0,
+      referralBonus: 0,
+    })
+  })
+
+  it('rejects an unknown kind', async () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await expect(
-      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: '10000001', note: 'typo' }),
+      adjustBalance(admin.id, p.id, { kind: 'GRANT', amount: 10, note: 'x' }),
+    ).rejects.toBeInstanceOf(ZodError)
+  })
+
+  it('rejects a cash in above 10,000,000 points', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const p = await makeUser()
+    await expect(
+      adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: '10000001', note: 'typo' }),
     ).rejects.toBeInstanceOf(ZodError)
     expect(await prisma.transaction.count()).toBe(0)
   })
@@ -230,7 +333,7 @@ describe('admin player management', () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const other = await makeUser({ role: 'SUPERADMIN' })
     await expect(
-      adjustPoints(admin.id, other.id, { direction: 'GRANT', amount: 1, note: 'x' }),
+      adjustBalance(admin.id, other.id, { kind: 'CASH_IN', amount: 1, note: 'x' }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
@@ -275,20 +378,20 @@ describe('admin player management', () => {
     expect(JSON.stringify(log.details)).not.toContain('newpass123')
   })
 
-  it('blocks grants until the phone is confirmed, but always allows deductions', async () => {
+  it('blocks cash in until the phone is confirmed, but always allows cash out', async () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser({ phone: '+639171111111', phoneConfirmedAt: null })
     await expect(
-      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'top-up' }),
+      adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: 100, note: 'top-up' }),
     ).rejects.toMatchObject({ code: 'PHONE_NOT_CONFIRMED', message: 'Confirm the phone number first' })
     expect(await prisma.transaction.count()).toBe(0)
 
     await confirmPhone(admin.id, p.id)
-    await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'top-up' })
+    await adjustBalance(admin.id, p.id, { kind: 'CASH_IN', amount: 100, note: 'top-up' })
     await setPhone(admin.id, p.id, '0917 222 2222') // clears the confirmation
-    await adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 10, note: 'fix' })
-    // 100 granted + 100 welcome match (default cap 1,000) − 10 deducted
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).walletBalance).toBe(190)
+    await adjustBalance(admin.id, p.id, { kind: 'CASH_OUT', amount: 10, note: 'fix' })
+    // 100 cashed in, 100 welcome match in points (default cap 1,000), 10 cashed out
+    expect(await balancesOf(p.id)).toEqual({ wallet: 90, points: 100 })
   })
 
   it('confirms the phone once and audits it', async () => {

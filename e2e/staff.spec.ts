@@ -69,13 +69,13 @@ test('superadmin adds a manager; the manager grants points but cannot manage gam
   await expect(page.getByRole('button', { name: 'Void game' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Force sync' })).toHaveCount(0)
 
-  // ...but grants points to a player
+  // ...but cashes in a player
   await page.goto(`/admin/players?player=${pat.id}`)
-  await page.getByRole('button', { name: 'Grant', exact: true }).click()
+  await page.getByRole('button', { name: 'Cash in', exact: true }).click()
   await page.getByLabel('Amount').fill('250')
   await page.getByLabel('Note').fill('cash in')
-  await page.getByRole('button', { name: 'Grant points', exact: true }).click()
-  await expect(page.getByText(/^Points updated/)).toBeVisible()
+  await page.getByRole('button', { name: 'Record cash in', exact: true }).click()
+  await expect(page.getByText(/^Cash in recorded/)).toBeVisible()
   expect(
     (await prisma.user.findUniqueOrThrow({ where: { id: pat.id } })).walletBalance,
   ).toBeGreaterThanOrEqual(250)

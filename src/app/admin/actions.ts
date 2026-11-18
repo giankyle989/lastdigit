@@ -4,8 +4,9 @@ import { revalidatePath } from 'next/cache'
 
 import { type ActionState, runAction } from '@/lib/action-state'
 import { parseSuspendUntil } from '@/lib/suspend-until'
+import { adjustToast } from '@/lib/wallet'
 import {
-  adjustPoints,
+  adjustBalance,
   confirmPhone,
   resetPassword,
   setPhone,
@@ -20,7 +21,7 @@ import { voidGame } from '@/server/settlement'
 import { createManager, resetStaffPassword, setStaffDisabled } from '@/server/staff'
 import { defaultFetcher, syncGames } from '@/server/sync/sync'
 
-export async function adjustPointsAction(
+export async function adjustBalanceAction(
   userId: string,
   _prev: ActionState,
   fd: FormData,
@@ -28,18 +29,12 @@ export async function adjustPointsAction(
   const admin = await requireAdmin('points.adjust')
   const r = await runAction(
     () =>
-      adjustPoints(admin.id, userId, {
-        direction: fd.get('direction'),
+      adjustBalance(admin.id, userId, {
+        kind: fd.get('kind'),
         amount: fd.get('amount'),
         note: fd.get('note'),
       }),
-    ({ welcomeBonus, referralBonus }) => {
-      const extras = [
-        welcomeBonus > 0 && `+${welcomeBonus.toLocaleString('en-US')} welcome bonus`,
-        referralBonus > 0 && `+${referralBonus.toLocaleString('en-US')} to their referrer`,
-      ].filter(Boolean)
-      return extras.length ? `Points updated (${extras.join(', ')})` : 'Points updated'
-    },
+    adjustToast,
   )
   revalidatePath('/admin', 'layout')
   return r
