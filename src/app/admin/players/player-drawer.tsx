@@ -229,7 +229,11 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
           </Field>
         </ActionDialog>
       </div>
-      {!p.phoneConfirmedAt && <p className="text-muted-foreground text-xs">Confirm the phone number first</p>}
+      {!p.phoneConfirmedAt && (
+        <p className="text-muted-foreground text-xs">
+          {p.phone ? 'Confirm the phone number first' : 'Add a phone number first'}
+        </p>
+      )}
 
       <Tabs defaultValue="bets">
         <TabsList>

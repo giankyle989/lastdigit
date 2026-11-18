@@ -29,6 +29,9 @@ export function stampClientIp(req, trustProxy) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  // Next loads .env during prepare(), which is too late for the settings below.
+  const { default: nextEnv } = await import('@next/env')
+  nextEnv.loadEnvConfig(process.cwd())
   const { default: next } = await import('next')
   const port = Number(process.env.PORT ?? 3000)
   const hostname = process.env.HOST ?? '0.0.0.0'
@@ -38,7 +41,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   await app.prepare()
   createServer((req, res) => {
     stampClientIp(req, trustProxy)
-    void handle(req, res)
+    handle(req, res).catch((e) => {
+      console.error('request failed', e)
+      if (!res.headersSent) res.statusCode = 500
+      res.end()
+    })
   }).listen(port, hostname, () => {
     console.log(`> Ready on http://${hostname}:${port}`)
   })

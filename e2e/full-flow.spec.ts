@@ -58,6 +58,9 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   // players start at 0; alice's referral bonus waits for bob's first top-up
   const aliceRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
   expect(aliceRow.balance).toBe(0)
+  // a referral bonus only goes to a referrer whose phone is confirmed
+  const adminRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
+  await confirmPhone(adminRow.id, aliceRow.id)
 
   // admin tops bob up with 1000 from the player drawer: his first top-up is matched (+1000)
   // and alice, who referred him, gets 50% of it (capped at 200)
@@ -90,8 +93,6 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
     },
   })
   // alice tops up 100 (+100 matched) and joins the pool on a losing ending, so it is not a solo pool
-  const adminRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
-  await confirmPhone(adminRow.id, aliceRow.id)
   await adjustPoints(adminRow.id, aliceRow.id, { direction: 'GRANT', amount: 100, note: 'top-up' })
   await placeBet(aliceRow.id, { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
 

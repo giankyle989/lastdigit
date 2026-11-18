@@ -110,6 +110,7 @@ describe('admin player management', () => {
       referralCode: alice.referralCode,
     })
 
+    await confirmPhone(admin.id, alice.id)
     await confirmPhone(admin.id, bob.id)
     expect(await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })).toEqual(
       {
@@ -157,6 +158,24 @@ describe('admin player management', () => {
       },
     )
     expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(0)
+  })
+
+  it('pays no referral bonus to a referrer whose phone is not confirmed', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const alice = await registerPlayer({ phone: nextPhone(), username: 'alice', password: 'secret123' })
+    const bob = await registerPlayer({
+      phone: nextPhone(),
+      username: 'bob',
+      password: 'secret123',
+      referralCode: alice.referralCode,
+    })
+    await confirmPhone(admin.id, bob.id)
+    expect(await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })).toEqual(
+      { welcomeBonus: 300, referralBonus: 0 },
+    )
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(0)
+    expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(0)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: bob.id } })).referralBonusPaidAt).toBeNull()
   })
 
   it('pays nothing when the referral percent or cap is 0', async () => {

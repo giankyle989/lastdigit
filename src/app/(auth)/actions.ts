@@ -21,7 +21,12 @@ async function safely(record: () => Promise<void>): Promise<void> {
 }
 
 async function seenNow(): Promise<Seen> {
-  return { deviceId: await deviceId(), ip: await clientIp() }
+  try {
+    return { deviceId: await deviceId(), ip: await clientIp() }
+  } catch (e) {
+    console.error('account sighting: could not read request info', e)
+    return { deviceId: null, ip: 'unknown' }
+  }
 }
 
 export async function loginAction(_prev: ActionState, fd: FormData): Promise<ActionState> {

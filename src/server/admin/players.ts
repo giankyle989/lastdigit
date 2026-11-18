@@ -29,7 +29,8 @@ const adjustSchema = z.object({
  * Grants or deducts points. A player's first grant is their first top-up:
  * - it is matched 1:1 as a welcome bonus, up to `welcomeBonusCap`;
  * - if they were referred, the referrer gets `referralPercent`% of it, up to `referralBonusCap`
- *   (once per referred player, guarded by `referralBonusPaidAt`).
+ *   (once per referred player, guarded by `referralBonusPaidAt`), but only if the referrer's
+ *   phone is confirmed.
  * Returns the bonuses credited (0 when none).
  */
 export async function adjustPoints(
@@ -84,7 +85,11 @@ export async function adjustPoints(
 
     let referralBonus = 0
     const fresh = await tx.user.findUniqueOrThrow({ where: { id: userId } })
-    if (fresh.referredById && !fresh.referralBonusPaidAt) {
+    const referrer = fresh.referredById
+      ? await tx.user.findUnique({ where: { id: fresh.referredById }, select: { phoneConfirmedAt: true } })
+      : null
+    // Only a referrer with a confirmed phone is paid, so an unconfirmed alt can't farm the bonus.
+    if (fresh.referredById && !fresh.referralBonusPaidAt && referrer?.phoneConfirmedAt) {
       referralBonus = Math.min(Math.floor((amount * bonuses.referralPercent) / 100), bonuses.referralBonusCap)
       if (referralBonus > 0) {
         await tx.user.update({ where: { id: userId }, data: { referralBonusPaidAt: new Date() } })
