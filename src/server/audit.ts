@@ -11,6 +11,8 @@ export const ADMIN_ACTION_TYPES = [
   'UPDATE_SETTING',
   'GRANT_POINTS',
   'DEDUCT_POINTS',
+  'UPDATE_PHONE',
+  'CONFIRM_PHONE',
 ] as const
 
 export type AdminActionType = (typeof ADMIN_ACTION_TYPES)[number]

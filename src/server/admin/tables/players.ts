@@ -11,14 +11,18 @@ import {
   TABLE_PAGE_SIZE,
 } from '@/lib/table-params'
 
+import { sharedDevicePlayerIds } from '../../sightings'
+
 export const PLAYER_SORTS = ['username', 'balance', 'joined', 'referrals'] as const
 export const PLAYER_STATUSES = ['active', 'suspended'] as const
+export const PLAYER_FLAGS = ['shared-device'] as const
 
 export type PlayerListParams = {
   q?: string
   sort: Sort<(typeof PLAYER_SORTS)[number]>
   page: number
   status?: (typeof PLAYER_STATUSES)[number]
+  flag?: (typeof PLAYER_FLAGS)[number]
 }
 
 export function parsePlayerListParams(sp: SearchParams): PlayerListParams {
@@ -27,6 +31,7 @@ export function parsePlayerListParams(sp: SearchParams): PlayerListParams {
     sort: parseSort(sp.sort, PLAYER_SORTS, { field: 'joined', dir: 'desc' }),
     page: parsePage(sp.page),
     status: parseOption(sp.status, PLAYER_STATUSES),
+    flag: parseOption(sp.flag, PLAYER_FLAGS),
   }
 }
 
@@ -61,8 +66,10 @@ export async function listPlayers(p: PlayerListParams, now: Date = new Date()): 
     status: 'SUSPENDED',
     OR: [{ suspendedUntil: null }, { suspendedUntil: { gt: now } }],
   }
+  const sharedIds = p.flag === 'shared-device' ? await sharedDevicePlayerIds() : undefined
   const where: Prisma.UserWhereInput = {
     role: 'PLAYER',
+    ...(sharedIds ? { id: { in: sharedIds } } : {}),
     ...(p.q ? { usernameKey: { contains: p.q.toLowerCase() } } : {}),
     ...(p.status === 'suspended' ? suspendedNow : p.status === 'active' ? { NOT: suspendedNow } : {}),
   }

@@ -9,13 +9,17 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { formatEnding } from '@/lib/game/ending'
+import { formatPhPhone } from '@/lib/phone'
 import { isSuspended } from '@/lib/suspension'
 import { TX_TYPE_LABELS } from '@/lib/wallet'
 import type { getPlayerDetail } from '@/server/admin/queries'
+import type { LinkedAccount } from '@/server/sightings'
 
 import {
   adjustPointsAction,
+  confirmPhoneAction,
   resetPasswordAction,
+  setPhoneAction,
   stakeLimitAction,
   suspendAction,
   unsuspendAction,
@@ -23,11 +27,31 @@ import {
 
 type Player = NonNullable<Awaited<ReturnType<typeof getPlayerDetail>>>
 
-export function PlayerDrawer({ player: p }: { player: Player }) {
+export function PlayerDrawer({ player: p, linked }: { player: Player; linked: LinkedAccount[] }) {
   const suspended = isSuspended(p)
   return (
     <>
       <dl className="grid grid-cols-2 gap-3 text-sm">
+        <div className="col-span-2">
+          <dt className="text-muted-foreground text-xs">Phone</dt>
+          <dd>
+            {p.phone ? (
+              <>
+                <span className="num">{formatPhPhone(p.phone)}</span>{' '}
+                {p.phoneConfirmedAt ? (
+                  <span className="text-primary text-xs">
+                    Confirmed {formatDate(p.phoneConfirmedAt)}
+                    {p.phoneConfirmedBy ? ` by ${p.phoneConfirmedBy.username}` : ''}
+                  </span>
+                ) : (
+                  <span className="text-live text-xs">Not confirmed</span>
+                )}
+              </>
+            ) : (
+              <span className="text-muted-foreground">No number</span>
+            )}
+          </dd>
+        </div>
         <div>
           <dt className="text-muted-foreground text-xs">Balance</dt>
           <dd>
@@ -70,10 +94,58 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
           <dd className="num">{p.referralCode}</dd>
         </div>
       </dl>
+      {linked.length > 0 && (
+        <section aria-labelledby="linked-heading" className="grid gap-1 text-sm">
+          <h3 id="linked-heading" className="text-muted-foreground text-xs">
+            Linked accounts
+          </h3>
+          <ul className="grid gap-1">
+            {linked.map((l) => (
+              <li key={l.id} className="flex justify-between gap-2">
+                <Link href={`/admin/players?player=${l.id}`} className="text-primary hover:underline">
+                  {l.username}
+                </Link>
+                <span className="text-muted-foreground text-xs">
+                  {[l.sameDevice && 'same device', l.sameNetwork && 'same network']
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="flex flex-wrap gap-2">
+        {/* Stays mounted (hidden, not removed) so the success toast survives the revalidated render. */}
+        <div className={p.phone && !p.phoneConfirmedAt ? 'contents' : 'hidden'}>
+          <ActionForm
+            action={confirmPhoneAction.bind(null, p.id)}
+            submitLabel="Confirm phone"
+            className="contents"
+          />
+        </div>
+        <ActionDialog
+          triggerLabel="Edit number"
+          title={`Phone number for ${p.username}`}
+          description="Changing it means confirming it again before the next grant."
+          submitLabel="Save number"
+          action={setPhoneAction.bind(null, p.id)}
+        >
+          <Field id="phone" label="Mobile number">
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              defaultValue={p.phone ? formatPhPhone(p.phone) : ''}
+              required
+            />
+          </Field>
+        </ActionDialog>
         <ActionDialog
           triggerLabel="Grant"
+          disabled={!p.phoneConfirmedAt}
           title={`Grant points to ${p.username}`}
           submitLabel="Grant points"
           action={adjustPointsAction.bind(null, p.id)}
@@ -157,6 +229,11 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
           </Field>
         </ActionDialog>
       </div>
+      {!p.phoneConfirmedAt && (
+        <p className="text-muted-foreground text-xs">
+          {p.phone ? 'Confirm the phone number first' : 'Add a phone number first'}
+        </p>
+      )}
 
       <Tabs defaultValue="bets">
         <TabsList>

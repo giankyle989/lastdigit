@@ -2,6 +2,7 @@ import { addDays, localDateOf, localDayRange, TIME_ZONE } from '@/lib/dates'
 import { prisma } from '@/lib/db'
 
 import { getLastSyncAt } from '../settings'
+import { sharedDevicePlayerIds } from '../sightings'
 
 const SYNC_STALE_MS = 30 * 60 * 1000
 const DAY_MS = 86_400_000
@@ -28,6 +29,7 @@ export async function getOverviewStats(now: Date = new Date()) {
     negativeBalances,
     openTickets,
     openTicketCount,
+    sharedDevice,
   ] = await Promise.all([
     prisma.user.count({ where: { role: 'PLAYER' } }),
     prisma.user.count({
@@ -69,6 +71,7 @@ export async function getOverviewStats(now: Date = new Date()) {
       take: ATTENTION_LIMIT,
     }),
     prisma.inquiry.count({ where: { status: 'OPEN' } }),
+    sharedDevicePlayerIds(),
   ])
   return {
     playerCount,
@@ -84,6 +87,7 @@ export async function getOverviewStats(now: Date = new Date()) {
     negativeBalances,
     openTickets: openTickets.map((t) => ({ id: t.id, subject: t.subject, username: t.user.username })),
     openTicketCount,
+    sharedDevicePlayers: sharedDevice.length,
   }
 }
 
@@ -146,11 +150,12 @@ export async function getTopBettorsToday(now: Date = new Date()) {
 
 /** Sidebar badges: open ticket count, and whether the overview has anything needing attention. */
 export async function getAdminBadges(now: Date = new Date()) {
-  const [openTickets, postponed, stuck, negative] = await Promise.all([
+  const [openTickets, postponed, stuck, negative, shared] = await Promise.all([
     prisma.inquiry.count({ where: { status: 'OPEN' } }),
     prisma.game.count({ where: { status: 'POSTPONED' } }),
     prisma.game.count({ where: stuckSettlementWhere(now) }),
     prisma.user.count({ where: { balance: { lt: 0 } } }),
+    sharedDevicePlayerIds(),
   ])
-  return { openTickets, needsAttention: openTickets + postponed + stuck + negative > 0 }
+  return { openTickets, needsAttention: openTickets + postponed + stuck + negative + shared.length > 0 }
 }

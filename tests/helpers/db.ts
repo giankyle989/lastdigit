@@ -11,6 +11,13 @@ export async function resetDb() {
 }
 
 let seq = 0
+let phoneSeq = 0
+
+/** A fresh, valid PH mobile number in E.164 for each call. */
+export function nextPhone(): string {
+  phoneSeq++
+  return `+63917${String(phoneSeq).padStart(7, '0')}`
+}
 
 export async function makeUser(over: Partial<Prisma.UserUncheckedCreateInput> = {}) {
   seq++
@@ -19,6 +26,8 @@ export async function makeUser(over: Partial<Prisma.UserUncheckedCreateInput> = 
     data: {
       passwordHash: 'not-a-real-hash',
       referralCode: `CODE${String(seq).padStart(4, '0')}`,
+      phone: nextPhone(),
+      phoneConfirmedAt: new Date(),
       ...over,
       username,
       usernameKey: username.toLowerCase(),

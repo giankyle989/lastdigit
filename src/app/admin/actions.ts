@@ -6,7 +6,9 @@ import { type ActionState, runAction } from '@/lib/action-state'
 import { parseSuspendUntil } from '@/lib/suspend-until'
 import {
   adjustPoints,
+  confirmPhone,
   resetPassword,
+  setPhone,
   setStakeLimit,
   suspendPlayer,
   unsuspendPlayer,
@@ -132,6 +134,20 @@ export async function bonusesAction(_prev: ActionState, fd: FormData): Promise<A
       }),
     'Bonuses saved',
   )
+  revalidatePath('/admin', 'layout')
+  return r
+}
+
+export async function setPhoneAction(userId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireAdmin()
+  const r = await runAction(() => setPhone(admin.id, userId, String(fd.get('phone') ?? '')), 'Number saved')
+  revalidatePath('/admin', 'layout')
+  return r
+}
+
+export async function confirmPhoneAction(userId: string): Promise<ActionState> {
+  const admin = await requireAdmin()
+  const r = await runAction(() => confirmPhone(admin.id, userId), 'Phone confirmed')
   revalidatePath('/admin', 'layout')
   return r
 }

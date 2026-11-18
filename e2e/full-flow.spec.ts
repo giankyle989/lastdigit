@@ -1,15 +1,16 @@
 import { expect, type Page, test } from '@playwright/test'
 
 import { prisma } from '../src/lib/db'
-import { adjustPoints } from '../src/server/admin/players'
+import { adjustPoints, confirmPhone } from '../src/server/admin/players'
 import { placeBet } from '../src/server/bets'
 import { setBonuses } from '../src/server/settings'
 import type { ApiGame } from '../src/server/sync/balldontlie'
 import { syncGames } from '../src/server/sync/sync'
 
-async function signup(page: Page, username: string, ref?: string) {
+async function signup(page: Page, username: string, phone: string, ref?: string) {
   await page.goto(ref ? `/signup?ref=${ref}` : '/signup')
   await page.getByLabel('Username').fill(username)
+  await page.getByLabel('Mobile number').fill(phone)
   await page.getByLabel('Password').fill('secret123')
   await page.getByRole('button', { name: 'Sign up' }).click()
   await page.waitForURL('**/games')
@@ -38,22 +39,28 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   const bob = `bob_${tag}`
   const externalId = tag === 'desktop' ? 7001 : 7002
   const mobile = testInfo.project.use.isMobile === true
+  const phoneBase = tag === 'desktop' ? '0917 000 00' : '0917 000 01'
+  const alicePhone = `${phoneBase}01`
+  const bobPhone = `${phoneBase}02`
 
   // alice signs up and shares her code
-  await signup(page, alice)
+  await signup(page, alice, alicePhone)
   await page.goto('/more/referral')
   const code = (await page.getByTestId('referral-code').textContent())?.trim() ?? ''
   expect(code).not.toBe('')
   await logout(page, 'player')
 
   // a logged-in visitor to /login is sent home (spec §4.7) — checked with bob below
-  await signup(page, bob, code)
+  await signup(page, bob, bobPhone, code)
   await page.goto('/login')
   await page.waitForURL('**/games')
   await logout(page, 'player')
   // players start at 0; alice's referral bonus waits for bob's first top-up
   const aliceRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
   expect(aliceRow.balance).toBe(0)
+  // a referral bonus only goes to a referrer whose phone is confirmed
+  const adminRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
+  await confirmPhone(adminRow.id, aliceRow.id)
 
   // admin tops bob up with 1000 from the player drawer: his first top-up is matched (+1000)
   // and alice, who referred him, gets 50% of it (capped at 200)
@@ -62,6 +69,11 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await page.goto(`/admin/players?q=${bob}`)
   await page.getByRole('link', { name: bob, exact: true }).click()
   await expect(page.getByRole('dialog', { name: bob })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeDisabled()
+  await page.getByRole('button', { name: 'Confirm phone' }).click()
+  await expect(page.getByText('Phone confirmed')).toBeVisible()
+  await expect(page.getByText(/^Confirmed .+ by /)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeEnabled()
   await page.getByRole('button', { name: 'Grant', exact: true }).click()
   await page.getByLabel('Amount').fill('1000')
   await page.getByLabel('Note').fill('Welcome bonus')
@@ -81,7 +93,6 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
     },
   })
   // alice tops up 100 (+100 matched) and joins the pool on a losing ending, so it is not a solo pool
-  const adminRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
   await adjustPoints(adminRow.id, aliceRow.id, { direction: 'GRANT', amount: 100, note: 'top-up' })
   await placeBet(aliceRow.id, { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
 

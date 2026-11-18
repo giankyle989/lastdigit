@@ -29,7 +29,11 @@ On serverless hosts (no long-running process), turn the schedule off and call th
 
 1. Set environment variables: `AUTH_SECRET` (generate with `openssl rand -base64 32`), `CRON_SECRET`, `BALLDONTLIE_API_KEY`, `SYNC_INTERVAL_MINUTES`, plus `DATABASE_URL`, `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
 2. Apply migrations with `npx prisma migrate deploy` (not `migrate dev`), then `npm run db:seed`.
-3. `npm run build && npm start`.
+3. `npm run build && npm start`. `npm start` runs `node server.mjs`, a small custom server that stamps the real client IP on each request (used for rate limits and account flags).
+
+Server settings (in `.env` or the environment): `HOST` (default `0.0.0.0`), `PORT` (default `3000`) and `TRUSTED_PROXY`. Set `TRUSTED_PROXY=1` only behind a reverse proxy that appends the client to `X-Forwarded-For`; otherwise leave it unset, or clients could spoof their IP.
+
+Rotating `AUTH_SECRET` also changes the device and network fingerprints, so old sightings stop matching new ones.
 
 ## Tests
 

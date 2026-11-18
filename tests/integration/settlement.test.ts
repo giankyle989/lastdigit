@@ -5,7 +5,7 @@ import { placeBet } from '@/server/bets'
 import { settleGame, voidGame } from '@/server/settlement'
 import { registerPlayer } from '@/server/users'
 
-import { expectLedgerConsistent, fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
+import { expectLedgerConsistent, fundUser, makeGame, makeUser, nextPhone, resetDb } from '../helpers/db'
 
 async function balanceOf(id: string) {
   return (await prisma.user.findUniqueOrThrow({ where: { id } })).balance
@@ -177,8 +177,9 @@ describe('settlement and referrals', () => {
   beforeEach(resetDb)
 
   it("settling a referred player's bets pays the referrer nothing (the bonus comes with the top-up)", async () => {
-    const alice = await registerPlayer({ username: 'alice', password: 'secret123' })
+    const alice = await registerPlayer({ phone: nextPhone(), username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
+      phone: nextPhone(),
       username: 'bob',
       password: 'secret123',
       referralCode: alice.referralCode,

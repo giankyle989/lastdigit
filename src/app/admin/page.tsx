@@ -31,6 +31,7 @@ async function OverviewBody() {
     s.postponed.length === 0 &&
     s.stuckSettlements.length === 0 &&
     s.negativeBalances.length === 0 &&
+    s.sharedDevicePlayers === 0 &&
     s.openTickets.length === 0
 
   return (
@@ -111,6 +112,17 @@ async function OverviewBody() {
                     </Link>
                   </li>
                 ))}
+                {s.sharedDevicePlayers > 0 && (
+                  <li>
+                    <Link
+                      href="/admin/players?flag=shared-device"
+                      className="flex justify-between gap-2 py-2"
+                    >
+                      <span>{s.sharedDevicePlayers} players share a device with another account</span>
+                      <span className="text-live">Review</span>
+                    </Link>
+                  </li>
+                )}
                 {s.openTickets.map((t) => (
                   <li key={t.id}>
                     <Link href={`/admin/support?ticket=${t.id}`} className="flex justify-between gap-2 py-2">

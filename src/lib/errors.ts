@@ -3,6 +3,8 @@ export type DomainErrorCode =
   | 'BETTING_CLOSED'
   | 'STAKE_LIMIT'
   | 'SUSPENDED'
+  | 'PHONE_TAKEN'
+  | 'PHONE_NOT_CONFIRMED'
   | 'VALIDATION'
   | 'NOT_FOUND'
   | 'USERNAME_TAKEN'
