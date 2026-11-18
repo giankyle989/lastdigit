@@ -76,7 +76,9 @@ test('superadmin adds a manager; the manager grants points but cannot manage gam
   await page.getByLabel('Note').fill('cash in')
   await page.getByRole('button', { name: 'Grant points', exact: true }).click()
   await expect(page.getByText(/^Points updated/)).toBeVisible()
-  expect((await prisma.user.findUniqueOrThrow({ where: { id: pat.id } })).balance).toBeGreaterThanOrEqual(250)
+  expect(
+    (await prisma.user.findUniqueOrThrow({ where: { id: pat.id } })).walletBalance,
+  ).toBeGreaterThanOrEqual(250)
 })
 
 test.afterAll(async () => {

@@ -108,7 +108,7 @@ async function OverviewBody() {
                   <li key={u.id}>
                     <Link href={`/admin/players?player=${u.id}`} className="flex justify-between gap-2 py-2">
                       <span>Negative balance: {u.username}</span>
-                      <PointsAmount value={u.balance} className="text-danger" />
+                      <PointsAmount value={u.walletBalance} className="text-danger" />
                     </Link>
                   </li>
                 ))}

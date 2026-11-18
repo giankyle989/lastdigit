@@ -126,7 +126,7 @@ export async function getSlipStatus(
   const keys = slipKeysSchema.parse(input)
   const gameIds = [...new Set(keys.map((k) => k.gameId))]
   const [user, games, sums] = await Promise.all([
-    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { balance: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { walletBalance: true } }),
     prisma.game.findMany({ where: { id: { in: gameIds } } }),
     prisma.bet.groupBy({
       by: ['gameId', 'awayDigit', 'homeDigit'],
@@ -137,7 +137,7 @@ export async function getSlipStatus(
   const gameById = new Map(games.map((g) => [g.id, g]))
   const stakeBy = new Map(sums.map((s) => [`${s.gameId}:${formatEnding(s)}`, s._sum.stake ?? 0]))
   return {
-    balance: user.balance,
+    balance: user.walletBalance,
     picks: keys.map((k) => {
       const game = gameById.get(k.gameId)
       return {

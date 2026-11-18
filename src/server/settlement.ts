@@ -44,6 +44,7 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
         await lockUsers(tx, bettorIds)
         for (const bet of bets) {
           await postEntry(tx, {
+            account: 'WALLET',
             userId: bet.userId,
             type: 'REFUND',
             amount: bet.stake,
@@ -70,7 +71,14 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
         }
         await tx.bet.update({ where: { id: bet.id }, data: { result: 'WON', payout } })
         if (payout > 0) {
-          await postEntry(tx, { userId: bet.userId, type: 'PAYOUT', amount: payout, gameId, betId: bet.id })
+          await postEntry(tx, {
+            account: 'WALLET',
+            userId: bet.userId,
+            type: 'PAYOUT',
+            amount: payout,
+            gameId,
+            betId: bet.id,
+          })
         }
       }
 
@@ -103,6 +111,7 @@ export async function voidGame(adminId: string, gameId: string, reason: unknown)
       for (const bet of bets) {
         if (bet.payout > 0) {
           await postEntry(tx, {
+            account: 'WALLET',
             userId: bet.userId,
             type: 'REFUND',
             amount: -bet.payout,
@@ -113,6 +122,7 @@ export async function voidGame(adminId: string, gameId: string, reason: unknown)
           })
         }
         await postEntry(tx, {
+          account: 'WALLET',
           userId: bet.userId,
           type: 'REFUND',
           amount: bet.stake,

@@ -10,7 +10,9 @@ import { makeGame, makeUser, resetDb } from '../helpers/db'
 
 /** A BET ledger row of `stake` points created at `at`. */
 async function betAt(userId: string, stake: number, at: Date) {
-  const t = await prisma.$transaction((tx) => postEntry(tx, { userId, type: 'BET', amount: -stake }))
+  const t = await prisma.$transaction((tx) =>
+    postEntry(tx, { account: 'WALLET', userId, type: 'BET', amount: -stake }),
+  )
   await prisma.transaction.update({ where: { id: t.id }, data: { createdAt: at } })
 }
 
@@ -24,7 +26,9 @@ describe('admin overview', () => {
     await betAt(u.id, 40, new Date('2026-11-11T16:00:00Z')) // 00:00 PHT Nov 12
     await betAt(u.id, 60, new Date('2026-11-12T01:00:00Z'))
     await betAt(u.id, 999, new Date('2026-10-01T16:00:00Z')) // outside the window
-    await prisma.$transaction((tx) => postEntry(tx, { userId: u.id, type: 'ADMIN_GRANT', amount: 500 }))
+    await prisma.$transaction((tx) =>
+      postEntry(tx, { account: 'WALLET', userId: u.id, type: 'ADMIN_GRANT', amount: 500 }),
+    )
     await makeGame({ status: 'SETTLED', houseTake: 30, settledAt: new Date('2026-11-11T15:00:00Z') }) // Nov 11 PHT
     await makeGame({ status: 'SETTLED', houseTake: 12, settledAt: new Date('2026-11-12T01:00:00Z') })
     await makeGame({ status: 'FINAL', houseTake: 0 })
@@ -62,7 +66,9 @@ describe('admin overview', () => {
     await makeUser({ role: 'SUPERADMIN' })
     const neg = await makeUser({ username: 'neg' })
     await makeUser({ username: 'old', createdAt: new Date('2026-10-01T00:00:00Z') })
-    await prisma.$transaction((tx) => postEntry(tx, { userId: neg.id, type: 'REFUND', amount: -50 }))
+    await prisma.$transaction((tx) =>
+      postEntry(tx, { account: 'WALLET', userId: neg.id, type: 'REFUND', amount: -50 }),
+    )
     await makeGame({ status: 'SETTLED', houseTake: 100, settledAt: new Date('2026-11-08T12:00:00Z') }) // in 7 PHT days
     await makeGame({ status: 'SETTLED', houseTake: 500, settledAt: new Date('2026-11-01T12:00:00Z') }) // older
     await makeGame({ status: 'SCHEDULED', pool: 300 })
@@ -82,7 +88,7 @@ describe('admin overview', () => {
       openTicketCount: 1,
     })
     expect(s.postponed.map((g) => g.id)).toEqual([pp.id])
-    expect(s.negativeBalances).toEqual([{ id: neg.id, username: 'neg', balance: -50 }])
+    expect(s.negativeBalances).toEqual([{ id: neg.id, username: 'neg', walletBalance: -50 }])
     expect(s.openTickets).toEqual([{ id: ticket.id, subject: 'Help', username: 'neg' }])
     expect(await getAdminBadges()).toEqual({ openTickets: 1, needsAttention: true })
   })

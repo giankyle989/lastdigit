@@ -103,7 +103,9 @@ async function PlayersTable({ sp, params }: { sp: SearchParams; params: PlayerLi
           header: 'Balance',
           sort: 'balance',
           align: 'right',
-          cell: (r) => <PointsAmount value={r.balance} className={r.balance < 0 ? 'text-danger' : ''} />,
+          cell: (r) => (
+            <PointsAmount value={r.walletBalance} className={r.walletBalance < 0 ? 'text-danger' : ''} />
+          ),
         },
         {
           key: 'status',

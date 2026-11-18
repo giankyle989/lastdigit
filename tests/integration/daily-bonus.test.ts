@@ -11,7 +11,7 @@ const NOV_12_2359_PHT = new Date('2026-11-12T15:59:59Z')
 const NOV_13_0000_PHT = new Date('2026-11-12T16:00:00Z')
 
 async function balanceOf(id: string) {
-  return (await prisma.user.findUniqueOrThrow({ where: { id } })).balance
+  return (await prisma.user.findUniqueOrThrow({ where: { id } })).walletBalance
 }
 
 describe('daily bonus', () => {

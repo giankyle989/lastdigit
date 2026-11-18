@@ -35,7 +35,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await logout(page, 'player')
   // players start at 0; alice's referral bonus waits for bob's first top-up
   const aliceRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect(aliceRow.balance).toBe(0)
+  expect(aliceRow.walletBalance).toBe(0)
   // a referral bonus only goes to a referrer whose phone is confirmed
   const adminRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
   await confirmPhone(adminRow.id, aliceRow.id)
@@ -57,7 +57,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await page.getByLabel('Note').fill('Welcome bonus')
   await page.getByRole('button', { name: 'Grant points', exact: true }).click()
   await expect(page.getByText('Points updated (+1,000 welcome bonus, +200 to their referrer)')).toBeVisible()
-  expect((await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })).balance).toBe(200)
+  expect((await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })).walletBalance).toBe(200)
   await logout(page, 'admin')
 
   // a game exists; bob picks 9-6 with the pickers, adds it to the slip and confirms
@@ -140,7 +140,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
 
   // alice: 200 referral + 100 top-up + 100 matched - 100 stake (her bet lost)
   const aliceAfter = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect(aliceAfter.balance).toBe(300)
+  expect(aliceAfter.walletBalance).toBe(300)
 })
 
 test.afterAll(async () => {

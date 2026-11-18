@@ -103,7 +103,7 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
         try {
           await postEntry(
             tx,
-            { userId, type: 'BET', amount: -stake, gameId, betId: bet.id },
+            { userId, account: 'WALLET', type: 'BET', amount: -stake, gameId, betId: bet.id },
             { requireFunds: true },
           )
         } catch (e) {

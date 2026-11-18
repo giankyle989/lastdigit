@@ -40,7 +40,7 @@ function orderBy(sort: PlayerListParams['sort']): Prisma.UserOrderByWithRelation
     case 'username':
       return { usernameKey: sort.dir }
     case 'balance':
-      return { balance: sort.dir }
+      return { walletBalance: sort.dir }
     case 'joined':
       return { createdAt: sort.dir }
     case 'referrals':
@@ -51,7 +51,7 @@ function orderBy(sort: PlayerListParams['sort']): Prisma.UserOrderByWithRelation
 const select = {
   id: true,
   username: true,
-  balance: true,
+  walletBalance: true,
   status: true,
   suspendedUntil: true,
   stakeLimitPerGame: true,

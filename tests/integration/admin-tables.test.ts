@@ -78,7 +78,9 @@ describe('admin tables', () => {
     await fundUser(kyle.id, 10)
     await fundUser(kyle.id, 15)
     await fundUser(bob.id, 7)
-    await prisma.$transaction((tx) => postEntry(tx, { userId: kyle.id, type: 'BET', amount: -5 }))
+    await prisma.$transaction((tx) =>
+      postEntry(tx, { account: 'WALLET', userId: kyle.id, type: 'BET', amount: -5 }),
+    )
 
     const grants = await listLedger(parseLedgerListParams({ q: 'KYLE', type: 'ADMIN_GRANT' }))
     expect(grants).toMatchObject({ total: 2, totalAmount: 25 })

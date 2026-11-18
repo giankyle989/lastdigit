@@ -34,7 +34,7 @@ describe('admin player management', () => {
       welcomeBonus: 0,
       referralBonus: 0,
     })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(1000)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).walletBalance).toBe(1000)
     expect(await prisma.transaction.findFirstOrThrow()).toMatchObject({
       type: 'ADMIN_GRANT',
       amount: 1000,
@@ -58,7 +58,7 @@ describe('admin player management', () => {
       welcomeBonus: 300,
       referralBonus: 0,
     })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: small.id } })).balance).toBe(600)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: small.id } })).walletBalance).toBe(600)
     const bonus = await prisma.transaction.findFirstOrThrow({
       where: { userId: small.id, type: 'SIGNUP_BONUS' },
     })
@@ -75,11 +75,11 @@ describe('admin player management', () => {
       welcomeBonus: 0,
       referralBonus: 0,
     })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: small.id } })).balance).toBe(900)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: small.id } })).walletBalance).toBe(900)
 
     // capped at 1000 by default
     await adjustPoints(admin.id, big.id, { direction: 'GRANT', amount: 2000, note: 'top-up' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: big.id } })).balance).toBe(3000)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: big.id } })).walletBalance).toBe(3000)
     await expectLedgerConsistent()
   })
 
@@ -91,7 +91,7 @@ describe('admin player management', () => {
       adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'b' }),
     ])
     expect(await prisma.transaction.count({ where: { type: 'SIGNUP_BONUS' } })).toBe(1)
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(300)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).walletBalance).toBe(300)
   })
 
   it("pays the referrer 50% of the referred friend's first top-up, capped at 200", async () => {
@@ -118,7 +118,7 @@ describe('admin player management', () => {
         referralBonus: 150,
       },
     )
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(150)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(150)
     expect(await prisma.transaction.findFirstOrThrow({ where: { type: 'REFERRAL_BONUS' } })).toMatchObject({
       userId: alice.id,
       amount: 150,
@@ -131,12 +131,12 @@ describe('admin player management', () => {
 
     // only the first top-up counts
     await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 1000, note: 'again' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(150)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(150)
 
     // 50% of 2000 is capped at 200 (the default cap)
     await confirmPhone(admin.id, cara.id)
     await adjustPoints(admin.id, cara.id, { direction: 'GRANT', amount: 2000, note: 'top-up' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(350)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(350)
     await expectLedgerConsistent()
   })
 
@@ -157,7 +157,7 @@ describe('admin player management', () => {
         referralBonus: 0,
       },
     )
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(0)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(0)
   })
 
   it('pays no referral bonus to a referrer whose phone is not confirmed', async () => {
@@ -173,7 +173,7 @@ describe('admin player management', () => {
     expect(await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })).toEqual(
       { welcomeBonus: 300, referralBonus: 0 },
     )
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(0)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).walletBalance).toBe(0)
     expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(0)
     expect((await prisma.user.findUniqueOrThrow({ where: { id: bob.id } })).referralBonusPaidAt).toBeNull()
   })
@@ -203,7 +203,7 @@ describe('admin player management', () => {
     const p = await makeUser()
     await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'x' }) // +100 match
     await adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 40, note: 'correction' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(160)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).walletBalance).toBe(160)
     await expect(
       adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 161, note: 'too much' }),
     ).rejects.toMatchObject({ code: 'INSUFFICIENT_BALANCE' })
@@ -288,7 +288,7 @@ describe('admin player management', () => {
     await setPhone(admin.id, p.id, '0917 222 2222') // clears the confirmation
     await adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 10, note: 'fix' })
     // 100 granted + 100 welcome match (default cap 1,000) − 10 deducted
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(190)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).walletBalance).toBe(190)
   })
 
   it('confirms the phone once and audits it', async () => {

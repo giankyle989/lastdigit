@@ -8,7 +8,7 @@ import { placeBet, placeBets } from '@/server/bets'
 import { expectLedgerConsistent, fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 async function balanceOf(id: string) {
-  return (await prisma.user.findUniqueOrThrow({ where: { id } })).balance
+  return (await prisma.user.findUniqueOrThrow({ where: { id } })).walletBalance
 }
 async function poolOf(id: string) {
   return (await prisma.game.findUniqueOrThrow({ where: { id } })).pool
@@ -71,7 +71,7 @@ describe('placeBets', () => {
       ]),
     ).rejects.toMatchObject({
       code: 'INSUFFICIENT_BALANCE',
-      message: 'LAL @ GSW 2-2: Insufficient balance',
+      message: 'LAL @ GSW 2-2: Not enough in the wallet',
       pickIndex: 1,
     })
     expect(await balanceOf(u.id)).toBe(150)

@@ -74,7 +74,7 @@ describe('syncGames', () => {
       awayScore: 99,
       homeScore: 106,
     })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: u.id } })).balance).toBe(180) // 90% of a 200 pool
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: u.id } })).walletBalance).toBe(180) // 90% of a 200 pool
   })
 
   it('never touches settled or void games', async () => {
@@ -102,7 +102,7 @@ describe('syncGames', () => {
     })
     expect(r.settled).toBe(0)
     expect(await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).toMatchObject({ status: 'VOID' })
-    expect((await prisma.user.findUniqueOrThrow({ where: { id: u.id } })).balance).toBe(100)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: u.id } })).walletBalance).toBe(100)
     await expectLedgerConsistent()
   })
 

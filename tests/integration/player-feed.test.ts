@@ -88,9 +88,13 @@ describe('player feed queries', () => {
     const other = await makeUser()
     await fundUser(other.id, 5)
     for (let i = 0; i < 55; i++) {
-      await prisma.$transaction((tx) => postEntry(tx, { userId: me.id, type: 'ADMIN_GRANT', amount: 1 }))
+      await prisma.$transaction((tx) =>
+        postEntry(tx, { account: 'WALLET', userId: me.id, type: 'ADMIN_GRANT', amount: 1 }),
+      )
     }
-    await prisma.$transaction((tx) => postEntry(tx, { userId: me.id, type: 'PAYOUT', amount: 90 }))
+    await prisma.$transaction((tx) =>
+      postEntry(tx, { account: 'WALLET', userId: me.id, type: 'PAYOUT', amount: 90 }),
+    )
 
     const all = await listMyTransactions(me.id, 'all', 1)
     expect(all).toMatchObject({ total: 56, page: 1, pageCount: 2 })

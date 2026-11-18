@@ -55,7 +55,7 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
         <div>
           <dt className="text-muted-foreground text-xs">Balance</dt>
           <dd>
-            <PointsAmount value={p.balance} unit className={p.balance < 0 ? 'text-danger' : ''} />
+            <PointsAmount value={p.walletBalance} unit className={p.walletBalance < 0 ? 'text-danger' : ''} />
           </dd>
         </div>
         <div>

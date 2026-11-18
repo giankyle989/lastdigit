@@ -34,7 +34,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
       <section className="from-primary/20 to-card border-border rounded-xl border bg-gradient-to-br p-5">
         <div className="text-muted-foreground text-sm">Balance</div>
         <div className="mt-1 text-4xl font-bold" data-testid="balance">
-          <PointsAmount value={user.balance} unit />
+          <PointsAmount value={user.walletBalance} unit />
         </div>
       </section>
       {daily > 0 && (

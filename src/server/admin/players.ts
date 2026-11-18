@@ -59,6 +59,7 @@ export async function adjustPoints(
       tx,
       {
         userId,
+        account: 'WALLET',
         type: grant ? 'ADMIN_GRANT' : 'ADMIN_DEDUCT',
         amount: grant ? amount : -amount,
         adminId,
@@ -77,6 +78,7 @@ export async function adjustPoints(
     const welcomeBonus = Math.min(amount, bonuses.welcomeBonusCap)
     if (welcomeBonus > 0) {
       await postEntry(tx, {
+        account: 'WALLET',
         userId,
         type: 'SIGNUP_BONUS',
         amount: welcomeBonus,
@@ -96,6 +98,7 @@ export async function adjustPoints(
       if (referralBonus > 0) {
         await tx.user.update({ where: { id: userId }, data: { referralBonusPaidAt: new Date() } })
         await postEntry(tx, {
+          account: 'WALLET',
           userId: fresh.referredById,
           type: 'REFERRAL_BONUS',
           amount: referralBonus,
