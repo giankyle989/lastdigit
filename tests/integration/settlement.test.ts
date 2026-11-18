@@ -373,4 +373,21 @@ describe('settlement with wallet and points', () => {
     const reversals = await prisma.transaction.findMany({ where: { note: 'Payout reversal' } })
     expect(reversals.map((t) => t.account)).toEqual(['WALLET'])
   })
+
+  it('refuses to void when a winning bet payout does not match its ledger rows', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const a = await makeUser()
+    const b = await makeUser()
+    const g = await makeGame()
+    await fundUser(a.id, 100, 'WALLET')
+    await fundUser(b.id, 100, 'WALLET')
+    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 100 })
+    await finishAndSettle(g.id, 101, 102)
+    const before = [await balancesOf(a.id), await balancesOf(b.id)]
+    await prisma.transaction.deleteMany({ where: { type: 'PAYOUT', userId: a.id } })
+    await expect(voidGame(admin.id, g.id, 'wrong score')).rejects.toThrow(/does not match its ledger rows/)
+    expect([await balancesOf(a.id), await balancesOf(b.id)]).toEqual(before)
+    expect((await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).status).not.toBe('VOID')
+  })
 })

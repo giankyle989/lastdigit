@@ -44,18 +44,20 @@ Server settings (in `.env` or the environment): `HOST` (default `0.0.0.0`), `POR
 
 Run steps 2-4 together: after the migration the old running build can't read `balance`.
 
-**Rollback** (before anyone has points):
+**Rollback.** Restoring the `pg_dump` from step 1 is the preferred rollback. Otherwise stop the service first (`systemctl --user stop lastdigit`), then run the SQL below:
 
 ```sql
+BEGIN;
 ALTER TABLE "User" DROP COLUMN "pointsBalance";
 ALTER TABLE "User" RENAME COLUMN "walletBalance" TO "balance";
 ALTER TABLE "Transaction" DROP COLUMN "account";
 ALTER TABLE "Bet" DROP COLUMN "pointsStake";
 DROP TYPE "Account";
 DELETE FROM "_prisma_migrations" WHERE migration_name = '20261118000003_wallet_and_points';
+COMMIT;
 ```
 
-Then deploy the previous build. Once points have been used, first add each player's `pointsBalance` into `walletBalance`.
+Then deploy the previous build. "Before anyone has points" stops being true at the first cash in (welcome points), so in practice, first add each player's `pointsBalance` into `walletBalance` (and expect the ledger to need the same adjustment). This makes points cashable; that is a deliberate trade-off of rolling back.
 
 Rotating `AUTH_SECRET` also changes the device and network fingerprints, so old sightings stop matching new ones.
 

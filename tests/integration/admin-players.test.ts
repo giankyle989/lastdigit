@@ -24,7 +24,7 @@ describe('admin player management', () => {
     return { wallet: u.walletBalance, points: u.pointsBalance }
   }
 
-  it('cashes in with a note and audits it with a note and audits it', async () => {
+  it('cashes in with a note and audits it', async () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await setBonuses(admin.id, {

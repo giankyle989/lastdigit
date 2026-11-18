@@ -31,7 +31,7 @@ export async function makeUser(over: Partial<Prisma.UserUncheckedCreateInput> = 
       ...over,
       username,
       usernameKey: username.toLowerCase(),
-      walletBalance: 0, // balances are only changed via the ledger (see fundUser in Task 4)
+      walletBalance: 0, // balances are only changed via the ledger
     },
   })
 }

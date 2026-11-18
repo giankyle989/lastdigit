@@ -120,6 +120,10 @@ export async function voidGame(adminId: string, gameId: string, reason: unknown)
             select: { account: true, amount: true },
             orderBy: { id: 'asc' },
           })
+          const sum = paid.reduce((n, p) => n + p.amount, 0)
+          if (sum !== bet.payout) {
+            throw new Error(`Bet ${bet.id} payout ${bet.payout} does not match its ledger rows (${sum})`)
+          }
           for (const p of paid) {
             await postEntry(tx, {
               userId: bet.userId,
