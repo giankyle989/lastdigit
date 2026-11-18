@@ -66,6 +66,13 @@ model User {
   referralBonusPaidAt DateTime?
   /// PHT calendar date ('YYYY-MM-DD') of the last daily bonus claim.
   lastDailyBonusOn    String?
+  /// PH mobile number in E.164 (+639XXXXXXXXX); one account per number. Null for admins.
+  phone               String?          @unique
+  /// Set when an admin matched the number to a top-up payment; grants need it.
+  phoneConfirmedAt    DateTime?
+  phoneConfirmedById  String?
+  phoneConfirmedBy    User?            @relation("PhoneConfirmations", fields: [phoneConfirmedById], references: [id])
+  phoneConfirmations  User[]           @relation("PhoneConfirmations")
   referredBy          User?            @relation("Referrals", fields: [referredById], references: [id])
   referrals           User[]           @relation("Referrals")
   bets                Bet[]

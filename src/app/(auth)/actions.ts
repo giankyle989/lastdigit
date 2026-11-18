@@ -46,7 +46,12 @@ export async function signupAction(_prev: ActionState, fd: FormData): Promise<Ac
   const username = String(fd.get('username') ?? '')
   const password = String(fd.get('password') ?? '')
   const result = await runAction(() =>
-    registerPlayer({ username, password, referralCode: String(fd.get('referralCode') ?? '') }),
+    registerPlayer({
+      username,
+      password,
+      phone: String(fd.get('phone') ?? ''),
+      referralCode: String(fd.get('referralCode') ?? ''),
+    }),
   )
   if (result.error) return result
   limiter.record(ip)

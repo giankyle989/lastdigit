@@ -7,9 +7,10 @@ import { setBonuses } from '../src/server/settings'
 import type { ApiGame } from '../src/server/sync/balldontlie'
 import { syncGames } from '../src/server/sync/sync'
 
-async function signup(page: Page, username: string, ref?: string) {
+async function signup(page: Page, username: string, phone: string, ref?: string) {
   await page.goto(ref ? `/signup?ref=${ref}` : '/signup')
   await page.getByLabel('Username').fill(username)
+  await page.getByLabel('Mobile number').fill(phone)
   await page.getByLabel('Password').fill('secret123')
   await page.getByRole('button', { name: 'Sign up' }).click()
   await page.waitForURL('**/games')
@@ -38,16 +39,19 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   const bob = `bob_${tag}`
   const externalId = tag === 'desktop' ? 7001 : 7002
   const mobile = testInfo.project.use.isMobile === true
+  const phoneBase = tag === 'desktop' ? '0917 000 00' : '0917 000 01'
+  const alicePhone = `${phoneBase}01`
+  const bobPhone = `${phoneBase}02`
 
   // alice signs up and shares her code
-  await signup(page, alice)
+  await signup(page, alice, alicePhone)
   await page.goto('/more/referral')
   const code = (await page.getByTestId('referral-code').textContent())?.trim() ?? ''
   expect(code).not.toBe('')
   await logout(page, 'player')
 
   // a logged-in visitor to /login is sent home (spec §4.7) — checked with bob below
-  await signup(page, bob, code)
+  await signup(page, bob, bobPhone, code)
   await page.goto('/login')
   await page.waitForURL('**/games')
   await logout(page, 'player')

@@ -12,7 +12,7 @@ import {
 import { setBonuses } from '@/server/settings'
 import { registerPlayer, verifyCredentials } from '@/server/users'
 
-import { expectLedgerConsistent, makeUser, resetDb } from '../helpers/db'
+import { expectLedgerConsistent, makeUser, nextPhone, resetDb } from '../helpers/db'
 
 describe('admin player management', () => {
   beforeEach(resetDb)
@@ -94,13 +94,15 @@ describe('admin player management', () => {
 
   it("pays the referrer 50% of the referred friend's first top-up, capped at 200", async () => {
     const admin = await makeUser({ role: 'ADMIN' })
-    const alice = await registerPlayer({ username: 'alice', password: 'secret123' })
+    const alice = await registerPlayer({ phone: nextPhone(), username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
+      phone: nextPhone(),
       username: 'bob',
       password: 'secret123',
       referralCode: alice.referralCode,
     })
     const cara = await registerPlayer({
+      phone: nextPhone(),
       username: 'cara',
       password: 'secret123',
       referralCode: alice.referralCode,
@@ -135,8 +137,9 @@ describe('admin player management', () => {
 
   it('pays no referral bonus for players whose referrer was already paid under the old rule', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
-    const alice = await registerPlayer({ username: 'alice', password: 'secret123' })
+    const alice = await registerPlayer({ phone: nextPhone(), username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
+      phone: nextPhone(),
       username: 'bob',
       password: 'secret123',
       referralCode: alice.referralCode,
@@ -153,8 +156,9 @@ describe('admin player management', () => {
 
   it('pays nothing when the referral percent or cap is 0', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
-    const alice = await registerPlayer({ username: 'alice', password: 'secret123' })
+    const alice = await registerPlayer({ phone: nextPhone(), username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
+      phone: nextPhone(),
       username: 'bob',
       password: 'secret123',
       referralCode: alice.referralCode,
@@ -207,7 +211,7 @@ describe('admin player management', () => {
 
   it('suspends indefinitely, blocks login, and unsuspends', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
-    const p = await registerPlayer({ username: 'kyle', password: 'secret123' })
+    const p = await registerPlayer({ phone: nextPhone(), username: 'kyle', password: 'secret123' })
     await suspendPlayer(admin.id, p.id, null)
     expect(await verifyCredentials('kyle', 'secret123')).toBeNull()
     await unsuspendPlayer(admin.id, p.id)
@@ -238,7 +242,7 @@ describe('admin player management', () => {
 
   it('resets the password', async () => {
     const admin = await makeUser({ role: 'ADMIN' })
-    const p = await registerPlayer({ username: 'kyle', password: 'secret123' })
+    const p = await registerPlayer({ phone: nextPhone(), username: 'kyle', password: 'secret123' })
     await resetPassword(admin.id, p.id, 'newpass123')
     expect(await verifyCredentials('kyle', 'secret123')).toBeNull()
     expect(await verifyCredentials('kyle', 'newpass123')).not.toBeNull()

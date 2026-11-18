@@ -38,6 +38,21 @@ export default async function SignupPage({
               <p className="text-muted-foreground text-xs">3–20 letters, numbers or underscores</p>
             </div>
             <div className="grid gap-1.5">
+              <Label htmlFor="phone">Mobile number</Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="0917 123 4567"
+                required
+              />
+              <p className="text-muted-foreground text-xs">
+                One account per number. Used to confirm top-ups.
+              </p>
+            </div>
+            <div className="grid gap-1.5">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"

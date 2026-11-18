@@ -3,6 +3,7 @@ import { z } from 'zod'
 
 import { prisma } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
+import { phoneSchema } from '@/lib/phone'
 import { isSuspended } from '@/lib/suspension'
 
 import { hashPassword, verifyPassword } from './passwords'
@@ -21,6 +22,7 @@ export const passwordSchema = z
 const registerSchema = z.object({
   username: usernameSchema,
   password: passwordSchema,
+  phone: phoneSchema,
   referralCode: z
     .string()
     .trim()
@@ -38,7 +40,7 @@ function isUniqueViolation(e: unknown, field: string): boolean {
 }
 
 export async function registerPlayer(input: unknown): Promise<User> {
-  const { username, password, referralCode } = registerSchema.parse(input)
+  const { username, password, phone, referralCode } = registerSchema.parse(input)
   const passwordHash = await hashPassword(password)
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -55,6 +57,7 @@ export async function registerPlayer(input: unknown): Promise<User> {
             username,
             usernameKey: username.toLowerCase(),
             passwordHash,
+            phone,
             referralCode: generateReferralCode(),
             referredById: referrerId,
           },
@@ -65,6 +68,9 @@ export async function registerPlayer(input: unknown): Promise<User> {
     } catch (e) {
       if (isUniqueViolation(e, 'usernameKey')) {
         throw new DomainError('USERNAME_TAKEN', 'That username is already taken')
+      }
+      if (isUniqueViolation(e, 'phone')) {
+        throw new DomainError('PHONE_TAKEN', 'This number is already registered.')
       }
       if (isUniqueViolation(e, 'referralCode')) continue // generated code collided; retry
       throw e
