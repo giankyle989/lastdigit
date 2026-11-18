@@ -17,6 +17,7 @@ import { closeInquiry, replyToInquiry } from '@/server/inquiries'
 import { requireAdmin } from '@/server/session'
 import { setBonuses } from '@/server/settings'
 import { voidGame } from '@/server/settlement'
+import { createManager, resetStaffPassword, setStaffDisabled } from '@/server/staff'
 import { defaultFetcher, syncGames } from '@/server/sync/sync'
 
 export async function adjustPointsAction(
@@ -148,6 +149,44 @@ export async function setPhoneAction(userId: string, _prev: ActionState, fd: For
 export async function confirmPhoneAction(userId: string): Promise<ActionState> {
   const admin = await requireAdmin('players.manage')
   const r = await runAction(() => confirmPhone(admin.id, userId), 'Phone confirmed')
+  revalidatePath('/admin', 'layout')
+  return r
+}
+
+export async function createManagerAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const admin = await requireAdmin('staff.manage')
+  const r = await runAction(
+    () => createManager(admin.id, { username: fd.get('username'), password: fd.get('password') }),
+    'Manager added',
+  )
+  revalidatePath('/admin', 'layout')
+  return r
+}
+
+export async function disableStaffAction(userId: string): Promise<ActionState> {
+  const admin = await requireAdmin('staff.manage')
+  const r = await runAction(() => setStaffDisabled(admin.id, userId, true), 'Manager disabled')
+  revalidatePath('/admin', 'layout')
+  return r
+}
+
+export async function enableStaffAction(userId: string): Promise<ActionState> {
+  const admin = await requireAdmin('staff.manage')
+  const r = await runAction(() => setStaffDisabled(admin.id, userId, false), 'Manager enabled')
+  revalidatePath('/admin', 'layout')
+  return r
+}
+
+export async function resetStaffPasswordAction(
+  userId: string,
+  _prev: ActionState,
+  fd: FormData,
+): Promise<ActionState> {
+  const admin = await requireAdmin('staff.manage')
+  const r = await runAction(
+    () => resetStaffPassword(admin.id, userId, fd.get('newPassword')),
+    'Password reset',
+  )
   revalidatePath('/admin', 'layout')
   return r
 }
