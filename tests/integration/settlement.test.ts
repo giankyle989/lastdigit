@@ -150,7 +150,7 @@ describe('settleGame', () => {
   })
 
   it('voiding a game that settled as a refund does not refund twice', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const a = await makeUser({ username: 'solo' })
     await fundUser(a.id, 1000)
     const g = await makeGame()
@@ -200,7 +200,7 @@ describe('voidGame', () => {
   beforeEach(resetDb)
 
   it('refunds all stakes on an unsettled game', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const { a, b, c, g } = await setupGame()
     await voidGame(admin.id, g.id, 'Postponed')
     for (const u of [a, b, c]) expect(await balanceOf(u.id)).toBe(1000)
@@ -215,7 +215,7 @@ describe('voidGame', () => {
   })
 
   it('reverses payouts on a settled game', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const { a, b, c, g } = await setupGame()
     await settleGame(g.id)
     await voidGame(admin.id, g.id, 'Wrong score')
@@ -227,7 +227,7 @@ describe('voidGame', () => {
   })
 
   it('does not refund bets that are already REFUNDED', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const { a, b, c, g } = await setupGame()
     await voidGame(admin.id, g.id, 'First')
     await prisma.game.update({ where: { id: g.id }, data: { status: 'POSTPONED' } }) // simulates the old sync overwrite
@@ -237,7 +237,7 @@ describe('voidGame', () => {
   })
 
   it('a reversal can leave a negative balance', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const winner = await makeUser({ username: 'w' })
     const loser = await makeUser({ username: 'l' })
     await fundUser(winner.id, 100)
@@ -258,7 +258,7 @@ describe('voidGame', () => {
   })
 
   it('rejects voiding twice, empty reasons and unknown games', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const g = await makeGame()
     await expect(voidGame(admin.id, g.id, '  ')).rejects.toMatchObject({ code: 'VALIDATION' })
     await voidGame(admin.id, g.id, 'Cancelled')
@@ -267,7 +267,7 @@ describe('voidGame', () => {
   })
 
   it('races settle against void: both resolve and the game ends VOID with stakes refunded', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const { a, b, c, g } = await setupGame()
     const results = await Promise.allSettled([settleGame(g.id), voidGame(admin.id, g.id, 'race')])
     expect(results.map((r) => r.status)).toEqual(['fulfilled', 'fulfilled'])
@@ -277,7 +277,7 @@ describe('voidGame', () => {
   })
 
   it('a voided game cannot be settled', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const { g } = await setupGame()
     await voidGame(admin.id, g.id, 'Bad data')
     expect(await settleGame(g.id)).toEqual({ settled: false })

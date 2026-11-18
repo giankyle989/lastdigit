@@ -10,6 +10,7 @@ export type DomainErrorCode =
   | 'USERNAME_TAKEN'
   | 'INVALID_REFERRAL'
   | 'CONFLICT'
+  | 'FORBIDDEN'
 
 export class DomainError extends Error {
   constructor(

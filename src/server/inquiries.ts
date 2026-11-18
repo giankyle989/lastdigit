@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { prisma, type Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
+import { isStaff } from '@/lib/permissions'
 
 const subjectSchema = z
   .string({ required_error: 'Subject is required' })
@@ -19,7 +20,7 @@ async function loadForActor(db: Tx, actorId: string, inquiryId: string) {
     db.user.findUniqueOrThrow({ where: { id: actorId } }),
     db.inquiry.findUnique({ where: { id: inquiryId } }),
   ])
-  if (!inquiry || (actor.role !== 'ADMIN' && inquiry.userId !== actorId)) {
+  if (!inquiry || (!isStaff(actor.role) && inquiry.userId !== actorId)) {
     throw new DomainError('NOT_FOUND', 'Inquiry not found')
   }
   return { actor, inquiry }
@@ -40,7 +41,7 @@ export async function replyToInquiry(actorId: string, inquiryId: string, input: 
     // commits before (count 0 here) or waits and then sets CLOSED last.
     const res = await tx.inquiry.updateMany({
       where: { id: inquiryId, status: { not: 'CLOSED' } },
-      data: { status: actor.role === 'ADMIN' ? 'ANSWERED' : 'OPEN' },
+      data: { status: isStaff(actor.role) ? 'ANSWERED' : 'OPEN' },
     })
     if (res.count === 0) throw new DomainError('CONFLICT', 'This inquiry is closed')
     await tx.inquiryMessage.create({ data: { inquiryId, authorId: actorId, body } })

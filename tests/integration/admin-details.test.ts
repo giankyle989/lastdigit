@@ -24,7 +24,7 @@ describe('admin drawer details', () => {
   })
 
   it('loads players only, never admins', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     expect((await getPlayerDetail(p.id))?.id).toBe(p.id)
     expect(await getPlayerDetail(admin.id)).toBeNull()

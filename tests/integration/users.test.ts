@@ -4,10 +4,22 @@ import { ZodError } from 'zod'
 import { prisma } from '@/lib/db'
 import { registerPlayer, verifyCredentials } from '@/server/users'
 
-import { expectLedgerConsistent, nextPhone, resetDb } from '../helpers/db'
+import { expectLedgerConsistent, makeUser, nextPhone, resetDb } from '../helpers/db'
 
 describe('registerPlayer', () => {
   beforeEach(resetDb)
+
+  it.each(['MANAGER', 'SUPERADMIN'] as const)('rejects a %s referral code', async (role) => {
+    const staff = await makeUser({ role })
+    await expect(
+      registerPlayer({
+        username: `ref_${role}`,
+        password: 'secret123',
+        phone: '0917 555 0101',
+        referralCode: staff.referralCode,
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_REFERRAL' })
+  })
 
   it('creates a player with hashed password, lowercase key and referral code', async () => {
     const u = await registerPlayer({ phone: nextPhone(), username: ' Kyle_1 ', password: 'secret123' })

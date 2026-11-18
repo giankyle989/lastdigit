@@ -88,7 +88,7 @@ describe('syncGames', () => {
   })
 
   it('does not resurrect a game voided after it was read (void then Final from API)', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const u = await makeUser()
     await fundUser(u.id, 100)
     const g = await makeGame({ externalId: 501 })

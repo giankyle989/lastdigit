@@ -59,7 +59,7 @@ describe('admin overview', () => {
 
   it('computes KPI stats and needs-attention lists', async () => {
     const now = new Date('2026-11-11T17:00:00Z')
-    await makeUser({ role: 'ADMIN' })
+    await makeUser({ role: 'SUPERADMIN' })
     const neg = await makeUser({ username: 'neg' })
     await makeUser({ username: 'old', createdAt: new Date('2026-10-01T00:00:00Z') })
     await prisma.$transaction((tx) => postEntry(tx, { userId: neg.id, type: 'REFUND', amount: -50 }))

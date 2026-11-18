@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { auth } from '@/auth'
 import { prisma } from '@/lib/db'
+import { isStaff } from '@/lib/permissions'
 import { isSuspended } from '@/lib/suspension'
 
 /** Loads the user fresh from the DB on every request, so suspensions apply immediately. */
@@ -22,6 +23,6 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const user = await requireUser()
-  if (user.role !== 'ADMIN') redirect('/')
+  if (!isStaff(user.role)) redirect('/')
   return user
 }

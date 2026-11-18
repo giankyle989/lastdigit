@@ -18,12 +18,12 @@ async function main() {
   const passwordHash = await hashPassword(password)
   await prisma.user.upsert({
     where: { usernameKey: username.toLowerCase() },
-    update: { passwordHash, role: 'ADMIN' },
+    update: { passwordHash, role: 'SUPERADMIN' },
     create: {
       username,
       usernameKey: username.toLowerCase(),
       passwordHash,
-      role: 'ADMIN',
+      role: 'SUPERADMIN',
       referralCode: generateReferralCode(),
     },
   })
