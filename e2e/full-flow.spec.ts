@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 
 import { prisma } from '../src/lib/db'
-import { adjustPoints } from '../src/server/admin/players'
+import { adjustPoints, confirmPhone } from '../src/server/admin/players'
 import { placeBet } from '../src/server/bets'
 import { setBonuses } from '../src/server/settings'
 import type { ApiGame } from '../src/server/sync/balldontlie'
@@ -66,6 +66,10 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await page.goto(`/admin/players?q=${bob}`)
   await page.getByRole('link', { name: bob, exact: true }).click()
   await expect(page.getByRole('dialog', { name: bob })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeDisabled()
+  await page.getByRole('button', { name: 'Confirm phone' }).click()
+  await expect(page.getByText(/^Confirmed .+ by /)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeEnabled()
   await page.getByRole('button', { name: 'Grant', exact: true }).click()
   await page.getByLabel('Amount').fill('1000')
   await page.getByLabel('Note').fill('Welcome bonus')
@@ -86,6 +90,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   })
   // alice tops up 100 (+100 matched) and joins the pool on a losing ending, so it is not a solo pool
   const adminRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
+  await confirmPhone(adminRow.id, aliceRow.id)
   await adjustPoints(adminRow.id, aliceRow.id, { direction: 'GRANT', amount: 100, note: 'top-up' })
   await placeBet(aliceRow.id, { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
 

@@ -4,7 +4,9 @@ import { ZodError } from 'zod'
 import { prisma } from '@/lib/db'
 import {
   adjustPoints,
+  confirmPhone,
   resetPassword,
+  setPhone,
   setStakeLimit,
   suspendPlayer,
   unsuspendPlayer,
@@ -108,6 +110,7 @@ describe('admin player management', () => {
       referralCode: alice.referralCode,
     })
 
+    await confirmPhone(admin.id, bob.id)
     expect(await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })).toEqual(
       {
         welcomeBonus: 300,
@@ -130,6 +133,7 @@ describe('admin player management', () => {
     expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(150)
 
     // 50% of 2000 is capped at 200 (the default cap)
+    await confirmPhone(admin.id, cara.id)
     await adjustPoints(admin.id, cara.id, { direction: 'GRANT', amount: 2000, note: 'top-up' })
     expect((await prisma.user.findUniqueOrThrow({ where: { id: alice.id } })).balance).toBe(350)
     await expectLedgerConsistent()
@@ -145,6 +149,7 @@ describe('admin player management', () => {
       referralCode: alice.referralCode,
     })
     await prisma.user.update({ where: { id: bob.id }, data: { referralBonusPaidAt: new Date() } })
+    await confirmPhone(admin.id, bob.id)
     expect(await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })).toEqual(
       {
         welcomeBonus: 300,
@@ -169,6 +174,7 @@ describe('admin player management', () => {
       referralBonusCap: 500,
       dailyBonus: 0,
     })
+    await confirmPhone(admin.id, bob.id)
     await adjustPoints(admin.id, bob.id, { direction: 'GRANT', amount: 300, note: 'top-up' })
     expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(0)
   })
@@ -248,5 +254,77 @@ describe('admin player management', () => {
     expect(await verifyCredentials('kyle', 'newpass123')).not.toBeNull()
     const log = await prisma.adminAction.findFirstOrThrow({ where: { action: 'RESET_PASSWORD' } })
     expect(JSON.stringify(log.details)).not.toContain('newpass123')
+  })
+
+  it('blocks grants until the phone is confirmed, but always allows deductions', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const p = await makeUser({ phone: '+639171111111', phoneConfirmedAt: null })
+    await expect(
+      adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'top-up' }),
+    ).rejects.toMatchObject({ code: 'PHONE_NOT_CONFIRMED', message: 'Confirm the phone number first' })
+    expect(await prisma.transaction.count()).toBe(0)
+
+    await confirmPhone(admin.id, p.id)
+    await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'top-up' })
+    await setPhone(admin.id, p.id, '0917 222 2222') // clears the confirmation
+    await adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 10, note: 'fix' })
+    // 100 granted + 100 welcome match (default cap 1,000) − 10 deducted
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).balance).toBe(190)
+  })
+
+  it('confirms the phone once and audits it', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const p = await makeUser({ phone: '+639171111111', phoneConfirmedAt: null })
+    const now = new Date('2026-11-18T03:00:00Z')
+    await confirmPhone(admin.id, p.id, now)
+    expect(await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).toMatchObject({
+      phoneConfirmedAt: now,
+      phoneConfirmedById: admin.id,
+    })
+    expect(await prisma.adminAction.findFirstOrThrow({ where: { action: 'CONFIRM_PHONE' } })).toMatchObject({
+      adminId: admin.id,
+      targetUserId: p.id,
+      details: { phone: '+639171111111' },
+    })
+  })
+
+  it('cannot confirm a player without a number', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const p = await makeUser({ phone: null, phoneConfirmedAt: null })
+    await expect(confirmPhone(admin.id, p.id)).rejects.toMatchObject({
+      code: 'VALIDATION',
+      message: 'Add a phone number first',
+    })
+  })
+
+  it('edits the number, clears the confirmation and audits old and new', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const p = await makeUser({ phone: '+639171111111' })
+    await setPhone(admin.id, p.id, '0917-222-2222')
+    expect(await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).toMatchObject({
+      phone: '+639172222222',
+      phoneConfirmedAt: null,
+      phoneConfirmedById: null,
+    })
+    expect(await prisma.adminAction.findFirstOrThrow({ where: { action: 'UPDATE_PHONE' } })).toMatchObject({
+      details: { from: '+639171111111', to: '+639172222222' },
+    })
+  })
+
+  it('saving the same number keeps the confirmation', async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const p = await makeUser({ phone: '+639171111111' })
+    await setPhone(admin.id, p.id, '09171111111')
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).phoneConfirmedAt).not.toBeNull()
+    expect(await prisma.adminAction.count({ where: { action: 'UPDATE_PHONE' } })).toBe(0)
+  })
+
+  it("refuses another player's number and invalid input", async () => {
+    const admin = await makeUser({ role: 'ADMIN' })
+    const taken = nextPhone()
+    await makeUser({ phone: taken })
+    const p = await makeUser()
+    await expect(setPhone(admin.id, p.id, taken)).rejects.toMatchObject({ code: 'PHONE_TAKEN' })
+    await expect(setPhone(admin.id, p.id, '12345')).rejects.toBeInstanceOf(ZodError)
   })
 })

@@ -9,13 +9,16 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatDate, formatDateTime } from '@/lib/format'
 import { formatEnding } from '@/lib/game/ending'
+import { formatPhPhone } from '@/lib/phone'
 import { isSuspended } from '@/lib/suspension'
 import { TX_TYPE_LABELS } from '@/lib/wallet'
 import type { getPlayerDetail } from '@/server/admin/queries'
 
 import {
   adjustPointsAction,
+  confirmPhoneAction,
   resetPasswordAction,
+  setPhoneAction,
   stakeLimitAction,
   suspendAction,
   unsuspendAction,
@@ -28,6 +31,26 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
   return (
     <>
       <dl className="grid grid-cols-2 gap-3 text-sm">
+        <div className="col-span-2">
+          <dt className="text-muted-foreground text-xs">Phone</dt>
+          <dd>
+            {p.phone ? (
+              <>
+                <span className="num">{formatPhPhone(p.phone)}</span>{' '}
+                {p.phoneConfirmedAt ? (
+                  <span className="text-primary text-xs">
+                    Confirmed {formatDate(p.phoneConfirmedAt)}
+                    {p.phoneConfirmedBy ? ` by ${p.phoneConfirmedBy.username}` : ''}
+                  </span>
+                ) : (
+                  <span className="text-live text-xs">Not confirmed</span>
+                )}
+              </>
+            ) : (
+              <span className="text-muted-foreground">No number</span>
+            )}
+          </dd>
+        </div>
         <div>
           <dt className="text-muted-foreground text-xs">Balance</dt>
           <dd>
@@ -72,8 +95,34 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
       </dl>
 
       <div className="flex flex-wrap gap-2">
+        {p.phone && !p.phoneConfirmedAt && (
+          <ActionForm
+            action={confirmPhoneAction.bind(null, p.id)}
+            submitLabel="Confirm phone"
+            className="contents"
+          />
+        )}
+        <ActionDialog
+          triggerLabel="Edit number"
+          title={`Phone number for ${p.username}`}
+          description="Changing it means confirming it again before the next grant."
+          submitLabel="Save number"
+          action={setPhoneAction.bind(null, p.id)}
+        >
+          <Field id="phone" label="Mobile number">
+            <Input
+              id="phone"
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              defaultValue={p.phone ? formatPhPhone(p.phone) : ''}
+              required
+            />
+          </Field>
+        </ActionDialog>
         <ActionDialog
           triggerLabel="Grant"
+          disabled={!p.phoneConfirmedAt}
           title={`Grant points to ${p.username}`}
           submitLabel="Grant points"
           action={adjustPointsAction.bind(null, p.id)}
@@ -157,6 +206,7 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
           </Field>
         </ActionDialog>
       </div>
+      {!p.phoneConfirmedAt && <p className="text-muted-foreground text-xs">Confirm the phone number first</p>}
 
       <Tabs defaultValue="bets">
         <TabsList>

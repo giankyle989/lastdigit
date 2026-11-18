@@ -23,6 +23,8 @@ type Props = {
   /** Second step: an AlertDialog asking to confirm before the form is submitted. */
   confirm?: { title: string; description: string; actionLabel: string }
   destructive?: boolean
+  /** Disables the trigger button. */
+  disabled?: boolean
   children?: React.ReactNode
 }
 
@@ -35,13 +37,14 @@ export function ActionDialog({
   action,
   confirm,
   destructive,
+  disabled,
   children,
 }: Props) {
   const [open, setOpen] = useState(false)
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant={destructive ? 'destructive' : 'outline'} size="sm">
+        <Button type="button" variant={destructive ? 'destructive' : 'outline'} size="sm" disabled={disabled}>
           {triggerLabel}
         </Button>
       </DialogTrigger>

@@ -9,6 +9,7 @@ export function getPlayerDetail(id: string) {
     omit: { passwordHash: true },
     include: {
       referredBy: { select: { id: true, username: true } },
+      phoneConfirmedBy: { select: { username: true } },
       referrals: { select: { id: true, username: true, createdAt: true }, orderBy: { createdAt: 'desc' } },
       bets: { include: { game: true }, orderBy: { createdAt: 'desc' }, take: 50 },
       transactions: { orderBy: { createdAt: 'desc' }, take: 50 },
