@@ -10,10 +10,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const badges = await getAdminBadges()
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[220px_minmax(0,1fr)]">
-      <AdminSidebar badges={badges} />
+      <AdminSidebar badges={badges} role={admin.role} />
       <div className="min-w-0">
         <header className="border-border bg-background/95 sticky top-0 z-30 flex h-14 items-center gap-3 border-b px-4 backdrop-blur">
-          <AdminMobileNav badges={badges} />
+          <AdminMobileNav badges={badges} role={admin.role} />
           <span className="text-sm font-medium">{admin.username}</span>
           <Link href="/games" className="text-muted-foreground hover:text-foreground ml-auto text-sm">
             Player site

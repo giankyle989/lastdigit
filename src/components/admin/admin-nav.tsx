@@ -1,6 +1,7 @@
 'use client'
 
-import { BookOpen, Gamepad2, LayoutDashboard, LifeBuoy, Menu, Settings, Users } from 'lucide-react'
+import type { Role } from '@prisma/client'
+import { BookOpen, Gamepad2, LayoutDashboard, LifeBuoy, Menu, Settings, UserCog, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
@@ -14,25 +15,39 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import { can, type Permission } from '@/lib/permissions'
 import { isActivePath } from '@/lib/url'
 import { cn } from '@/lib/utils'
 
 export type AdminBadges = { openTickets: number; needsAttention: boolean }
 
-const NAV = [
-  { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
-  { href: '/admin/players', label: 'Players', icon: Users, exact: false },
-  { href: '/admin/games', label: 'Games', icon: Gamepad2, exact: false },
-  { href: '/admin/ledger', label: 'Ledger', icon: BookOpen, exact: false },
-  { href: '/admin/support', label: 'Support', icon: LifeBuoy, exact: false },
-  { href: '/admin/settings', label: 'Settings', icon: Settings, exact: false },
+const NAV: { href: string; label: string; icon: typeof Users; exact: boolean; permission: Permission }[] = [
+  { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true, permission: 'console.view' },
+  { href: '/admin/players', label: 'Players', icon: Users, exact: false, permission: 'console.view' },
+  { href: '/admin/games', label: 'Games', icon: Gamepad2, exact: false, permission: 'console.view' },
+  { href: '/admin/ledger', label: 'Ledger', icon: BookOpen, exact: false, permission: 'console.view' },
+  { href: '/admin/support', label: 'Support', icon: LifeBuoy, exact: false, permission: 'console.view' },
+  { href: '/admin/settings', label: 'Settings', icon: Settings, exact: false, permission: 'settings.manage' },
+  { href: '/admin/staff', label: 'Staff', icon: UserCog, exact: false, permission: 'staff.manage' },
 ]
 
-function NavLinks({ badges, onNavigate }: { badges: AdminBadges; onNavigate?: () => void }) {
+export function adminNavItems(role: Role) {
+  return NAV.filter((item) => can(role, item.permission))
+}
+
+function NavLinks({
+  badges,
+  role,
+  onNavigate,
+}: {
+  badges: AdminBadges
+  role: Role
+  onNavigate?: () => void
+}) {
   const pathname = usePathname()
   return (
     <ul className="flex flex-col gap-1">
-      {NAV.map((item) => {
+      {adminNavItems(role).map((item) => {
         const active = isActivePath(pathname, item.href, item.exact)
         return (
           <li key={item.href}>
@@ -68,7 +83,7 @@ function NavLinks({ badges, onNavigate }: { badges: AdminBadges; onNavigate?: ()
 }
 
 /** Left sidebar on ≥ 768px. */
-export function AdminSidebar({ badges }: { badges: AdminBadges }) {
+export function AdminSidebar({ badges, role }: { badges: AdminBadges; role: Role }) {
   return (
     <aside className="border-border bg-surface sticky top-0 hidden h-dvh flex-col gap-6 border-r p-4 md:flex">
       <Link href="/admin" className="px-3 text-lg font-black tracking-tight">
@@ -76,14 +91,14 @@ export function AdminSidebar({ badges }: { badges: AdminBadges }) {
         <span className="text-muted-foreground text-xs">admin</span>
       </Link>
       <nav aria-label="Admin">
-        <NavLinks badges={badges} />
+        <NavLinks badges={badges} role={role} />
       </nav>
     </aside>
   )
 }
 
 /** On phones the sidebar becomes a slide-out menu. */
-export function AdminMobileNav({ badges }: { badges: AdminBadges }) {
+export function AdminMobileNav({ badges, role }: { badges: AdminBadges; role: Role }) {
   const [open, setOpen] = useState(false)
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -98,7 +113,7 @@ export function AdminMobileNav({ badges }: { badges: AdminBadges }) {
           <SheetDescription className="sr-only">Admin sections</SheetDescription>
         </SheetHeader>
         <nav aria-label="Admin" className="px-2">
-          <NavLinks badges={badges} onNavigate={() => setOpen(false)} />
+          <NavLinks badges={badges} role={role} onNavigate={() => setOpen(false)} />
         </nav>
       </SheetContent>
     </Sheet>

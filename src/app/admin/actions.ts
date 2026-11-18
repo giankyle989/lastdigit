@@ -24,7 +24,7 @@ export async function adjustPointsAction(
   _prev: ActionState,
   fd: FormData,
 ): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('points.adjust')
   const r = await runAction(
     () =>
       adjustPoints(admin.id, userId, {
@@ -45,7 +45,7 @@ export async function adjustPointsAction(
 }
 
 export async function suspendAction(userId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('players.manage')
   const v = String(fd.get('until') ?? '').trim()
   const until = parseSuspendUntil(v)
   if (until === 'invalid') return { error: 'Invalid date' }
@@ -55,7 +55,7 @@ export async function suspendAction(userId: string, _prev: ActionState, fd: Form
 }
 
 export async function unsuspendAction(userId: string): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('players.manage')
   const r = await runAction(() => unsuspendPlayer(admin.id, userId), 'Suspension lifted')
   revalidatePath('/admin', 'layout')
   return r
@@ -66,7 +66,7 @@ export async function stakeLimitAction(
   _prev: ActionState,
   fd: FormData,
 ): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('players.manage')
   const v = String(fd.get('limit') ?? '').trim()
   const r = await runAction(() => setStakeLimit(admin.id, userId, v === '' ? null : v), 'Stake limit saved')
   revalidatePath('/admin', 'layout')
@@ -78,21 +78,21 @@ export async function resetPasswordAction(
   _prev: ActionState,
   fd: FormData,
 ): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('players.manage')
   const r = await runAction(() => resetPassword(admin.id, userId, fd.get('newPassword')), 'Password reset')
   revalidatePath('/admin', 'layout')
   return r
 }
 
 export async function voidGameAction(gameId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('games.manage')
   const r = await runAction(() => voidGame(admin.id, gameId, fd.get('reason')), 'Game voided')
   revalidatePath('/admin', 'layout')
   return r
 }
 
 export async function forceSyncAction(): Promise<ActionState> {
-  await requireAdmin()
+  await requireAdmin('games.manage')
   try {
     const r = await syncGames({ fetchGames: defaultFetcher() })
     revalidatePath('/admin', 'layout')
@@ -109,21 +109,21 @@ export async function adminReplyAction(
   _prev: ActionState,
   fd: FormData,
 ): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('support.answer')
   const r = await runAction(() => replyToInquiry(admin.id, inquiryId, { body: fd.get('body') }), 'Reply sent')
   revalidatePath('/admin', 'layout')
   return r
 }
 
 export async function adminCloseAction(inquiryId: string): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('support.answer')
   const r = await runAction(() => closeInquiry(admin.id, inquiryId), 'Inquiry closed')
   revalidatePath('/admin', 'layout')
   return r
 }
 
 export async function bonusesAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('settings.manage')
   const r = await runAction(
     () =>
       setBonuses(admin.id, {
@@ -139,14 +139,14 @@ export async function bonusesAction(_prev: ActionState, fd: FormData): Promise<A
 }
 
 export async function setPhoneAction(userId: string, _prev: ActionState, fd: FormData): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('players.manage')
   const r = await runAction(() => setPhone(admin.id, userId, String(fd.get('phone') ?? '')), 'Number saved')
   revalidatePath('/admin', 'layout')
   return r
 }
 
 export async function confirmPhoneAction(userId: string): Promise<ActionState> {
-  const admin = await requireAdmin()
+  const admin = await requireAdmin('players.manage')
   const r = await runAction(() => confirmPhone(admin.id, userId), 'Phone confirmed')
   revalidatePath('/admin', 'layout')
   return r
