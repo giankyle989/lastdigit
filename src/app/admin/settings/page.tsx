@@ -42,7 +42,7 @@ const BONUS_FIELDS: { key: BonusKey; label: string; hint: string }[] = [
 ]
 
 export default async function AdminSettingsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  await requireAdmin()
+  await requireAdmin('settings.manage')
   const sp = await searchParams
   const params = parseAdminActionListParams(sp)
   const bonuses = await getBonuses()

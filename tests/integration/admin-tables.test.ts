@@ -25,7 +25,7 @@ describe('admin tables', () => {
       createdAt: new Date('2026-11-06T00:00:00Z'),
       suspendedUntil: new Date('2026-11-01T00:00:00Z'),
     })
-    await makeUser({ username: 'boss', role: 'ADMIN', createdAt: new Date('2026-11-03T00:00:00Z') })
+    await makeUser({ username: 'boss', role: 'SUPERADMIN', createdAt: new Date('2026-11-03T00:00:00Z') })
     await fundUser(ref.id, 50)
 
     const byName = await listPlayers(parsePlayerListParams({ q: 'KY', sort: 'username' }), now)
@@ -107,7 +107,7 @@ describe('admin tables', () => {
   })
 
   it('admin actions: filter by action type', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await prisma.$transaction(async (tx) => {
       await logAdminAction(tx, { adminId: admin.id, action: 'SUSPEND', targetUserId: p.id })

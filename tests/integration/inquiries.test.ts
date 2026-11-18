@@ -10,7 +10,7 @@ describe('inquiries', () => {
   beforeEach(resetDb)
 
   it('runs the OPEN → ANSWERED → OPEN → CLOSED flow', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     const inq = await createInquiry(p.id, { subject: 'Missing points', body: 'Where are my points?' })
     expect(inq.status).toBe('OPEN')
@@ -25,7 +25,7 @@ describe('inquiries', () => {
     const thread = await getInquiryThread(p.id, inq.id)
     expect(thread.status).toBe('CLOSED')
     expect(thread.messages.map((m) => m.body)).toEqual(['Where are my points?', 'Checking.', 'Thanks'])
-    expect(thread.messages[1]?.author.role).toBe('ADMIN')
+    expect(thread.messages[1]?.author.role).toBe('SUPERADMIN')
   })
 
   it('rejects replies to closed inquiries', async () => {
@@ -35,8 +35,18 @@ describe('inquiries', () => {
     await expect(replyToInquiry(p.id, inq.id, { body: 'hello?' })).rejects.toMatchObject({ code: 'CONFLICT' })
   })
 
+  it('a manager answers a ticket like any staff member', async () => {
+    const player = await makeUser()
+    const manager = await makeUser({ role: 'MANAGER' })
+    const inquiry = await createInquiry(player.id, { subject: 'Cash in', body: 'hi' })
+    await replyToInquiry(manager.id, inquiry.id, { body: 'on it' })
+    expect((await prisma.inquiry.findUniqueOrThrow({ where: { id: inquiry.id } })).status).toBe('ANSWERED')
+    await closeInquiry(manager.id, inquiry.id)
+    expect((await prisma.inquiry.findUniqueOrThrow({ where: { id: inquiry.id } })).status).toBe('CLOSED')
+  })
+
   it('a concurrent reply cannot reopen a closed inquiry', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     const inq = await createInquiry(p.id, { subject: 's', body: 'b' })
     const results = await Promise.allSettled([

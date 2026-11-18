@@ -9,7 +9,8 @@ datasource db {
 
 enum Role {
   PLAYER
-  ADMIN
+  MANAGER
+  SUPERADMIN
 }
 
 enum UserStatus {

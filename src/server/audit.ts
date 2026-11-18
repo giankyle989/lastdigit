@@ -13,6 +13,10 @@ export const ADMIN_ACTION_TYPES = [
   'DEDUCT_POINTS',
   'UPDATE_PHONE',
   'CONFIRM_PHONE',
+  'CREATE_STAFF',
+  'DISABLE_STAFF',
+  'ENABLE_STAFF',
+  'RESET_STAFF_PASSWORD',
 ] as const
 
 export type AdminActionType = (typeof ADMIN_ACTION_TYPES)[number]

@@ -20,7 +20,7 @@ describe('admin player management', () => {
   beforeEach(resetDb)
 
   it('grants points with a note and audits it', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await setBonuses(admin.id, {
       welcomeBonusCap: 0,
@@ -49,7 +49,7 @@ describe('admin player management', () => {
   })
 
   it('matches the first top-up 1:1 as a welcome bonus, up to the cap, once', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const small = await makeUser()
     const big = await makeUser()
     expect(
@@ -84,7 +84,7 @@ describe('admin player management', () => {
   })
 
   it('concurrent first top-ups match only once', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await Promise.all([
       adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'a' }),
@@ -95,7 +95,7 @@ describe('admin player management', () => {
   })
 
   it("pays the referrer 50% of the referred friend's first top-up, capped at 200", async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const alice = await registerPlayer({ phone: nextPhone(), username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
       phone: nextPhone(),
@@ -141,7 +141,7 @@ describe('admin player management', () => {
   })
 
   it('pays no referral bonus for players whose referrer was already paid under the old rule', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const alice = await registerPlayer({ phone: nextPhone(), username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
       phone: nextPhone(),
@@ -161,7 +161,7 @@ describe('admin player management', () => {
   })
 
   it('pays no referral bonus to a referrer whose phone is not confirmed', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const alice = await registerPlayer({ phone: nextPhone(), username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
       phone: nextPhone(),
@@ -179,7 +179,7 @@ describe('admin player management', () => {
   })
 
   it('pays nothing when the referral percent or cap is 0', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const alice = await registerPlayer({ phone: nextPhone(), username: 'alice', password: 'secret123' })
     const bob = await registerPlayer({
       phone: nextPhone(),
@@ -199,7 +199,7 @@ describe('admin player management', () => {
   })
 
   it('deducts points but not below zero', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'x' }) // +100 match
     await adjustPoints(admin.id, p.id, { direction: 'DEDUCT', amount: 40, note: 'correction' })
@@ -210,7 +210,7 @@ describe('admin player management', () => {
   })
 
   it('requires a note', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await expect(
       adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 1, note: '  ' }),
@@ -218,7 +218,7 @@ describe('admin player management', () => {
   })
 
   it('rejects a grant above 10,000,000 points', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await expect(
       adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: '10000001', note: 'typo' }),
@@ -227,15 +227,15 @@ describe('admin player management', () => {
   })
 
   it('only targets players', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
-    const other = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const other = await makeUser({ role: 'SUPERADMIN' })
     await expect(
       adjustPoints(admin.id, other.id, { direction: 'GRANT', amount: 1, note: 'x' }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' })
   })
 
   it('suspends indefinitely, blocks login, and unsuspends', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await registerPlayer({ phone: nextPhone(), username: 'kyle', password: 'secret123' })
     await suspendPlayer(admin.id, p.id, null)
     expect(await verifyCredentials('kyle', 'secret123')).toBeNull()
@@ -246,7 +246,7 @@ describe('admin player management', () => {
   })
 
   it('rejects a suspension end date in the past', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     const now = new Date('2026-11-11T00:00:00Z')
     await expect(suspendPlayer(admin.id, p.id, new Date('2026-11-10T00:00:00Z'), now)).rejects.toMatchObject({
@@ -255,7 +255,7 @@ describe('admin player management', () => {
   })
 
   it('sets and clears the stake limit', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()
     await setStakeLimit(admin.id, p.id, '500')
     expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).stakeLimitPerGame).toBe(500)
@@ -266,7 +266,7 @@ describe('admin player management', () => {
   })
 
   it('resets the password', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await registerPlayer({ phone: nextPhone(), username: 'kyle', password: 'secret123' })
     await resetPassword(admin.id, p.id, 'newpass123')
     expect(await verifyCredentials('kyle', 'secret123')).toBeNull()
@@ -276,7 +276,7 @@ describe('admin player management', () => {
   })
 
   it('blocks grants until the phone is confirmed, but always allows deductions', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser({ phone: '+639171111111', phoneConfirmedAt: null })
     await expect(
       adjustPoints(admin.id, p.id, { direction: 'GRANT', amount: 100, note: 'top-up' }),
@@ -292,7 +292,7 @@ describe('admin player management', () => {
   })
 
   it('confirms the phone once and audits it', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser({ phone: '+639171111111', phoneConfirmedAt: null })
     const now = new Date('2026-11-18T03:00:00Z')
     await confirmPhone(admin.id, p.id, now)
@@ -308,7 +308,7 @@ describe('admin player management', () => {
   })
 
   it('cannot confirm a player without a number', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser({ phone: null, phoneConfirmedAt: null })
     await expect(confirmPhone(admin.id, p.id)).rejects.toMatchObject({
       code: 'VALIDATION',
@@ -317,7 +317,7 @@ describe('admin player management', () => {
   })
 
   it('edits the number, clears the confirmation and audits old and new', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser({ phone: '+639171111111' })
     await setPhone(admin.id, p.id, '0917-222-2222')
     expect(await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).toMatchObject({
@@ -331,7 +331,7 @@ describe('admin player management', () => {
   })
 
   it('saving the same number keeps the confirmation', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser({ phone: '+639171111111' })
     await setPhone(admin.id, p.id, '09171111111')
     expect((await prisma.user.findUniqueOrThrow({ where: { id: p.id } })).phoneConfirmedAt).not.toBeNull()
@@ -339,7 +339,7 @@ describe('admin player management', () => {
   })
 
   it("refuses another player's number and invalid input", async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const taken = nextPhone()
     await makeUser({ phone: taken })
     const p = await makeUser()

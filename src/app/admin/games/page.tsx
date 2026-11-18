@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { formatTipoff } from '@/lib/format'
 import { displayStatus } from '@/lib/game/status'
 import { firstParam } from '@/lib/pagination'
+import { can } from '@/lib/permissions'
 import { formatSort, isRecordId, type SearchParams } from '@/lib/table-params'
 import { hrefWith } from '@/lib/url'
 import { getGameDetail } from '@/server/admin/queries'
@@ -29,7 +30,8 @@ import { GameDrawer } from './game-drawer'
 const BASE = '/admin/games'
 
 export default async function AdminGamesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  await requireAdmin()
+  const admin = await requireAdmin()
+  const canManageGames = can(admin.role, 'games.manage')
   const sp = await searchParams
   const params = parseGameListParams(sp)
   const drawerId = firstParam(sp.game)
@@ -37,7 +39,9 @@ export default async function AdminGamesPage({ searchParams }: { searchParams: P
   return (
     <>
       <PageHeader title="Games">
-        <ActionForm action={forceSyncAction} submitLabel="Force sync" className="flex items-center gap-2" />
+        {canManageGames && (
+          <ActionForm action={forceSyncAction} submitLabel="Force sync" className="flex items-center gap-2" />
+        )}
       </PageHeader>
       <FilterForm key={formKey} action={BASE} keep={{ sort: formatSort(params.sort) }}>
         <Field id="q" label="Team">
@@ -58,7 +62,7 @@ export default async function AdminGamesPage({ searchParams }: { searchParams: P
         </Field>
       </FilterForm>
       <GamesTable sp={sp} params={params} />
-      {drawerId !== undefined && <GameSheet sp={sp} id={drawerId} />}
+      {drawerId !== undefined && <GameSheet sp={sp} id={drawerId} canManageGames={canManageGames} />}
     </>
   )
 }
@@ -114,7 +118,15 @@ async function GamesTable({ sp, params }: { sp: SearchParams; params: GameListPa
   )
 }
 
-async function GameSheet({ sp, id }: { sp: SearchParams; id: string }) {
+async function GameSheet({
+  sp,
+  id,
+  canManageGames,
+}: {
+  sp: SearchParams
+  id: string
+  canManageGames: boolean
+}) {
   const detail = isRecordId(id) ? await getGameDetail(id) : null
   return (
     <UrlSheet
@@ -123,7 +135,7 @@ async function GameSheet({ sp, id }: { sp: SearchParams; id: string }) {
       title={detail ? `${detail.game.awayTeam} @ ${detail.game.homeTeam}` : 'Not found'}
     >
       {detail ? (
-        <GameDrawer detail={detail} now={new Date()} />
+        <GameDrawer detail={detail} now={new Date()} canManageGames={canManageGames} />
       ) : (
         <p className="text-muted-foreground">Game not found.</p>
       )}

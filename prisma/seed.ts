@@ -10,20 +10,20 @@ async function main() {
   const password = process.env.ADMIN_PASSWORD
   if (!username || !password) throw new Error('ADMIN_USERNAME and ADMIN_PASSWORD must be set')
   const existing = await prisma.user.findUnique({ where: { usernameKey: username.toLowerCase() } })
-  if (existing && existing.role === 'PLAYER') {
+  if (existing && existing.role !== 'SUPERADMIN') {
     throw new Error(
-      `refusing to promote existing player "${existing.username}" to admin; choose a different ADMIN_USERNAME`,
+      `refusing to promote existing ${existing.role.toLowerCase()} "${existing.username}" to superadmin; choose a different ADMIN_USERNAME`,
     )
   }
   const passwordHash = await hashPassword(password)
   await prisma.user.upsert({
     where: { usernameKey: username.toLowerCase() },
-    update: { passwordHash, role: 'ADMIN' },
+    update: { passwordHash, role: 'SUPERADMIN' },
     create: {
       username,
       usernameKey: username.toLowerCase(),
       passwordHash,
-      role: 'ADMIN',
+      role: 'SUPERADMIN',
       referralCode: generateReferralCode(),
     },
   })

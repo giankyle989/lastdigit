@@ -20,7 +20,7 @@ export function TicketDrawer({ thread }: { thread: Thread }) {
         </Link>{' '}
         · <span className="font-semibold">{thread.status}</span>
       </p>
-      <ChatThread messages={thread.messages} viewer="ADMIN" />
+      <ChatThread messages={thread.messages} viewer="staff" />
       {/* Stay mounted (hidden, not removed) so the success toast is not lost when the revalidated
           ticket flips to CLOSED. */}
       <div className={thread.status === 'CLOSED' ? 'hidden' : 'space-y-3'}>

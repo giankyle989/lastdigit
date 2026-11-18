@@ -20,7 +20,7 @@ describe('settings', () => {
   })
 
   it('admin can change the bonuses, and it is audited', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     await setBonuses(admin.id, {
       welcomeBonusCap: '200',
       referralPercent: '20',
@@ -42,7 +42,7 @@ describe('settings', () => {
   })
 
   it('rejects negative or missing bonuses and changes nothing', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     await expect(
       setBonuses(admin.id, {
         welcomeBonusCap: '1',

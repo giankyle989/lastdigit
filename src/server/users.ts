@@ -49,7 +49,9 @@ export async function registerPlayer(input: unknown): Promise<User> {
         let referrerId: string | undefined
         if (referralCode) {
           const referrer = await tx.user.findUnique({ where: { referralCode } })
-          if (!referrer) throw new DomainError('INVALID_REFERRAL', 'Referral code not found')
+          if (!referrer || referrer.role !== 'PLAYER') {
+            throw new DomainError('INVALID_REFERRAL', 'Referral code not found')
+          }
           referrerId = referrer.id
         }
         const user = await tx.user.create({

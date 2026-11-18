@@ -48,6 +48,7 @@ const adminPages: PageCase[] = [
   ['admin/ledger', () => import('@/app/admin/ledger/page'), sp()],
   ['admin/support', () => import('@/app/admin/support/page'), sp({ ticket: 'x' })],
   ['admin/settings', () => import('@/app/admin/settings/page'), sp()],
+  ['admin/staff', () => import('@/app/admin/staff/page'), sp()],
 ]
 
 const playerPages: PageCase[] = [

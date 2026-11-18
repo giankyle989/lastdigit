@@ -41,7 +41,7 @@ describe('account sightings', () => {
     const pia = await makeUser({ username: 'pia' })
     const quin = await makeUser({ username: 'quin' })
     const rae = await makeUser({ username: 'rae' })
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     await recordSighting(pia.id, { deviceId: DEVICE_A, ip: '10.0.0.1' })
     await recordSighting(quin.id, { deviceId: DEVICE_A, ip: '10.0.0.1' })
     await recordSighting(rae.id, { deviceId: DEVICE_B, ip: '10.0.0.1' })

@@ -1,19 +1,22 @@
+import type { Role } from '@prisma/client'
+
 import { formatDateTime } from '@/lib/format'
+import { isStaff } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 
 type Message = {
   id: string
   body: string
   createdAt: Date
-  author: { username: string; role: 'PLAYER' | 'ADMIN' }
+  author: { username: string; role: Role }
 }
 
 /** Ticket thread as chat bubbles: the viewer's side on the right, the other side on the left (spec §4.6). */
-export function ChatThread({ messages, viewer }: { messages: Message[]; viewer: 'PLAYER' | 'ADMIN' }) {
+export function ChatThread({ messages, viewer }: { messages: Message[]; viewer: 'player' | 'staff' }) {
   return (
     <ol className="flex flex-col gap-3">
       {messages.map((m) => {
-        const mine = m.author.role === viewer
+        const mine = isStaff(m.author.role) === (viewer === 'staff')
         return (
           <li key={m.id} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
             <div
@@ -25,7 +28,7 @@ export function ChatThread({ messages, viewer }: { messages: Message[]; viewer: 
               {m.body}
             </div>
             <div className="text-muted-foreground mt-1 text-[11px]">
-              {m.author.role === 'ADMIN' ? 'Support' : m.author.username} · {formatDateTime(m.createdAt)}
+              {isStaff(m.author.role) ? 'Support' : m.author.username} · {formatDateTime(m.createdAt)}
             </div>
           </li>
         )

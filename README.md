@@ -11,11 +11,11 @@ npm install
 cp .env.example .env          # then fill POSTGRES_PASSWORD (match DATABASE_URL), AUTH_SECRET, CRON_SECRET, ADMIN_PASSWORD, BALLDONTLIE_API_KEY
 npm run db:up                 # Postgres 16 on localhost:5433 (reads POSTGRES_PASSWORD from .env)
 npx prisma migrate dev
-npm run db:seed               # creates the admin from ADMIN_USERNAME / ADMIN_PASSWORD
+npm run db:seed               # creates the superadmin from ADMIN_USERNAME / ADMIN_PASSWORD
 npm run dev
 ```
 
-Re-running the seed resets the admin's password to `ADMIN_PASSWORD`. The seed refuses to run if `ADMIN_USERNAME` belongs to an existing player.
+Re-running the seed resets the superadmin's password to `ADMIN_PASSWORD`. The seed refuses to run if `ADMIN_USERNAME` belongs to any existing account that is not already the superadmin.
 
 Get a free balldontlie API key at https://www.balldontlie.io.
 
@@ -23,7 +23,7 @@ Get a free balldontlie API key at https://www.balldontlie.io.
 
 The app syncs games itself. When the server starts, it pulls games (yesterday → +7 days) and settles finished ones, then repeats every `SYNC_INTERVAL_MINUTES` (default 5 in `.env.example`; unset or `0` turns it off). This needs `BALLDONTLIE_API_KEY` and a long-running server (`npm start` / `npm run dev`). Each server instance runs its own schedule, which is safe: sync never overwrites finished games and settlement is idempotent.
 
-On serverless hosts (no long-running process), turn the schedule off and call the route instead: `GET /api/cron/sync` with header `Authorization: Bearer $CRON_SECRET`. Admins can also click **Force sync** on Admin → Games.
+On serverless hosts (no long-running process), turn the schedule off and call the route instead: `GET /api/cron/sync` with header `Authorization: Bearer $CRON_SECRET`. Superadmins can also click **Force sync** on Admin → Games.
 
 ## Production
 
@@ -32,6 +32,8 @@ On serverless hosts (no long-running process), turn the schedule off and call th
 3. `npm run build && npm start`. `npm start` runs `node server.mjs`, a small custom server that stamps the real client IP on each request (used for rate limits and account flags).
 
 Server settings (in `.env` or the environment): `HOST` (default `0.0.0.0`), `PORT` (default `3000`) and `TRUSTED_PROXY`. Set `TRUSTED_PROXY=1` only behind a reverse proxy that appends the client to `X-Forwarded-For`; otherwise leave it unset, or clients could spoof their IP.
+
+**Upgrading to admin levels.** Take a `pg_dump` first, then do these together: `npm run build` → `npx prisma migrate deploy` → `systemctl --user restart lastdigit`. The migration renames the `ADMIN` role to `SUPERADMIN`, so the old running build cannot read it and the admin cannot log in until the restart. `npm run db:seed` afterwards is optional (it upserts the SUPERADMIN). To roll back to the old build, first delete or demote any MANAGER accounts, then run `ALTER TYPE "Role" RENAME VALUE 'SUPERADMIN' TO 'ADMIN';` (the extra MANAGER enum value is harmless).
 
 Rotating `AUTH_SECRET` also changes the device and network fingerprints, so old sightings stop matching new ones.
 
@@ -47,5 +49,5 @@ Before pushing, run `npm run check` (format, lint, typecheck, tests). See [CONTR
 ## UI
 
 - Player app: `/games` (date strip, `?date=YYYY-MM-DD`), `/games/[id]` (pickers, pool heatmap, estimate), bet slip (saved in `localStorage`), `/bets`, `/wallet`, `/more` (referral, support, account).
-- Admin console: `/admin` (overview), `/admin/players`, `/admin/games`, `/admin/ledger`, `/admin/support`, `/admin/settings`. Tables are driven by `?q=&sort=&page=`; drawers open with `?player=`, `?game=` or `?ticket=` and can be linked to.
+- Admin console: `/admin` (overview), `/admin/players`, `/admin/games`, `/admin/ledger`, `/admin/support`, `/admin/settings` (superadmin only), `/admin/staff` (superadmin only: add, disable, enable, reset managers). Managers can use the overview, players, ledger, games (view), support, top-ups/deductions/bonus points and player care; they cannot void or resync games or change settings or staff. Tables are driven by `?q=&sort=&page=`; drawers open with `?player=`, `?game=` or `?ticket=` and can be linked to.
 - Components: shadcn/ui lives in `src/components/ui` (add more with `npx shadcn@4.23.0 add <name>`, then run `npx eslint --fix` and `npx prettier --write` on the new file). The theme tokens are in `src/app/globals.css`.

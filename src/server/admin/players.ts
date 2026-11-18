@@ -8,6 +8,7 @@ import { phoneSchema } from '@/lib/phone'
 import { intFromForm } from '@/lib/validation'
 
 import { logAdminAction } from '../audit'
+import { assertCan } from '../authz'
 import { lockUsers, postEntry } from '../ledger'
 import { hashPassword } from '../passwords'
 import { getBonuses } from '../settings'
@@ -38,6 +39,7 @@ export async function adjustPoints(
   userId: string,
   input: unknown,
 ): Promise<{ welcomeBonus: number; referralBonus: number }> {
+  await assertCan(prisma, adminId, 'points.adjust')
   const { direction, amount, note } = adjustSchema.parse(input)
   return prisma.$transaction(async (tx) => {
     const player = await requirePlayer(tx, userId)
@@ -112,6 +114,7 @@ export async function suspendPlayer(
   until: Date | null,
   now: Date = new Date(),
 ): Promise<void> {
+  await assertCan(prisma, adminId, 'players.manage')
   if (until && until <= now) throw new DomainError('VALIDATION', 'Suspension end must be in the future')
   await prisma.$transaction(async (tx) => {
     await requirePlayer(tx, userId)
@@ -126,6 +129,7 @@ export async function suspendPlayer(
 }
 
 export async function unsuspendPlayer(adminId: string, userId: string): Promise<void> {
+  await assertCan(prisma, adminId, 'players.manage')
   await prisma.$transaction(async (tx) => {
     await requirePlayer(tx, userId)
     await tx.user.update({ where: { id: userId }, data: { status: 'ACTIVE', suspendedUntil: null } })
@@ -136,6 +140,7 @@ export async function unsuspendPlayer(adminId: string, userId: string): Promise<
 const stakeLimitSchema = z.union([z.null(), intFromForm('Stake limit', 1, MAX_STAKE)])
 
 export async function setStakeLimit(adminId: string, userId: string, limit: unknown): Promise<void> {
+  await assertCan(prisma, adminId, 'players.manage')
   const value = stakeLimitSchema.parse(limit)
   await prisma.$transaction(async (tx) => {
     await requirePlayer(tx, userId)
@@ -150,6 +155,7 @@ export async function setStakeLimit(adminId: string, userId: string, limit: unkn
 }
 
 export async function resetPassword(adminId: string, userId: string, newPassword: unknown): Promise<void> {
+  await assertCan(prisma, adminId, 'players.manage')
   const pw = passwordSchema.parse(newPassword)
   const passwordHash = await hashPassword(pw)
   await prisma.$transaction(async (tx) => {
@@ -161,6 +167,7 @@ export async function resetPassword(adminId: string, userId: string, newPassword
 
 /** Sets or changes a player's number (admin only). A new number must be confirmed again. */
 export async function setPhone(adminId: string, userId: string, input: unknown): Promise<void> {
+  await assertCan(prisma, adminId, 'players.manage')
   const phone = phoneSchema.parse(input)
   try {
     await prisma.$transaction(async (tx) => {
@@ -187,6 +194,7 @@ export async function setPhone(adminId: string, userId: string, input: unknown):
 
 /** The admin matched the number to a top-up payment; grants are allowed from now on. */
 export async function confirmPhone(adminId: string, userId: string, now: Date = new Date()): Promise<void> {
+  await assertCan(prisma, adminId, 'players.manage')
   await prisma.$transaction(async (tx) => {
     const player = await requirePlayer(tx, userId)
     if (!player.phone) throw new DomainError('VALIDATION', 'Add a phone number first')

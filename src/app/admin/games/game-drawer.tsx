@@ -13,7 +13,15 @@ import { voidGameAction } from '../actions'
 
 type Detail = NonNullable<Awaited<ReturnType<typeof getGameDetail>>>
 
-export function GameDrawer({ detail, now }: { detail: Detail; now: Date }) {
+export function GameDrawer({
+  detail,
+  now,
+  canManageGames,
+}: {
+  detail: Detail
+  now: Date
+  canManageGames: boolean
+}) {
   const { game, stakes, winners } = detail
   return (
     <>
@@ -60,25 +68,27 @@ export function GameDrawer({ detail, now }: { detail: Detail; now: Date }) {
       </section>
       {/* Stays mounted (hidden, not removed) so the success toast is not lost when the revalidated
           render flips the game to VOID. */}
-      <div className={game.status === 'VOID' ? 'hidden' : 'contents'}>
-        <ActionDialog
-          triggerLabel="Void game"
-          title="Void this game"
-          description="Every stake is refunded and any payouts are reversed."
-          submitLabel="Void game"
-          destructive
-          action={voidGameAction.bind(null, game.id)}
-          confirm={{
-            title: `Void ${game.awayTeam} @ ${game.homeTeam}?`,
-            description: 'This cannot be undone.',
-            actionLabel: 'Void game',
-          }}
-        >
-          <Field id="reason" label="Reason">
-            <Input id="reason" name="reason" maxLength={200} required />
-          </Field>
-        </ActionDialog>
-      </div>
+      {canManageGames && (
+        <div className={game.status === 'VOID' ? 'hidden' : 'contents'}>
+          <ActionDialog
+            triggerLabel="Void game"
+            title="Void this game"
+            description="Every stake is refunded and any payouts are reversed."
+            submitLabel="Void game"
+            destructive
+            action={voidGameAction.bind(null, game.id)}
+            confirm={{
+              title: `Void ${game.awayTeam} @ ${game.homeTeam}?`,
+              description: 'This cannot be undone.',
+              actionLabel: 'Void game',
+            }}
+          >
+            <Field id="reason" label="Reason">
+              <Input id="reason" name="reason" maxLength={200} required />
+            </Field>
+          </ActionDialog>
+        </div>
+      )}
     </>
   )
 }

@@ -25,7 +25,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
           {thread.status}
         </span>
       </div>
-      <ChatThread messages={thread.messages} viewer="PLAYER" />
+      <ChatThread messages={thread.messages} viewer="player" />
       {/* Stay mounted (hidden, not removed) so the success toast is not lost when the revalidated
           ticket flips to CLOSED. */}
       <div

@@ -50,7 +50,7 @@ describe('daily bonus', () => {
   })
 
   it('uses the configured amount and refuses when it is 0', async () => {
-    const admin = await makeUser({ role: 'ADMIN' })
+    const admin = await makeUser({ role: 'SUPERADMIN' })
     const u = await makeUser()
     await setBonuses(admin.id, {
       welcomeBonusCap: 1000,
