@@ -88,7 +88,10 @@ describe('refundReason', () => {
 
   it('settles normally with 2+ players and at least one losing bet', () => {
     expect(refundReason([bet('u1', true), bet('u2', false)])).toBeNull()
-    expect(refundReason([bet('u1', false), bet('u2', false)])).toBeNull() // house keeps it
+  })
+
+  it('refunds in full when nobody picked the winning ending', () => {
+    expect(refundReason([bet('u1', false), bet('u2', false)])).toBe('NO_WINNER')
   })
 
   it('has nothing to refund in an empty pool', () => {

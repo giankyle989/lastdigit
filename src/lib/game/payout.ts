@@ -6,18 +6,21 @@ export type Split = { pool: number; houseTake: number; payouts: Map<string, numb
 /**
  * Why a settled pool is refunded instead of paid out, or null to settle normally:
  * - SOLO: only one player bet, so there is nobody to play against;
+ * - NO_WINNER: nobody picked the winning ending; refunded in full, the house keeps nothing;
  * - NO_LOSERS: every bet is on the winning ending, so there is no losing stake to win.
  */
-export type RefundReason = 'SOLO' | 'NO_LOSERS'
+export type RefundReason = 'SOLO' | 'NO_WINNER' | 'NO_LOSERS'
 
 export const REFUND_NOTES: Record<RefundReason, string> = {
   SOLO: 'Refunded: only one player in this pool',
+  NO_WINNER: 'Refunded: nobody picked the winning ending',
   NO_LOSERS: 'Refunded: every bet was on the winning ending',
 }
 
 export function refundReason(bets: { userId: string; isWinner: boolean }[]): RefundReason | null {
   if (bets.length === 0) return null
   if (new Set(bets.map((b) => b.userId)).size < 2) return 'SOLO'
+  if (bets.every((b) => !b.isWinner)) return 'NO_WINNER'
   if (bets.every((b) => b.isWinner)) return 'NO_LOSERS'
   return null
 }
