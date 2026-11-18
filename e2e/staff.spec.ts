@@ -41,6 +41,12 @@ test('superadmin adds a manager; the manager grants points but cannot manage gam
   await page.getByRole('dialog').getByRole('button', { name: 'Add manager' }).click()
   await expect(page.getByText('Manager added')).toBeVisible()
   await expect(page.getByText(manager, { exact: true })).toBeVisible()
+  const row = page.getByRole('listitem').filter({ hasText: manager })
+  await row.getByRole('button', { name: 'Disable' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Disable' }).click()
+  await expect(page.getByText('Manager disabled')).toBeVisible()
+  await row.getByRole('button', { name: 'Enable' }).click()
+  await expect(page.getByText('Manager enabled')).toBeVisible()
   await logout(page, 'admin')
 
   // the manager signs in: no Settings or Staff, no Force sync, no Void

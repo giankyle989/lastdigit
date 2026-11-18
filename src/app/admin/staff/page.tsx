@@ -59,13 +59,7 @@ export default async function AdminStaffPage() {
               </span>
               {s.role === 'MANAGER' && (
                 <div className="flex flex-wrap items-center gap-2">
-                  {s.disabled ? (
-                    <ActionForm
-                      action={enableStaffAction.bind(null, s.id)}
-                      submitLabel="Enable"
-                      className="contents"
-                    />
-                  ) : (
+                  <div className={s.disabled ? 'hidden' : 'contents'}>
                     <ActionForm
                       action={disableStaffAction.bind(null, s.id)}
                       submitLabel="Disable"
@@ -77,7 +71,14 @@ export default async function AdminStaffPage() {
                         actionLabel: 'Disable',
                       }}
                     />
-                  )}
+                  </div>
+                  <div className={s.disabled ? 'contents' : 'hidden'}>
+                    <ActionForm
+                      action={enableStaffAction.bind(null, s.id)}
+                      submitLabel="Enable"
+                      className="contents"
+                    />
+                  </div>
                   <ActionDialog
                     triggerLabel="Reset password"
                     title={`Reset password for ${s.username}`}
