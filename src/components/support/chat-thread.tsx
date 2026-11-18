@@ -12,11 +12,11 @@ type Message = {
 }
 
 /** Ticket thread as chat bubbles: the viewer's side on the right, the other side on the left (spec §4.6). */
-export function ChatThread({ messages, viewer }: { messages: Message[]; viewer: 'PLAYER' | 'ADMIN' }) {
+export function ChatThread({ messages, viewer }: { messages: Message[]; viewer: 'player' | 'staff' }) {
   return (
     <ol className="flex flex-col gap-3">
       {messages.map((m) => {
-        const mine = isStaff(m.author.role) === (viewer === 'ADMIN')
+        const mine = isStaff(m.author.role) === (viewer === 'staff')
         return (
           <li key={m.id} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
             <div

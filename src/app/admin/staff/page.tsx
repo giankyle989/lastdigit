@@ -55,7 +55,7 @@ export default async function AdminStaffPage() {
                 {s.disabled && <Badge variant="destructive">Disabled</Badge>}
               </div>
               <span className="text-muted-foreground text-sm sm:ml-auto">
-                {s.lastSeenAt ? `Last seen ${formatDateTime(s.lastSeenAt)}` : 'Never'}
+                {s.lastSeenAt ? `Last login ${formatDateTime(s.lastSeenAt)}` : 'Never'}
               </span>
               {s.role === 'MANAGER' && (
                 <div className="flex flex-wrap items-center gap-2">

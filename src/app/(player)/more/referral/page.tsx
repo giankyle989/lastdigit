@@ -4,12 +4,21 @@ import { CopyShare } from '@/components/more/copy-share'
 import { PointsAmount } from '@/components/points-amount'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDateTime } from '@/lib/format'
+import { isStaff } from '@/lib/permissions'
 import { listMyReferrals } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
 import { getBonuses } from '@/server/settings'
 
 export default async function ReferralPage() {
   const user = await requireUser()
+  if (isStaff(user.role)) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-semibold">Refer friends</h1>
+        <p className="text-muted-foreground text-sm">Staff accounts can&apos;t refer players.</p>
+      </div>
+    )
+  }
   const [referrals, bonuses, h] = await Promise.all([listMyReferrals(user.id), getBonuses(), headers()])
   const origin = `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('host')}`
   const link = `${origin}/signup?ref=${user.referralCode}`
