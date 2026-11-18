@@ -1,13 +1,32 @@
 import type { GameStatus } from '@prisma/client'
 
-import { prisma } from '@/lib/db'
+import { prisma, type Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
+import { splitReturn } from '@/lib/funding'
 import { endingOf } from '@/lib/game/ending'
 import { computeSplit, REFUND_NOTES, refundReason } from '@/lib/game/payout'
 
 import { logAdminAction } from './audit'
 import { assertCan } from './authz'
 import { lockUsers, postEntry } from './ledger'
+
+type ReturnEntry = { type: 'PAYOUT' | 'REFUND'; gameId: string; adminId?: string; note?: string }
+
+/** Credits `amount` for a bet: its points stake back to points, the rest to the wallet. */
+async function postReturn(
+  tx: Tx,
+  bet: { id: string; userId: string; pointsStake: number },
+  amount: number,
+  entry: ReturnEntry,
+) {
+  const { points, wallet } = splitReturn(amount, bet.pointsStake)
+  if (points > 0) {
+    await postEntry(tx, { ...entry, userId: bet.userId, betId: bet.id, account: 'POINTS', amount: points })
+  }
+  if (wallet > 0) {
+    await postEntry(tx, { ...entry, userId: bet.userId, betId: bet.id, account: 'WALLET', amount: wallet })
+  }
+}
 
 export async function settleGame(gameId: string, now: Date = new Date()): Promise<{ settled: boolean }> {
   return prisma.$transaction(
@@ -43,15 +62,7 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
       if (reason) {
         await lockUsers(tx, bettorIds)
         for (const bet of bets) {
-          await postEntry(tx, {
-            account: 'WALLET',
-            userId: bet.userId,
-            type: 'REFUND',
-            amount: bet.stake,
-            gameId,
-            betId: bet.id,
-            note: REFUND_NOTES[reason],
-          })
+          await postReturn(tx, bet, bet.stake, { type: 'REFUND', gameId, note: REFUND_NOTES[reason] })
           await tx.bet.update({ where: { id: bet.id }, data: { result: 'REFUNDED' } })
         }
         const pool = bets.reduce((sum, b) => sum + b.stake, 0)
@@ -71,14 +82,7 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
         }
         await tx.bet.update({ where: { id: bet.id }, data: { result: 'WON', payout } })
         if (payout > 0) {
-          await postEntry(tx, {
-            account: 'WALLET',
-            userId: bet.userId,
-            type: 'PAYOUT',
-            amount: payout,
-            gameId,
-            betId: bet.id,
-          })
+          await postReturn(tx, bet, payout, { type: 'PAYOUT', gameId })
         }
       }
 
@@ -110,24 +114,28 @@ export async function voidGame(adminId: string, gameId: string, reason: unknown)
       })
       for (const bet of bets) {
         if (bet.payout > 0) {
-          await postEntry(tx, {
-            account: 'WALLET',
-            userId: bet.userId,
-            type: 'REFUND',
-            amount: -bet.payout,
-            gameId,
-            betId: bet.id,
-            adminId,
-            note: 'Payout reversal',
+          // Reverse each payout row on the balance it went to.
+          const paid = await tx.transaction.findMany({
+            where: { betId: bet.id, type: 'PAYOUT' },
+            select: { account: true, amount: true },
+            orderBy: { id: 'asc' },
           })
+          for (const p of paid) {
+            await postEntry(tx, {
+              userId: bet.userId,
+              account: p.account,
+              type: 'REFUND',
+              amount: -p.amount,
+              gameId,
+              betId: bet.id,
+              adminId,
+              note: 'Payout reversal',
+            })
+          }
         }
-        await postEntry(tx, {
-          account: 'WALLET',
-          userId: bet.userId,
+        await postReturn(tx, bet, bet.stake, {
           type: 'REFUND',
-          amount: bet.stake,
           gameId,
-          betId: bet.id,
           adminId,
           note: `Game voided: ${why}`,
         })
