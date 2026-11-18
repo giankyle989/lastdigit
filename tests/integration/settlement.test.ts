@@ -50,13 +50,21 @@ describe('settleGame', () => {
     await expectLedgerConsistent()
   })
 
-  it('house keeps everything when nobody wins', async () => {
-    const { a, g } = await setupGame()
+  it('refunds every stake in full when nobody wins', async () => {
+    const { a, b, c, g } = await setupGame()
     await prisma.game.update({ where: { id: g.id }, data: { awayScore: 100, homeScore: 100 } })
     await settleGame(g.id)
-    expect(await balanceOf(a.id)).toBe(900)
-    expect((await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).houseTake).toBe(1000)
-    expect(await prisma.bet.count({ where: { result: 'LOST' } })).toBe(3)
+    expect([await balanceOf(a.id), await balanceOf(b.id), await balanceOf(c.id)]).toEqual([1000, 1000, 1000])
+    expect(await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).toMatchObject({
+      status: 'SETTLED',
+      pool: 1000,
+      houseTake: 0,
+    })
+    expect(await prisma.bet.count({ where: { result: 'REFUNDED' } })).toBe(3)
+    expect(await prisma.transaction.findFirstOrThrow({ where: { type: 'REFUND' } })).toMatchObject({
+      note: 'Refunded: nobody picked the winning ending',
+    })
+    await expectLedgerConsistent()
   })
 
   it('is idempotent: a second run pays nothing', async () => {

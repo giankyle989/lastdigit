@@ -37,7 +37,7 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
       }))
       const bettorIds = [...new Set(bets.map((b) => b.userId))]
 
-      // A solo pool, or one where nobody picked a losing ending, is refunded (spec §4.3).
+      // A solo pool, a pool nobody won, or one with no losing stake is refunded in full.
       const reason = refundReason(entries)
       if (reason) {
         await lockUsers(tx, bettorIds)
