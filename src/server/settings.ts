@@ -4,6 +4,7 @@ import { prisma, type Tx } from '@/lib/db'
 import { intFromForm } from '@/lib/validation'
 
 import { logAdminAction } from './audit'
+import { assertCan } from './authz'
 
 /** Admin-configurable point bonuses (Admin → Settings) and their defaults. */
 /**
@@ -40,6 +41,7 @@ const bonusesSchema = z.object({
 })
 
 export async function setBonuses(adminId: string, input: unknown): Promise<void> {
+  await assertCan(prisma, adminId, 'settings.manage')
   const bonuses = bonusesSchema.parse(input)
   await prisma.$transaction(async (tx) => {
     for (const key of BONUS_KEYS) {

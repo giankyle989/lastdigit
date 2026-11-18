@@ -6,6 +6,7 @@ import { endingOf } from '@/lib/game/ending'
 import { computeSplit, REFUND_NOTES, refundReason } from '@/lib/game/payout'
 
 import { logAdminAction } from './audit'
+import { assertCan } from './authz'
 import { lockUsers, postEntry } from './ledger'
 
 export async function settleGame(gameId: string, now: Date = new Date()): Promise<{ settled: boolean }> {
@@ -81,6 +82,7 @@ export async function settleGame(gameId: string, now: Date = new Date()): Promis
 }
 
 export async function voidGame(adminId: string, gameId: string, reason: unknown): Promise<void> {
+  await assertCan(prisma, adminId, 'games.manage')
   const why = typeof reason === 'string' ? reason.trim() : ''
   if (!why) throw new DomainError('VALIDATION', 'A reason is required')
 
