@@ -13,6 +13,7 @@ import { formatPhPhone } from '@/lib/phone'
 import { isSuspended } from '@/lib/suspension'
 import { TX_TYPE_LABELS } from '@/lib/wallet'
 import type { getPlayerDetail } from '@/server/admin/queries'
+import type { LinkedAccount } from '@/server/sightings'
 
 import {
   adjustPointsAction,
@@ -26,7 +27,7 @@ import {
 
 type Player = NonNullable<Awaited<ReturnType<typeof getPlayerDetail>>>
 
-export function PlayerDrawer({ player: p }: { player: Player }) {
+export function PlayerDrawer({ player: p, linked }: { player: Player; linked: LinkedAccount[] }) {
   const suspended = isSuspended(p)
   return (
     <>
@@ -93,6 +94,27 @@ export function PlayerDrawer({ player: p }: { player: Player }) {
           <dd className="num">{p.referralCode}</dd>
         </div>
       </dl>
+      {linked.length > 0 && (
+        <section aria-labelledby="linked-heading" className="grid gap-1 text-sm">
+          <h3 id="linked-heading" className="text-muted-foreground text-xs">
+            Linked accounts
+          </h3>
+          <ul className="grid gap-1">
+            {linked.map((l) => (
+              <li key={l.id} className="flex justify-between gap-2">
+                <Link href={`/admin/players?player=${l.id}`} className="text-primary hover:underline">
+                  {l.username}
+                </Link>
+                <span className="text-muted-foreground text-xs">
+                  {[l.sameDevice && 'same device', l.sameNetwork && 'same network']
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {/* Stays mounted (hidden, not removed) so the success toast survives the revalidated render. */}

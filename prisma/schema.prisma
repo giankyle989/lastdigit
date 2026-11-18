@@ -51,38 +51,39 @@ enum InquiryStatus {
 }
 
 model User {
-  id                  String           @id @default(cuid())
+  id                  String            @id @default(cuid())
   username            String
-  usernameKey         String           @unique
+  usernameKey         String            @unique
   passwordHash        String
-  role                Role             @default(PLAYER)
-  status              UserStatus       @default(ACTIVE)
+  role                Role              @default(PLAYER)
+  status              UserStatus        @default(ACTIVE)
   suspendedUntil      DateTime?
   stakeLimitPerGame   Int?
-  balance             Int              @default(0)
-  referralCode        String           @unique
+  balance             Int               @default(0)
+  referralCode        String            @unique
   referredById        String?
   /// Set when the referrer was paid (on this player's first top-up).
   referralBonusPaidAt DateTime?
   /// PHT calendar date ('YYYY-MM-DD') of the last daily bonus claim.
   lastDailyBonusOn    String?
   /// PH mobile number in E.164 (+639XXXXXXXXX); one account per number. Null for admins.
-  phone               String?          @unique
+  phone               String?           @unique
   /// Set when an admin matched the number to a top-up payment; grants need it.
   phoneConfirmedAt    DateTime?
   phoneConfirmedById  String?
-  phoneConfirmedBy    User?            @relation("PhoneConfirmations", fields: [phoneConfirmedById], references: [id])
-  phoneConfirmations  User[]           @relation("PhoneConfirmations")
-  referredBy          User?            @relation("Referrals", fields: [referredById], references: [id])
-  referrals           User[]           @relation("Referrals")
+  phoneConfirmedBy    User?             @relation("PhoneConfirmations", fields: [phoneConfirmedById], references: [id])
+  phoneConfirmations  User[]            @relation("PhoneConfirmations")
+  referredBy          User?             @relation("Referrals", fields: [referredById], references: [id])
+  referrals           User[]            @relation("Referrals")
   bets                Bet[]
-  transactions        Transaction[]    @relation("UserTransactions")
-  adminTransactions   Transaction[]    @relation("AdminTransactions")
+  transactions        Transaction[]     @relation("UserTransactions")
+  adminTransactions   Transaction[]     @relation("AdminTransactions")
   inquiries           Inquiry[]
   inquiryMessages     InquiryMessage[]
-  adminActions        AdminAction[]    @relation("ActionsByAdmin")
-  targetedActions     AdminAction[]    @relation("ActionsOnUser")
-  createdAt           DateTime         @default(now())
+  adminActions        AdminAction[]     @relation("ActionsByAdmin")
+  targetedActions     AdminAction[]     @relation("ActionsOnUser")
+  sightings           AccountSighting[]
+  createdAt           DateTime          @default(now())
 }
 
 model Game {
@@ -186,4 +187,23 @@ model AdminAction {
 model Setting {
   key   String @id
   value String
+}
+
+enum SightingKind {
+  DEVICE
+  NETWORK
+}
+
+/// One account seen with one device or network. Values are HMAC fingerprints, never raw.
+model AccountSighting {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        SightingKind
+  fingerprint String
+  firstSeenAt DateTime
+  lastSeenAt  DateTime
+
+  @@unique([userId, kind, fingerprint])
+  @@index([kind, fingerprint])
 }

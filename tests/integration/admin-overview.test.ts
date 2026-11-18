@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { getAdminBadges, getDailyVolume, getOverviewStats, getTopBettorsToday } from '@/server/admin/overview'
 import { postEntry } from '@/server/ledger'
 import { setLastSyncAt } from '@/server/settings'
+import { recordSighting } from '@/server/sightings'
 
 import { makeGame, makeUser, resetDb } from '../helpers/db'
 
@@ -104,5 +105,16 @@ describe('admin overview', () => {
     await setLastSyncAt(new Date('2026-11-11T16:29:59Z'))
     expect((await getOverviewStats(now)).syncStale).toBe(true)
     expect(await getAdminBadges()).toEqual({ openTickets: 0, needsAttention: false })
+  })
+
+  it('counts players sharing a device, not players sharing only a network', async () => {
+    const a = await makeUser()
+    const b = await makeUser()
+    const c = await makeUser()
+    await recordSighting(a.id, { deviceId: 'AAAAAAAAAAAAAAAAAAAAAA', ip: '10.0.0.1' })
+    await recordSighting(b.id, { deviceId: 'AAAAAAAAAAAAAAAAAAAAAA', ip: '10.0.0.2' })
+    await recordSighting(c.id, { deviceId: 'CCCCCCCCCCCCCCCCCCCCCC', ip: '10.0.0.1' })
+    expect((await getOverviewStats()).sharedDevicePlayers).toBe(2)
+    expect((await getAdminBadges()).needsAttention).toBe(true)
   })
 })

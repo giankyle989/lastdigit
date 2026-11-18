@@ -1,15 +1,31 @@
 'use server'
 
+import { isRedirectError } from 'next/dist/client/components/redirect-error'
 import { AuthError } from 'next-auth'
 
 import { signIn, signOut } from '@/auth'
 import { type ActionState, runAction } from '@/lib/action-state'
 import { createRateLimiter, positiveIntOr } from '@/lib/rate-limit'
+import { recordLoginSighting, recordSighting, type Seen } from '@/server/sightings'
 import { registerPlayer } from '@/server/users'
 
-import { clientIp } from '../request-info'
+import { clientIp, deviceId } from '../request-info'
+
+/** Sightings never block signup or login (spec §3.3). */
+async function safely(record: () => Promise<void>): Promise<void> {
+  try {
+    await record()
+  } catch (e) {
+    console.error('account sighting: could not record', e)
+  }
+}
+
+async function seenNow(): Promise<Seen> {
+  return { deviceId: await deviceId(), ip: await clientIp() }
+}
 
 export async function loginAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const seen = await seenNow()
   try {
     await signIn('credentials', {
       username: String(fd.get('username') ?? ''),
@@ -18,6 +34,7 @@ export async function loginAction(_prev: ActionState, fd: FormData): Promise<Act
     })
   } catch (e) {
     if (e instanceof AuthError) return { error: 'Invalid username or password, or the account is suspended.' }
+    if (isRedirectError(e)) await safely(() => recordLoginSighting(String(fd.get('username') ?? ''), seen))
     throw e // NEXT_REDIRECT on success
   }
   return {}
@@ -36,21 +53,29 @@ function signupLimiter() {
 }
 
 export async function signupAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const ip = await clientIp()
+  const seen = await seenNow()
+  const ip = seen.ip
   const limiter = signupLimiter()
   if (!limiter.allows(ip)) return { error: 'Too many new accounts from this network. Try again later.' }
   const username = String(fd.get('username') ?? '')
   const password = String(fd.get('password') ?? '')
-  const result = await runAction(() =>
-    registerPlayer({
-      username,
-      password,
-      phone: String(fd.get('phone') ?? ''),
-      referralCode: String(fd.get('referralCode') ?? ''),
-    }),
-  )
+  let userId: string | undefined
+  const result = await runAction(async () => {
+    userId = (
+      await registerPlayer({
+        username,
+        password,
+        phone: String(fd.get('phone') ?? ''),
+        referralCode: String(fd.get('referralCode') ?? ''),
+      })
+    ).id
+  })
   if (result.error) return result
   limiter.record(ip)
+  if (userId) {
+    const id = userId
+    await safely(() => recordSighting(id, seen))
+  }
   try {
     await signIn('credentials', { username, password, redirectTo: '/' })
   } catch (e) {

@@ -19,6 +19,7 @@ import {
   type PlayerRow,
 } from '@/server/admin/tables/players'
 import { requireAdmin } from '@/server/session'
+import { linkedAccounts, sharedDevicePlayerIds } from '@/server/sightings'
 
 import { PlayerDrawer } from './player-drawer'
 
@@ -49,6 +50,16 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
             { value: 'suspended', label: 'Suspended' },
           ]}
         />
+        <SelectField
+          id="flag"
+          name="flag"
+          label="Flags"
+          defaultValue={params.flag ?? 'all'}
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'shared-device', label: 'Shared device' },
+          ]}
+        />
       </FilterForm>
       <PlayersTable sp={sp} params={params} />
       {drawerId !== undefined && <PlayerSheet sp={sp} id={drawerId} />}
@@ -57,7 +68,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
 }
 
 async function PlayersTable({ sp, params }: { sp: SearchParams; params: PlayerListParams }) {
-  const result = await listPlayers(params)
+  const [result, sharedIds] = await Promise.all([listPlayers(params), sharedDevicePlayerIds()])
+  const shared = new Set(sharedIds)
   return (
     <DataTable<PlayerRow>
       basePath={BASE}
@@ -71,7 +83,21 @@ async function PlayersTable({ sp, params }: { sp: SearchParams; params: PlayerLi
       rowLink={(r) => ({ href: hrefWith(BASE, sp, { player: r.id }), label: r.username })}
       empty="No players found."
       columns={[
-        { key: 'username', header: 'Username', sort: 'username', cell: (r) => r.username },
+        {
+          key: 'username',
+          header: 'Username',
+          sort: 'username',
+          cell: (r) => (
+            <span className="flex items-center gap-2">
+              {r.username}
+              {shared.has(r.id) && (
+                <span className="border-live text-live rounded border px-1 text-[10px] font-medium">
+                  Shared device
+                </span>
+              )}
+            </span>
+          ),
+        },
         {
           key: 'balance',
           header: 'Balance',
@@ -99,14 +125,20 @@ async function PlayersTable({ sp, params }: { sp: SearchParams; params: PlayerLi
 }
 
 async function PlayerSheet({ sp, id }: { sp: SearchParams; id: string }) {
-  const player = isRecordId(id) ? await getPlayerDetail(id) : null
+  const [player, linked] = isRecordId(id)
+    ? await Promise.all([getPlayerDetail(id), linkedAccounts(id)])
+    : [null, []]
   return (
     <UrlSheet
       key={id}
       closeHref={hrefWith(BASE, sp, { player: undefined })}
       title={player?.username ?? 'Not found'}
     >
-      {player ? <PlayerDrawer player={player} /> : <p className="text-muted-foreground">Player not found.</p>}
+      {player ? (
+        <PlayerDrawer player={player} linked={linked} />
+      ) : (
+        <p className="text-muted-foreground">Player not found.</p>
+      )}
     </UrlSheet>
   )
 }
