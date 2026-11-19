@@ -136,20 +136,72 @@ describe('placeBets', () => {
     await expect(placeBets(u.id, input)).rejects.toBeInstanceOf(ZodError)
   })
 
-  it('places a 100-pick slip covering every ending of a game', async () => {
+  const endings = (gameId: string, from: number, count: number, stake = 1) =>
+    Array.from({ length: count }, (_, i) => ({
+      gameId,
+      awayDigit: Math.floor((from + i) / 10),
+      homeDigit: (from + i) % 10,
+      stake,
+    }))
+
+  it('places a 100-pick slip spread over five games, 20 endings each', async () => {
+    const u = await makeUser()
+    await fundUser(u.id, 100)
+    const games = await Promise.all(Array.from({ length: 5 }, () => makeGame()))
+    const bets = await placeBets(
+      u.id,
+      games.flatMap((g) => endings(g.id, 0, 20)),
+    )
+    expect(bets).toHaveLength(100)
+    expect(await balanceOf(u.id)).toBe(0)
+    for (const g of games) expect(await poolOf(g.id)).toBe(20)
+    await expectLedgerConsistent()
+  })
+
+  it('refuses a 21st ending on one game and places nothing', async () => {
     const u = await makeUser()
     await fundUser(u.id, 100)
     const g = await makeGame()
-    const picks = Array.from({ length: 100 }, (_, i) => ({
-      gameId: g.id,
-      awayDigit: Math.floor(i / 10),
-      homeDigit: i % 10,
-      stake: 1,
-    }))
-    const bets = await placeBets(u.id, picks)
-    expect(bets).toHaveLength(100)
-    expect(await balanceOf(u.id)).toBe(0)
-    expect(await poolOf(g.id)).toBe(100)
+    await expect(placeBets(u.id, endings(g.id, 0, 21))).rejects.toMatchObject({
+      code: 'ENDING_LIMIT',
+      message: expect.stringContaining('At most 20 endings per game (20 left)'),
+      pickIndex: 20,
+    })
+    expect(await prisma.bet.count({ where: { userId: u.id } })).toBe(0)
+    expect(await balanceOf(u.id)).toBe(100)
+  })
+
+  it('counts endings already placed on the game', async () => {
+    const u = await makeUser()
+    await fundUser(u.id, 100)
+    const g = await makeGame()
+    await placeBets(u.id, endings(g.id, 0, 15))
+    await expect(placeBets(u.id, endings(g.id, 15, 6))).rejects.toMatchObject({
+      code: 'ENDING_LIMIT',
+      message: expect.stringContaining('(5 left)'),
+    })
+    expect(await prisma.bet.count({ where: { userId: u.id } })).toBe(15)
+    expect(await balanceOf(u.id)).toBe(85)
+    await placeBets(u.id, endings(g.id, 15, 5))
+    // Topping up an ending already held doesn't need room.
+    await placeBets(u.id, endings(g.id, 0, 3))
+    expect(await prisma.bet.count({ where: { userId: u.id } })).toBe(20)
+    expect(await balanceOf(u.id)).toBe(77)
+    await expectLedgerConsistent()
+  })
+
+  it('two slips sent at once cannot pass 20 endings on a game', async () => {
+    const u = await makeUser()
+    await fundUser(u.id, 100)
+    const g = await makeGame()
+    const results = await Promise.allSettled([
+      placeBets(u.id, endings(g.id, 0, 15)),
+      placeBets(u.id, endings(g.id, 50, 15)),
+    ])
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+    const failed = results.find((r) => r.status === 'rejected')
+    expect(failed?.status === 'rejected' && failed.reason).toMatchObject({ code: 'ENDING_LIMIT' })
+    expect(await prisma.bet.count({ where: { userId: u.id } })).toBe(15)
     await expectLedgerConsistent()
   })
 

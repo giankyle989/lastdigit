@@ -5,7 +5,7 @@ import { prisma, type Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 import { splitStake } from '@/lib/funding'
 import { formatEnding } from '@/lib/game/ending'
-import { MAX_SLIP_PICKS, MAX_STAKE } from '@/lib/game/limits'
+import { endingLimitMessage, MAX_ENDINGS_PER_GAME, MAX_SLIP_PICKS, MAX_STAKE } from '@/lib/game/limits'
 import { isSuspended } from '@/lib/suspension'
 import { intFromForm } from '@/lib/validation'
 
@@ -74,6 +74,20 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
       let pointsLeft = Math.max(0, funds.pointsBalance)
       let walletLeft = Math.max(0, funds.walletBalance)
 
+      // Endings already held on each game; read under the player lock so two slips can't both
+      // fit. A pick on an ending already held tops it up and takes no room.
+      const held = new Map<string, Set<string>>()
+      const rows = await tx.bet.findMany({
+        where: { userId, gameId: { in: [...games.keys()] } },
+        select: { gameId: true, awayDigit: true, homeDigit: true },
+      })
+      for (const r of rows) {
+        const set = held.get(r.gameId) ?? new Set<string>()
+        set.add(`${r.awayDigit}-${r.homeDigit}`)
+        held.set(r.gameId, set)
+      }
+      const heldBefore = new Map([...held].map(([gameId, set]) => [gameId, set.size]))
+
       // Stake already on each game (before this slip), for the per-game limit.
       const existing = new Map<string, number>()
       if (user.stakeLimitPerGame !== null) {
@@ -91,6 +105,23 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
         if (!game) throw fail(index, pick, new DomainError('NOT_FOUND', 'Game not found'))
         if (game.status !== 'SCHEDULED' || now >= game.startsAt) {
           throw fail(index, pick, new DomainError('BETTING_CLOSED', 'Betting closed'))
+        }
+
+        const endings = held.get(pick.gameId) ?? new Set<string>()
+        const key = `${pick.awayDigit}-${pick.homeDigit}`
+        if (!endings.has(key)) {
+          if (endings.size >= MAX_ENDINGS_PER_GAME) {
+            throw fail(
+              index,
+              pick,
+              new DomainError(
+                'ENDING_LIMIT',
+                endingLimitMessage(MAX_ENDINGS_PER_GAME - (heldBefore.get(pick.gameId) ?? 0)),
+              ),
+            )
+          }
+          endings.add(key)
+          held.set(pick.gameId, endings)
         }
 
         if (user.stakeLimitPerGame !== null) {
