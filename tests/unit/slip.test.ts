@@ -299,5 +299,6 @@ describe('fundingLine', () => {
     expect(fundingLine(300, 500)).toBe('Uses 300 points')
     expect(fundingLine(700, 500)).toBe('Uses 500 points + 200 wallet')
     expect(fundingLine(1500, 1200)).toBe('Uses 1,200 points + 300 wallet')
+    expect(fundingLine(300, -50)).toBe('Uses 300 wallet') // negative points count as 0
   })
 })
