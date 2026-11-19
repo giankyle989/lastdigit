@@ -21,6 +21,13 @@ export async function requireUser() {
   return user
 }
 
+/** The player side: staff accounts have no player pages and are sent to the console. */
+export async function requirePlayer() {
+  const user = await requireUser()
+  if (isStaff(user.role)) redirect('/admin')
+  return user
+}
+
 export async function requireAdmin(permission: Permission = 'console.view') {
   const user = await requireUser()
   if (!isStaff(user.role)) redirect('/')

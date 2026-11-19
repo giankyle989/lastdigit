@@ -11,6 +11,9 @@ vi.mock('@/server/session', () => ({
   requireUser: vi.fn(async () => {
     throw SENTINEL
   }),
+  requirePlayer: vi.fn(async () => {
+    throw SENTINEL
+  }),
   getCurrentUser: vi.fn(async () => null),
 }))
 
@@ -79,7 +82,7 @@ describe('page-level auth guards (layout guards can be skipped by RSC requests)'
   )
 
   it.each(playerPages)(
-    '%s rejects before any data access when requireUser throws',
+    '%s rejects before any data access when requirePlayer throws',
     async (_n, load, props) => {
       const mod = await load()
       await expect(mod.default(props as never)).rejects.toBe(SENTINEL)

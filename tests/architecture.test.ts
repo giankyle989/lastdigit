@@ -88,6 +88,9 @@ describe('rule helpers (fixtures)', () => {
     expect(parseServerActions(generic).map((a) => a.name)).toEqual(['g'])
     expect(serverActionsMissingGuard(generic, [])).toEqual([])
     expect(serverActionsMissingGuard('export async function h() {\n  requireUser()\n}', [])).toEqual(['h'])
+    expect(serverActionsMissingGuard('export async function p() {\n  await requirePlayer()\n}', [])).toEqual(
+      [],
+    )
   })
 
   it('counts exports the parser cannot see (fail-loud shape check)', () => {
@@ -133,11 +136,11 @@ describe('repository invariants', () => {
     expect(missing, 'admin pages must call await requireAdmin() themselves').toEqual([])
   })
 
-  it('every player page calls requireUser()', () => {
+  it('every player page calls requirePlayer()', () => {
     const pages = listFiles('src/app/(player)', /page\.tsx$/)
     expect(pages.length, 'no player pages found').toBeGreaterThan(0)
-    const missing = pages.filter((f) => !hasGuardCall(read(f), 'requireUser'))
-    expect(missing, 'player pages must call await requireUser() themselves').toEqual([])
+    const missing = pages.filter((f) => !hasGuardCall(read(f), 'requirePlayer'))
+    expect(missing, 'player pages must call await requirePlayer() themselves').toEqual([])
   })
 
   it('every server action calls a guard', () => {
@@ -146,7 +149,7 @@ describe('repository invariants', () => {
     const missing = files.flatMap((f) =>
       serverActionsMissingGuard(read(f), allowFor(f)).map((name) => `${f}#${name}`),
     )
-    expect(missing, 'server actions must await requireUser()/requireAdmin()').toEqual([])
+    expect(missing, 'server actions must await requireUser()/requirePlayer()/requireAdmin()').toEqual([])
   })
 
   it('server action files use a parseable export shape', () => {

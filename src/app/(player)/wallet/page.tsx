@@ -18,13 +18,13 @@ import {
 } from '@/lib/wallet'
 import { canClaimDailyBonus, DAILY_BONUS_NEEDS_PHONE } from '@/server/bonuses'
 import { listMyTransactions } from '@/server/queries/player'
-import { requireUser } from '@/server/session'
+import { requirePlayer } from '@/server/session'
 import { getBonus } from '@/server/settings'
 
 import { claimDailyBonusAction } from '../actions'
 
 export default async function WalletPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const user = await requireUser()
+  const user = await requirePlayer()
   const sp = await searchParams
   const filter = parseWalletFilter(sp.type)
   const page = parsePage(sp.page)

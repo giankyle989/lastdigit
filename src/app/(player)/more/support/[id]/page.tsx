@@ -6,12 +6,12 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { DomainError } from '@/lib/errors'
 import { getInquiryThread } from '@/server/inquiries'
-import { requireUser } from '@/server/session'
+import { requirePlayer } from '@/server/session'
 
 import { closeInquiryAction, replyInquiryAction } from '../../../actions'
 
 export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser()
+  const user = await requirePlayer()
   const { id } = await params
   const thread = await getInquiryThread(user.id, id).catch((e: unknown) => {
     if (e instanceof DomainError) notFound()

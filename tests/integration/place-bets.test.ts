@@ -18,6 +18,19 @@ async function poolOf(id: string) {
 describe('placeBets', () => {
   beforeEach(resetDb)
 
+  it('refuses staff accounts: managers and superadmins do not bet', async () => {
+    const g = await makeGame()
+    for (const role of ['MANAGER', 'SUPERADMIN'] as const) {
+      const staff = await makeUser({ role })
+      await fundUser(staff.id, 1000)
+      await expect(
+        placeBets(staff.id, [{ gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 10 }]),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' })
+    }
+    expect(await prisma.bet.count()).toBe(0)
+    await expectLedgerConsistent()
+  })
+
   it('places every pick, merging same-ending picks, in one go', async () => {
     const u = await makeUser()
     await fundUser(u.id, 1000)

@@ -1,6 +1,7 @@
 import { localDateOf } from '@/lib/dates'
 import { prisma } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
+import { isStaff } from '@/lib/permissions'
 import { isSuspended } from '@/lib/suspension'
 
 import { postEntry } from './ledger'
@@ -22,6 +23,7 @@ export async function claimDailyBonus(userId: string, now: Date = new Date()): P
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.findUniqueOrThrow({ where: { id: userId } })
     if (isSuspended(user, now)) throw new DomainError('SUSPENDED', 'Account suspended')
+    if (isStaff(user.role)) throw new DomainError('FORBIDDEN', 'Staff accounts cannot claim bonuses')
     // Same rule as cash in and given points: free points only for a confirmed number.
     if (!user.phoneConfirmedAt) {
       throw new DomainError('PHONE_NOT_CONFIRMED', DAILY_BONUS_NEEDS_PHONE)

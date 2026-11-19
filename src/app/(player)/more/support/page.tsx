@@ -4,12 +4,12 @@ import { NewTicketForm } from '@/components/support/new-ticket-form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDateTime } from '@/lib/format'
 import { listInquiriesForUser } from '@/server/inquiries'
-import { requireUser } from '@/server/session'
+import { requirePlayer } from '@/server/session'
 
 import { createInquiryAction } from '../../actions'
 
 export default async function SupportPage() {
-  const user = await requireUser()
+  const user = await requirePlayer()
   const tickets = await listInquiriesForUser(user.id)
   return (
     <div className="space-y-4">

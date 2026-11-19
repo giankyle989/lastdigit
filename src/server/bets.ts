@@ -6,6 +6,7 @@ import { DomainError } from '@/lib/errors'
 import { splitStake } from '@/lib/funding'
 import { formatEnding } from '@/lib/game/ending'
 import { endingLimitMessage, MAX_ENDINGS_PER_GAME, MAX_SLIP_PICKS, MAX_STAKE } from '@/lib/game/limits'
+import { isStaff } from '@/lib/permissions'
 import { isSuspended } from '@/lib/suspension'
 import { intFromForm } from '@/lib/validation'
 
@@ -67,6 +68,7 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
       await lockUsers(tx, [userId])
       const user = await tx.user.findUniqueOrThrow({ where: { id: userId } })
       if (isSuspended(user, now)) throw new DomainError('SUSPENDED', 'Account suspended')
+      if (isStaff(user.role)) throw new DomainError('FORBIDDEN', 'Staff accounts cannot bet')
       let pointsLeft = Math.max(0, user.pointsBalance)
       let walletLeft = Math.max(0, user.walletBalance)
 
