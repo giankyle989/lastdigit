@@ -3,9 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react'
 import { toast } from 'sonner'
 
-import { MAX_SLIP_PICKS } from '@/lib/game/limits'
 import {
-  canAdd,
+  addBlockReason,
   EMPTY_SLIP,
   type NewPick,
   parseStoredSlip,
@@ -85,8 +84,9 @@ export function SlipProvider({
 
   const add = useCallback(
     (pick: NewPick) => {
-      if (!canAdd(slip, pick)) {
-        toast.error(`The slip holds at most ${MAX_SLIP_PICKS} picks`)
+      const blocked = addBlockReason(slip, pick)
+      if (blocked) {
+        toast.error(blocked)
         return
       }
       dispatch({ type: 'add', pick })

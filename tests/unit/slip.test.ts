@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  addBlockReason,
   bestCaseReturn,
   canAdd,
   EMPTY_SLIP,
@@ -72,6 +73,18 @@ describe('slipReducer', () => {
     expect(canAdd(s, pick('g3'))).toBe(true)
     expect(add(s, pick('g3')).picks[3]?.stake).toBe(200)
     expect(slipTotal(s.picks)).toBe(10_000)
+  })
+
+  it('caps one game at 20 endings but still merges and allows other games', () => {
+    let s = EMPTY_SLIP
+    for (let i = 0; i < 20; i++) s = add(s, pick('g1', Math.floor(i / 10), i % 10))
+    expect(s.picks).toHaveLength(20)
+    expect(addBlockReason(s, pick('g1', 5, 5))).toBe('At most 20 endings per game (0 left)')
+    expect(canAdd(s, pick('g1', 5, 5))).toBe(false)
+    expect(add(s, pick('g1', 5, 5))).toBe(s)
+    expect(canAdd(s, pick('g1', 0, 0))).toBe(true) // merge
+    expect(canAdd(s, pick('g2', 5, 5))).toBe(true)
+    expect(addBlockReason(s, pick('g2', 5, 5))).toBeNull()
   })
 })
 
@@ -200,6 +213,19 @@ describe('addMany and the multi-add plan', () => {
       ['0-1', 30],
     ])
     expect(s.lastStake).toBe(30)
+  })
+
+  it('blocks a selection that would put more than 20 endings on one game', () => {
+    let s = EMPTY_SLIP
+    for (let h = 0; h < 10; h++) s = add(s, pick('g1', 0, h))
+    for (let h = 0; h < 5; h++) s = add(s, pick('g1', 1, h)) // 15 endings on g1
+    for (let h = 0; h < 30; h++) s = add(s, pick(`x${h}`)) // other games don't count
+    const six = [e(2, 0), e(2, 1), e(2, 2), e(2, 3), e(2, 4), e(2, 5)]
+    expect(plan(s, six, 'perEnding', 10).blocked).toBe('At most 20 endings per game (5 left)')
+    expect(plan(s, six.slice(0, 5), 'perEnding', 10).blocked).toBeNull()
+    expect(plan(s, [e(0, 0), ...six.slice(0, 5)], 'perEnding', 10).blocked).toBeNull() // 0-0 merges
+    const p = plan(EMPTY_SLIP, six, 'perEnding', 10) // planned against an emptier slip
+    expect(slipReducer(s, { type: 'addMany', picks: p.picks, lastStake: 10 })).toBe(s)
   })
 
   it('addMany adds nothing when the slip lacks room', () => {

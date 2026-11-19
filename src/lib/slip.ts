@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { formatPoints } from './format'
 import { splitStake as splitAcrossAccounts } from './funding'
-import { MAX_SLIP_PICKS, MAX_STAKE } from './game/limits'
+import { endingLimitMessage, MAX_ENDINGS_PER_GAME, MAX_SLIP_PICKS, MAX_STAKE } from './game/limits'
 import { estimatePayout } from './game/payout'
 
 export const DEFAULT_STAKE = 100
@@ -40,9 +40,21 @@ export function samePick(a: Omit<NewPick, 'matchup'>, b: Omit<NewPick, 'matchup'
   return a.gameId === b.gameId && a.awayDigit === b.awayDigit && a.homeDigit === b.homeDigit
 }
 
-/** False only when the pick is new and the slip already holds MAX_SLIP_PICKS. */
+/** Endings the slip can still take on this game (bets already placed are checked by the server). */
+export function gameRoom(slip: Slip, gameId: string): number {
+  return Math.max(0, MAX_ENDINGS_PER_GAME - slip.picks.filter((p) => p.gameId === gameId).length)
+}
+
+/** Why a single pick can't be added, or null. A pick already in the slip always merges. */
+export function addBlockReason(slip: Slip, pick: NewPick): string | null {
+  if (slip.picks.some((p) => samePick(p, pick))) return null
+  if (slip.picks.length >= MAX_SLIP_PICKS) return `The slip holds at most ${MAX_SLIP_PICKS} picks`
+  if (gameRoom(slip, pick.gameId) === 0) return endingLimitMessage(0)
+  return null
+}
+
 export function canAdd(slip: Slip, pick: NewPick): boolean {
-  return slip.picks.some((p) => samePick(p, pick)) || slip.picks.length < MAX_SLIP_PICKS
+  return addBlockReason(slip, pick) === null
 }
 
 export function slipTotal(picks: SlipPick[]): number {
@@ -114,16 +126,29 @@ export function planMultiAdd(input: {
   const min = Math.min(...stakes)
   const max = Math.max(...stakes)
   const room = slipRoom(slip)
+  const fresh = newPickCount(slip, picks)
+  const left = gameRoom(slip, gameId)
   return {
     picks,
     total: stakes.reduce((sum, x) => sum + x, 0),
     perEnding: { min, max },
     lastStake: min,
     blocked:
-      newPickCount(slip, picks) > room
+      fresh > room
         ? `The slip has room for ${room} more ${room === 1 ? 'ending' : 'endings'}`
-        : null,
+        : fresh > left
+          ? endingLimitMessage(left)
+          : null,
   }
+}
+
+/** True when adding `picks` would push some game past MAX_ENDINGS_PER_GAME in the slip. */
+function overGameRoom(slip: Slip, picks: Omit<NewPick, 'matchup'>[]): boolean {
+  const fresh = new Map<string, number>()
+  for (const p of picks) {
+    if (!slip.picks.some((q) => samePick(p, q))) fresh.set(p.gameId, (fresh.get(p.gameId) ?? 0) + 1)
+  }
+  return [...fresh].some(([gameId, n]) => n > gameRoom(slip, gameId))
 }
 
 /** Max = balance minus the other picks' stakes, never below 0 (spec §4.3). */
@@ -190,7 +215,7 @@ export function slipReducer(slip: Slip, action: SlipAction): Slip {
     case 'add': {
       const at = slip.picks.findIndex((p) => samePick(p, action.pick))
       if (at >= 0) return updateAt(slip, at, (slip.picks[at]?.stake ?? 0) + slip.lastStake, false)
-      if (slip.picks.length >= MAX_SLIP_PICKS) return slip
+      if (addBlockReason(slip, action.pick)) return slip
       return { ...slip, picks: [...slip.picks, { ...action.pick, stake: slip.lastStake }] }
     }
     case 'remove':
@@ -204,7 +229,7 @@ export function slipReducer(slip: Slip, action: SlipAction): Slip {
     case 'removePicks':
       return { ...slip, picks: slip.picks.filter((p) => !action.picks.some((r) => samePick(p, r))) }
     case 'addMany': {
-      if (newPickCount(slip, action.picks) > slipRoom(slip)) return slip
+      if (newPickCount(slip, action.picks) > slipRoom(slip) || overGameRoom(slip, action.picks)) return slip
       let next = slip
       for (const pick of action.picks) {
         const at = next.picks.findIndex((p) => samePick(p, pick))

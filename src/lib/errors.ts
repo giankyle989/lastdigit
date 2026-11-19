@@ -2,6 +2,7 @@ export type DomainErrorCode =
   | 'INSUFFICIENT_BALANCE'
   | 'BETTING_CLOSED'
   | 'STAKE_LIMIT'
+  | 'ENDING_LIMIT'
   | 'SUSPENDED'
   | 'PHONE_TAKEN'
   | 'PHONE_NOT_CONFIRMED'
