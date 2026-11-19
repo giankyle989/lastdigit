@@ -61,9 +61,6 @@
     "typescript": "^5",
     "vitest": "^3.2.7"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "engines": {
     "node": ">=24"
   },
