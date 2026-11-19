@@ -1,10 +1,7 @@
 import Link from 'next/link'
 
-import { ActionForm } from '@/components/action-form'
+import { NewTicketForm } from '@/components/support/new-ticket-form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime } from '@/lib/format'
 import { listInquiriesForUser } from '@/server/inquiries'
 import { requireUser } from '@/server/session'
@@ -46,16 +43,7 @@ export default async function SupportPage() {
           <CardTitle>New ticket</CardTitle>
         </CardHeader>
         <CardContent>
-          <ActionForm action={createInquiryAction} submitLabel="Send" className="grid gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="subject">Subject</Label>
-              <Input id="subject" name="subject" maxLength={120} required />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="body">Message</Label>
-              <Textarea id="body" name="body" rows={5} maxLength={5000} required />
-            </div>
-          </ActionForm>
+          <NewTicketForm action={createInquiryAction} phone={user.phone} wallet={user.walletBalance} />
         </CardContent>
       </Card>
     </div>
