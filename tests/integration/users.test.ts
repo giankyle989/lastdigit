@@ -53,7 +53,7 @@ describe('registerPlayer', () => {
 
   it('new players start at 0 with no transactions (the welcome bonus comes with the first top-up)', async () => {
     const u = await registerPlayer({ phone: nextPhone(), username: 'kyle', password: 'secret123' })
-    expect(u.balance).toBe(0)
+    expect(u.walletBalance).toBe(0)
     expect(await prisma.transaction.count()).toBe(0)
   })
 
@@ -67,9 +67,9 @@ describe('registerPlayer', () => {
     })
     expect(bob.referredById).toBe(referrer.id)
     expect(bob.referralBonusPaidAt).toBeNull()
-    expect(bob.balance).toBe(0)
+    expect(bob.walletBalance).toBe(0)
     const after = await prisma.user.findUniqueOrThrow({ where: { id: referrer.id } })
-    expect(after.balance).toBe(0)
+    expect(after.walletBalance).toBe(0)
     expect(await prisma.transaction.count({ where: { type: 'REFERRAL_BONUS' } })).toBe(0)
     await expectLedgerConsistent()
   })

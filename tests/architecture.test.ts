@@ -24,31 +24,37 @@ const serverActionFiles = () => listFiles('src', /\.(ts|tsx)$/).filter((f) => is
 
 describe('rule helpers (fixtures)', () => {
   it('detects balance writes inside write calls', () => {
-    expect(findBalanceWrites('tx.user.update({ where: { id }, data: { balance: next } })')).toEqual([1])
+    expect(findBalanceWrites('tx.user.update({ where: { id }, data: { walletBalance: next } })')).toEqual([1])
     expect(
       findBalanceWrites(
-        'prisma.user.update({\n  where: { id },\n  data: {\n    balance: {\n      increment: 5,\n    },\n  },\n})',
+        'prisma.user.update({\n  where: { id },\n  data: {\n    walletBalance: {\n      increment: 5,\n    },\n  },\n})',
       ),
     ).toEqual([1])
-    expect(findBalanceWrites('db.user.updateMany({ data: { balance: user.balance + 5 } })')).toEqual([1])
-    expect(findBalanceWrites('prisma.user.create({ data: { username, balance: 100 } })')).toEqual([1])
     expect(
-      findBalanceWrites('const x = 1\nprisma.user.update({ data: { balance: { decrement: a } } })'),
+      findBalanceWrites('db.user.updateMany({ data: { walletBalance: user.walletBalance + 5 } })'),
+    ).toEqual([1])
+    expect(findBalanceWrites('prisma.user.create({ data: { username, walletBalance: 100 } })')).toEqual([1])
+    expect(
+      findBalanceWrites('const x = 1\nprisma.user.update({ data: { walletBalance: { decrement: a } } })'),
     ).toEqual([2])
+    expect(findBalanceWrites('prisma.user.update({ data: { pointsBalance: { increment: 1 } } })')).toEqual([
+      1,
+    ])
   })
 
   it('detects raw SQL balance writes', () => {
-    expect(findBalanceWrites('UPDATE "User" SET "balance" = 1')).toEqual([1])
-    expect(findBalanceWrites('UPDATE "User" SET balance = balance + ${x}')).toEqual([1])
+    expect(findBalanceWrites('UPDATE "User" SET "walletBalance" = 1')).toEqual([1])
+    expect(findBalanceWrites('UPDATE "User" SET walletBalance = walletBalance + ${x}')).toEqual([1])
+    expect(findBalanceWrites('UPDATE "User" SET "pointsBalance" = 1')).toEqual([1])
   })
 
   // Review Focus #5
   it('ignores balance reads, filters and types', () => {
-    expect(findBalanceWrites('prisma.user.findMany({ select: { balance: true } })')).toEqual([])
-    expect(findBalanceWrites('prisma.user.findMany({ where: { balance: { lt: 0 } } })')).toEqual([])
-    expect(findBalanceWrites('orderBy: { balance: "asc" }')).toEqual([])
-    expect(findBalanceWrites('const x = user.balance - 1')).toEqual([])
-    expect(findBalanceWrites('type P = { username: string; balance: number }')).toEqual([])
+    expect(findBalanceWrites('prisma.user.findMany({ select: { walletBalance: true } })')).toEqual([])
+    expect(findBalanceWrites('prisma.user.findMany({ where: { walletBalance: { lt: 0 } } })')).toEqual([])
+    expect(findBalanceWrites('orderBy: { walletBalance: "asc" }')).toEqual([])
+    expect(findBalanceWrites('const x = user.walletBalance - 1')).toEqual([])
+    expect(findBalanceWrites('type P = { username: string; walletBalance: number }')).toEqual([])
     expect(findBalanceWrites('prisma.game.update({ data: { pool: { increment: stake } } })')).toEqual([])
   })
 
@@ -113,11 +119,11 @@ describe('rule helpers (fixtures)', () => {
 })
 
 describe('repository invariants', () => {
-  it('only the ledger writes User.balance', () => {
+  it('only the ledger writes User.walletBalance and User.pointsBalance', () => {
     const offenders = listFiles('src', /\.(ts|tsx)$/)
       .filter((f) => f !== 'src/server/ledger.ts')
       .flatMap((f) => findBalanceWrites(read(f)).map((line) => `${f}:${line}`))
-    expect(offenders, 'balance must only change via postEntry() in src/server/ledger.ts').toEqual([])
+    expect(offenders, 'balances must only change via postEntry() in src/server/ledger.ts').toEqual([])
   })
 
   it('every admin page calls requireAdmin()', () => {

@@ -1,10 +1,12 @@
-import type { TransactionType } from '@prisma/client'
+import { type Account, Prisma, type TransactionType } from '@prisma/client'
 
 import type { Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 
 export type LedgerEntry = {
   userId: string
+  /** Which balance the entry changes. */
+  account: Account
   type: TransactionType
   amount: number
   gameId?: string
@@ -13,31 +15,41 @@ export type LedgerEntry = {
   note?: string
 }
 
+const COLUMN = { WALLET: 'walletBalance', POINTS: 'pointsBalance' } as const satisfies Record<Account, string>
+
+const NOT_ENOUGH: Record<Account, string> = {
+  WALLET: 'Not enough in the wallet',
+  POINTS: 'Not enough points',
+}
+
 /**
- * The ONLY way to change User.balance. Must be called inside prisma.$transaction.
- * requireFunds: the update only applies if the resulting balance stays >= 0.
+ * The ONLY way to change User.walletBalance or User.pointsBalance. Must be called inside
+ * prisma.$transaction. requireFunds: the update only applies if that balance stays >= 0.
  */
 export async function postEntry(tx: Tx, entry: LedgerEntry, opts: { requireFunds?: boolean } = {}) {
   if (!Number.isInteger(entry.amount) || entry.amount === 0) {
     throw new DomainError('VALIDATION', 'Amount must be a non-zero whole number')
   }
+  const column = COLUMN[entry.account]
 
   let balanceAfter: number
   if (opts.requireFunds) {
+    // The column name comes from the fixed map above, never from input.
+    const col = Prisma.raw(`"${column}"`)
     const rows = await tx.$queryRaw<{ balance: number }[]>`
-      UPDATE "User" SET balance = balance + ${entry.amount}
-      WHERE id = ${entry.userId} AND balance + ${entry.amount} >= 0
-      RETURNING balance`
+      UPDATE "User" SET ${col} = ${col} + ${entry.amount}
+      WHERE id = ${entry.userId} AND ${col} + ${entry.amount} >= 0
+      RETURNING ${col} AS balance`
     const row = rows[0]
-    if (!row) throw new DomainError('INSUFFICIENT_BALANCE', 'Insufficient balance')
+    if (!row) throw new DomainError('INSUFFICIENT_BALANCE', NOT_ENOUGH[entry.account])
     balanceAfter = row.balance
   } else {
     const updated = await tx.user.update({
       where: { id: entry.userId },
-      data: { balance: { increment: entry.amount } },
-      select: { balance: true },
+      data: { [column]: { increment: entry.amount } },
+      select: { walletBalance: true, pointsBalance: true },
     })
-    balanceAfter = updated.balance
+    balanceAfter = updated[column]
   }
 
   return tx.transaction.create({ data: { ...entry, balanceAfter } })

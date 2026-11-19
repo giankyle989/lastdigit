@@ -34,8 +34,11 @@ describe('admin tables', () => {
     expect(suspended.rows.map((r) => r.username)).toEqual(['kylie'])
     const active = await listPlayers(parsePlayerListParams({ status: 'active', sort: 'username' }), now)
     expect(active.rows.map((r) => r.username)).toEqual(['expired', 'kyle', 'Referrer'])
-    const byBalance = await listPlayers(parsePlayerListParams({ sort: '-balance' }), now)
-    expect(byBalance.rows[0]?.username).toBe('Referrer')
+    await fundUser((await prisma.user.findFirstOrThrow({ where: { username: 'kyle' } })).id, 80, 'POINTS')
+    const byWallet = await listPlayers(parsePlayerListParams({ sort: '-wallet' }), now)
+    expect(byWallet.rows[0]?.username).toBe('Referrer')
+    const byPoints = await listPlayers(parsePlayerListParams({ sort: '-points' }), now)
+    expect(byPoints.rows[0]?.username).toBe('kyle')
     const byRefs = await listPlayers(parsePlayerListParams({ sort: '-referrals' }), now)
     expect(byRefs.rows[0]).toMatchObject({ username: 'Referrer', _count: { referrals: 1 } })
     // unknown sort → default -joined (newest first); bad page → 1
@@ -78,7 +81,9 @@ describe('admin tables', () => {
     await fundUser(kyle.id, 10)
     await fundUser(kyle.id, 15)
     await fundUser(bob.id, 7)
-    await prisma.$transaction((tx) => postEntry(tx, { userId: kyle.id, type: 'BET', amount: -5 }))
+    await prisma.$transaction((tx) =>
+      postEntry(tx, { account: 'WALLET', userId: kyle.id, type: 'BET', amount: -5 }),
+    )
 
     const grants = await listLedger(parseLedgerListParams({ q: 'KYLE', type: 'ADMIN_GRANT' }))
     expect(grants).toMatchObject({ total: 2, totalAmount: 25 })
@@ -88,6 +93,20 @@ describe('admin tables', () => {
     expect(all.totalAmount).toBe(27)
     const none = await listLedger(parseLedgerListParams({ from: '2000-01-01', to: '2000-01-02' }))
     expect(none).toMatchObject({ total: 0, totalAmount: 0, rows: [] })
+  })
+
+  it('an old ?sort=balance link falls back to the default sort', async () => {
+    expect(parsePlayerListParams({ sort: 'balance' }).sort).toEqual({ field: 'joined', dir: 'desc' })
+  })
+
+  it('filters the ledger by account', async () => {
+    const u = await makeUser()
+    await fundUser(u.id, 100, 'WALLET')
+    await fundUser(u.id, 30, 'POINTS')
+    const points = await listLedger(parseLedgerListParams({ account: 'POINTS' }))
+    expect(points.rows.map((r) => r.account)).toEqual(['POINTS'])
+    expect(points.totalAmount).toBe(30)
+    expect(parseLedgerListParams({ account: 'CASH' }).account).toBeUndefined()
   })
 
   it('tickets: default OPEN tab, search by subject or username', async () => {

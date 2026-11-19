@@ -30,7 +30,7 @@ export async function claimDailyBonus(userId: string, now: Date = new Date()): P
     if (claimed.count === 0) {
       throw new DomainError('CONFLICT', 'Already claimed today — come back tomorrow')
     }
-    await postEntry(tx, { userId, type: 'DAILY_BONUS', amount, note: 'Daily bonus' })
+    await postEntry(tx, { account: 'POINTS', userId, type: 'DAILY_BONUS', amount, note: 'Daily bonus' })
     return amount
   })
 }

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { formatPoints } from './format'
+import { splitStake as splitAcrossAccounts } from './funding'
 import { MAX_SLIP_PICKS, MAX_STAKE } from './game/limits'
 import { estimatePayout } from './game/payout'
 
@@ -254,4 +255,15 @@ export function parseStoredSlip(raw: string | null): Slip {
   }
   const parsed = storedSlipSchema.safeParse(data)
   return parsed.success ? parsed.data : EMPTY_SLIP
+}
+
+/** "Uses 500 points + 200 wallet": how a slip total will be paid, points first; null when empty. */
+export function fundingLine(total: number, points: number): string | null {
+  if (total <= 0) return null
+  const paid = splitAcrossAccounts(total, points)
+  const parts = [
+    paid.points > 0 && `${formatPoints(paid.points)} points`,
+    paid.wallet > 0 && `${formatPoints(paid.wallet)} wallet`,
+  ].filter(Boolean)
+  return `Uses ${parts.join(' + ')}`
 }

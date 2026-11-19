@@ -29,7 +29,7 @@ export default async function ReferralPage() {
         <CardContent className="space-y-3">
           <p className="text-sm">
             Earn <strong className="text-primary">{bonuses.referralPercent}%</strong> of your friend&apos;s
-            first top-up, up to{' '}
+            first top-up as bonus points, up to{' '}
             <PointsAmount value={bonuses.referralBonusCap} unit className="text-primary font-semibold" />, for
             each friend who signs up with your code.
           </p>

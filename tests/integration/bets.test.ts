@@ -7,7 +7,7 @@ import { placeBet } from '@/server/bets'
 import { expectLedgerConsistent, fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 async function balanceOf(id: string) {
-  return (await prisma.user.findUniqueOrThrow({ where: { id } })).balance
+  return (await prisma.user.findUniqueOrThrow({ where: { id } })).walletBalance
 }
 
 describe('placeBet', () => {

@@ -6,6 +6,7 @@ import {
   EMPTY_SLIP,
   endingKey,
   estimatePickReturns,
+  fundingLine,
   maxStakeFor,
   newPickCount,
   parseStakeInput,
@@ -262,5 +263,15 @@ describe('estimated returns', () => {
     expect(bestCaseReturn(picks, [270, 1080, 100])).toBe(1180)
     expect(bestCaseReturn(picks, [270, null, null])).toBe(270)
     expect(bestCaseReturn([], [])).toBe(0)
+  })
+})
+
+describe('fundingLine', () => {
+  it('says how a stake will be paid', () => {
+    expect(fundingLine(0, 100)).toBeNull()
+    expect(fundingLine(300, 0)).toBe('Uses 300 wallet')
+    expect(fundingLine(300, 500)).toBe('Uses 300 points')
+    expect(fundingLine(700, 500)).toBe('Uses 500 points + 200 wallet')
+    expect(fundingLine(1500, 1200)).toBe('Uses 1,200 points + 300 wallet')
   })
 })

@@ -6,7 +6,11 @@ const ROOT = path.resolve(__dirname, '..', '..')
 export const AUTH_ACTION_ALLOWLIST = ['loginAction', 'signupAction', 'logoutAction'] as const
 
 const WRITE_CALL = /\.(update|updateMany|upsert|create|createMany)\s*\(/g
-const RAW_SQL_BALANCE_WRITES = [/"balance"\s*=/, /\bSET\s+balance\s*=/i]
+const BALANCE_KEY = /\b(walletBalance|pointsBalance)\s*:/
+const RAW_SQL_BALANCE_WRITES = [
+  /"(walletBalance|pointsBalance)"\s*=/,
+  /\bSET\s+"?(walletBalance|pointsBalance)"?\s*=/i,
+]
 const USE_SERVER_DIRECTIVE = /^(?:\s*(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/))*\s*['"]use server['"]/
 const SERVER_ACTION =
   /export\s+async\s+function\s+(\w+)\s*(?:<[^>]*>)?\s*\(([\s\S]*?)\)\s*(?::[^{]*)?\{([\s\S]*?)\n\}/g
@@ -51,10 +55,10 @@ function closingParen(source: string, open: number): number {
 }
 
 /**
- * 1-based line numbers of balance writes: a `balance:` key inside the arguments of a
+ * 1-based line numbers of balance writes: a `walletBalance:`/`pointsBalance:` key inside the arguments of a
  * write call (update/updateMany/upsert/create/createMany), or a raw-SQL balance assignment.
  * Reads (select, where, orderBy, findMany, ...) and type annotations are not write calls.
- * Known limit: a `balance:` filter inside a write call's `where` is also reported.
+ * Known limit: a `walletBalance:`/`pointsBalance:` filter inside a write call's `where` is also reported.
  */
 export function findBalanceWrites(source: string): number[] {
   const lines = new Set<number>()
@@ -63,7 +67,7 @@ export function findBalanceWrites(source: string): number[] {
     const open = index + call[0].length - 1
     const close = closingParen(source, open)
     const args = source.slice(open, close === -1 ? source.length : close + 1)
-    if (/\bbalance\s*:/.test(args)) lines.add(lineOf(source, index))
+    if (BALANCE_KEY.test(args)) lines.add(lineOf(source, index))
   }
   source.split('\n').forEach((line, i) => {
     if (RAW_SQL_BALANCE_WRITES.some((re) => re.test(line))) lines.add(i + 1)

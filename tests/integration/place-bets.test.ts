@@ -4,11 +4,12 @@ import { ZodError } from 'zod'
 import { prisma } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
 import { placeBet, placeBets } from '@/server/bets'
+import { postEntry } from '@/server/ledger'
 
 import { expectLedgerConsistent, fundUser, makeGame, makeUser, resetDb } from '../helpers/db'
 
 async function balanceOf(id: string) {
-  return (await prisma.user.findUniqueOrThrow({ where: { id } })).balance
+  return (await prisma.user.findUniqueOrThrow({ where: { id } })).walletBalance
 }
 async function poolOf(id: string) {
   return (await prisma.game.findUniqueOrThrow({ where: { id } })).pool
@@ -71,7 +72,7 @@ describe('placeBets', () => {
       ]),
     ).rejects.toMatchObject({
       code: 'INSUFFICIENT_BALANCE',
-      message: 'LAL @ GSW 2-2: Insufficient balance',
+      message: 'LAL @ GSW 2-2: Not enough balance',
       pickIndex: 1,
     })
     expect(await balanceOf(u.id)).toBe(150)
@@ -197,6 +198,96 @@ describe('placeBets', () => {
       ),
     )
     for (const g of games) expect(await poolOf(g.id)).toBe(40)
+    await expectLedgerConsistent()
+  })
+
+  async function balancesOf(id: string) {
+    const u = await prisma.user.findUniqueOrThrow({ where: { id } })
+    return { wallet: u.walletBalance, points: u.pointsBalance }
+  }
+
+  it('pays a stake from points first, then the wallet', async () => {
+    const u = await makeUser()
+    const g = await makeGame()
+    await fundUser(u.id, 500, 'WALLET')
+    await fundUser(u.id, 60, 'POINTS')
+    const [bet] = await placeBets(u.id, [{ gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 }])
+    expect(bet).toMatchObject({ stake: 100, pointsStake: 60 })
+    expect(await balancesOf(u.id)).toEqual({ wallet: 460, points: 0 })
+    const rows = await prisma.transaction.findMany({ where: { type: 'BET' }, orderBy: { account: 'asc' } })
+    expect(rows.map((r) => [r.account, r.amount])).toEqual([
+      ['WALLET', -40],
+      ['POINTS', -60],
+    ])
+    await expectLedgerConsistent()
+  })
+
+  it('crosses from points to the wallet partway through a slip', async () => {
+    const u = await makeUser()
+    const g = await makeGame()
+    await fundUser(u.id, 500, 'WALLET')
+    await fundUser(u.id, 150, 'POINTS')
+    const bets = await placeBets(u.id, [
+      { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 100 },
+      { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 100 },
+      { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 100 },
+    ])
+    expect(bets.map((b) => b.pointsStake)).toEqual([100, 50, 0])
+    expect(await balancesOf(u.id)).toEqual({ wallet: 350, points: 0 })
+    await expectLedgerConsistent()
+  })
+
+  it('grows stake and pointsStake together on a repeat bet', async () => {
+    const u = await makeUser()
+    const g = await makeGame()
+    await fundUser(u.id, 500, 'WALLET')
+    await fundUser(u.id, 30, 'POINTS')
+    await placeBets(u.id, [{ gameId: g.id, awayDigit: 4, homeDigit: 4, stake: 20 }])
+    const [bet] = await placeBets(u.id, [{ gameId: g.id, awayDigit: 4, homeDigit: 4, stake: 50 }])
+    expect(bet).toMatchObject({ stake: 70, pointsStake: 30 })
+  })
+
+  it('refuses a slip larger than both balances together, placing nothing', async () => {
+    const u = await makeUser()
+    const g = await makeGame()
+    await fundUser(u.id, 100, 'WALLET')
+    await fundUser(u.id, 50, 'POINTS')
+    await expect(
+      placeBets(u.id, [
+        { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 100 },
+        { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 51 },
+      ]),
+    ).rejects.toMatchObject({
+      code: 'INSUFFICIENT_BALANCE',
+      pickIndex: 1,
+      message: 'LAL @ GSW 2-2: Not enough balance',
+    })
+    expect(await prisma.bet.count()).toBe(0)
+    expect(await balancesOf(u.id)).toEqual({ wallet: 100, points: 50 })
+  })
+
+  it('never spends from a negative balance', async () => {
+    const u = await makeUser()
+    const g = await makeGame()
+    await fundUser(u.id, 200, 'WALLET')
+    await prisma.$transaction((tx) =>
+      postEntry(tx, { userId: u.id, account: 'POINTS', type: 'REFUND', amount: -40 }),
+    )
+    const [bet] = await placeBets(u.id, [{ gameId: g.id, awayDigit: 5, homeDigit: 5, stake: 100 }])
+    expect(bet?.pointsStake).toBe(0)
+    expect(await balancesOf(u.id)).toEqual({ wallet: 100, points: -40 })
+  })
+
+  it('two slips sent at once cannot spend the same points twice', async () => {
+    const u = await makeUser()
+    const g = await makeGame()
+    await fundUser(u.id, 100, 'POINTS')
+    const results = await Promise.allSettled([
+      placeBets(u.id, [{ gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 80 }]),
+      placeBets(u.id, [{ gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 80 }]),
+    ])
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+    expect(await balancesOf(u.id)).toEqual({ wallet: 0, points: 20 })
     await expectLedgerConsistent()
   })
 })

@@ -59,9 +59,9 @@ export async function getOverviewStats(now: Date = new Date()) {
       take: ATTENTION_LIMIT,
     }),
     prisma.user.findMany({
-      where: { balance: { lt: 0 } },
-      select: { id: true, username: true, balance: true },
-      orderBy: { balance: 'asc' },
+      where: { OR: [{ walletBalance: { lt: 0 } }, { pointsBalance: { lt: 0 } }] },
+      select: { id: true, username: true, walletBalance: true, pointsBalance: true },
+      orderBy: [{ walletBalance: 'asc' }, { pointsBalance: 'asc' }],
       take: ATTENTION_LIMIT,
     }),
     prisma.inquiry.findMany({
@@ -154,7 +154,7 @@ export async function getAdminBadges(now: Date = new Date()) {
     prisma.inquiry.count({ where: { status: 'OPEN' } }),
     prisma.game.count({ where: { status: 'POSTPONED' } }),
     prisma.game.count({ where: stuckSettlementWhere(now) }),
-    prisma.user.count({ where: { balance: { lt: 0 } } }),
+    prisma.user.count({ where: { OR: [{ walletBalance: { lt: 0 } }, { pointsBalance: { lt: 0 } }] } }),
     sharedDevicePlayerIds(),
   ])
   return { openTickets, needsAttention: openTickets + postponed + stuck + negative + shared.length > 0 }

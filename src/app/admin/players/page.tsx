@@ -99,11 +99,22 @@ async function PlayersTable({ sp, params }: { sp: SearchParams; params: PlayerLi
           ),
         },
         {
-          key: 'balance',
-          header: 'Balance',
-          sort: 'balance',
+          key: 'wallet',
+          header: 'Wallet',
+          sort: 'wallet',
           align: 'right',
-          cell: (r) => <PointsAmount value={r.balance} className={r.balance < 0 ? 'text-danger' : ''} />,
+          cell: (r) => (
+            <PointsAmount value={r.walletBalance} className={r.walletBalance < 0 ? 'text-danger' : ''} />
+          ),
+        },
+        {
+          key: 'points',
+          header: 'Points',
+          sort: 'points',
+          align: 'right',
+          cell: (r) => (
+            <PointsAmount value={r.pointsBalance} className={r.pointsBalance < 0 ? 'text-danger' : ''} />
+          ),
         },
         {
           key: 'status',

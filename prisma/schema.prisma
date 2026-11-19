@@ -45,6 +45,11 @@ enum TransactionType {
   REFUND
 }
 
+enum Account {
+  WALLET
+  POINTS
+}
+
 enum InquiryStatus {
   OPEN
   ANSWERED
@@ -60,7 +65,10 @@ model User {
   status              UserStatus        @default(ACTIVE)
   suspendedUntil      DateTime?
   stakeLimitPerGame   Int?
-  balance             Int               @default(0)
+  /// Cashable: top-ups and winnings. Changes only via postEntry().
+  walletBalance       Int               @default(0)
+  /// Bonus credit, bet only. Changes only via postEntry().
+  pointsBalance       Int               @default(0)
   referralCode        String            @unique
   referredById        String?
   /// Set when the referrer was paid (on this player's first top-up).
@@ -119,6 +127,8 @@ model Bet {
   awayDigit    Int
   homeDigit    Int
   stake        Int
+  /// Part of `stake` paid from points; the wallet paid stake - pointsStake.
+  pointsStake  Int           @default(0)
   payout       Int           @default(0)
   result       BetResult     @default(PENDING)
   transactions Transaction[]
@@ -133,6 +143,8 @@ model Transaction {
   userId       String
   user         User            @relation("UserTransactions", fields: [userId], references: [id])
   type         TransactionType
+  /// Which balance this row changed; balanceAfter is that balance after it.
+  account      Account         @default(WALLET)
   amount       Int
   balanceAfter Int
   gameId       String?

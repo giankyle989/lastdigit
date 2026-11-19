@@ -14,6 +14,7 @@ import { formatEnding } from '@/lib/game/ending'
 import {
   bestCaseReturn,
   estimatePickReturns,
+  fundingLine,
   parseStakeInput,
   QUICK_STAKES,
   type SlipPick,
@@ -25,7 +26,7 @@ import { useSlip } from './slip-provider'
 
 type PickKey = { gameId: string; awayDigit: number; homeDigit: number }
 type PickStatusView = PickKey & { open: boolean; pool: number; endingStake: number }
-type SlipStatusView = { balance: number; picks: PickStatusView[] }
+type SlipStatusView = { walletBalance: number; pointsBalance: number; picks: PickStatusView[] }
 
 const keyOf = (p: PickKey) => `${p.gameId}:${p.awayDigit}-${p.homeDigit}`
 const toKeys = (picks: SlipPick[]): PickKey[] =>
@@ -88,8 +89,10 @@ export function BetSlipPanel() {
   }
 
   const statusByKey = new Map(status?.picks.map((s) => [keyOf(s), s]))
-  const balance = status?.balance ?? slip.balance
+  const balance = status ? status.walletBalance + status.pointsBalance : slip.balance
+  const points = status?.pointsBalance ?? slip.points
   const total = slipTotal(slip.picks)
+  const funding = fundingLine(total, points)
   const anyClosed = slip.picks.some((p) => statusByKey.get(keyOf(p))?.open === false)
   const anyInvalid = slip.picks.some((p) => p.stake < 1)
   const returns = estimatePickReturns(slip.picks, (p) => statusByKey.get(keyOf(p)))
@@ -239,7 +242,7 @@ export function BetSlipPanel() {
         <dd className={cn('text-right', total > balance && 'text-danger')}>
           <PointsAmount value={total} unit />
         </dd>
-        <dt className="text-muted-foreground">Balance</dt>
+        <dt className="text-muted-foreground">Available</dt>
         <dd className="text-right">
           <PointsAmount value={balance} unit />
         </dd>
@@ -248,6 +251,11 @@ export function BetSlipPanel() {
           <PointsAmount value={bestReturn} unit />
         </dd>
       </dl>
+      {funding && (
+        <p className="text-muted-foreground text-xs" data-testid="slip-funding">
+          {funding}
+        </p>
+      )}
       <p className="text-muted-foreground text-xs">
         Only one ending per game can win, so this counts your best pick in each game. Estimate — changes as
         others bet.

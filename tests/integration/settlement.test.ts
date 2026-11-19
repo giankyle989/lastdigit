@@ -8,7 +8,7 @@ import { registerPlayer } from '@/server/users'
 import { expectLedgerConsistent, fundUser, makeGame, makeUser, nextPhone, resetDb } from '../helpers/db'
 
 async function balanceOf(id: string) {
-  return (await prisma.user.findUniqueOrThrow({ where: { id } })).balance
+  return (await prisma.user.findUniqueOrThrow({ where: { id } })).walletBalance
 }
 
 async function finish(gameId: string, awayScore = 99, homeScore = 106) {
@@ -281,5 +281,113 @@ describe('voidGame', () => {
     const { g } = await setupGame()
     await voidGame(admin.id, g.id, 'Bad data')
     expect(await settleGame(g.id)).toEqual({ settled: false })
+  })
+})
+
+describe('settlement with wallet and points', () => {
+  beforeEach(resetDb)
+
+  async function balancesOf(id: string) {
+    const u = await prisma.user.findUniqueOrThrow({ where: { id } })
+    return { wallet: u.walletBalance, points: u.pointsBalance }
+  }
+
+  async function finishAndSettle(gameId: string, awayScore: number, homeScore: number) {
+    await prisma.game.update({ where: { id: gameId }, data: { status: 'FINAL', awayScore, homeScore } })
+    return settleGame(gameId)
+  }
+
+  it('a mixed bet that wins: points stake back to points, the rest to the wallet', async () => {
+    const a = await makeUser()
+    const b = await makeUser()
+    const g = await makeGame()
+    await fundUser(a.id, 40, 'WALLET')
+    await fundUser(a.id, 60, 'POINTS')
+    await fundUser(b.id, 900, 'WALLET')
+    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 }) // 60 pts + 40 wallet
+    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 900 })
+    await finishAndSettle(g.id, 101, 102) // ending 1-2: a wins 90% of 1000 = 900
+    expect(await balancesOf(a.id)).toEqual({ wallet: 840, points: 60 })
+    const payouts = await prisma.transaction.findMany({
+      where: { type: 'PAYOUT' },
+      orderBy: { account: 'asc' },
+    })
+    expect(payouts.map((t) => [t.account, t.amount])).toEqual([
+      ['WALLET', 840],
+      ['POINTS', 60],
+    ])
+    await expectLedgerConsistent()
+  })
+
+  it('a refunded pool returns each part to the balance that paid it', async () => {
+    const a = await makeUser()
+    const g = await makeGame()
+    await fundUser(a.id, 40, 'WALLET')
+    await fundUser(a.id, 60, 'POINTS')
+    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await finishAndSettle(g.id, 101, 102) // solo pool → refund
+    expect(await balancesOf(a.id)).toEqual({ wallet: 40, points: 60 })
+    await expectLedgerConsistent()
+  })
+
+  it('a repeat bet funded differently each time is refunded part by part', async () => {
+    const a = await makeUser()
+    const g = await makeGame()
+    await fundUser(a.id, 30, 'POINTS')
+    await fundUser(a.id, 100, 'WALLET')
+    await placeBet(a.id, { gameId: g.id, awayDigit: 7, homeDigit: 7, stake: 20 }) // 20 pts
+    await placeBet(a.id, { gameId: g.id, awayDigit: 7, homeDigit: 7, stake: 50 }) // 10 pts + 40 wallet
+    await finishAndSettle(g.id, 100, 100) // nobody else bet: solo refund
+    expect(await balancesOf(a.id)).toEqual({ wallet: 100, points: 30 })
+  })
+
+  it('void after a mixed win nets both balances back to before the game', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const a = await makeUser()
+    const b = await makeUser()
+    const g = await makeGame()
+    await fundUser(a.id, 40, 'WALLET')
+    await fundUser(a.id, 60, 'POINTS')
+    await fundUser(b.id, 900, 'WALLET')
+    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 900 })
+    await finishAndSettle(g.id, 101, 102)
+    await voidGame(admin.id, g.id, 'wrong score')
+    expect(await balancesOf(a.id)).toEqual({ wallet: 40, points: 60 })
+    expect(await balancesOf(b.id)).toEqual({ wallet: 900, points: 0 })
+    await expectLedgerConsistent()
+  })
+
+  it('void of a wallet-only win (as settled before points existed) reverses on the wallet', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const a = await makeUser()
+    const b = await makeUser()
+    const g = await makeGame()
+    await fundUser(a.id, 100, 'WALLET')
+    await fundUser(b.id, 100, 'WALLET')
+    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 100 })
+    await finishAndSettle(g.id, 101, 102)
+    await voidGame(admin.id, g.id, 'wrong score')
+    expect(await balancesOf(a.id)).toEqual({ wallet: 100, points: 0 })
+    const reversals = await prisma.transaction.findMany({ where: { note: 'Payout reversal' } })
+    expect(reversals.map((t) => t.account)).toEqual(['WALLET'])
+  })
+
+  it('refuses to void when a winning bet payout does not match its ledger rows', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const a = await makeUser()
+    const b = await makeUser()
+    const g = await makeGame()
+    await fundUser(a.id, 100, 'WALLET')
+    await fundUser(b.id, 100, 'WALLET')
+    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 100 })
+    await finishAndSettle(g.id, 101, 102)
+    const before = [await balancesOf(a.id), await balancesOf(b.id)]
+    await prisma.transaction.deleteMany({ where: { type: 'PAYOUT', userId: a.id } })
+    await expect(voidGame(admin.id, g.id, 'wrong score')).rejects.toThrow(/does not match its ledger rows/)
+    expect([await balancesOf(a.id), await balancesOf(b.id)]).toEqual(before)
+    expect((await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).status).not.toBe('VOID')
   })
 })

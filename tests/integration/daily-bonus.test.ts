@@ -11,7 +11,7 @@ const NOV_12_2359_PHT = new Date('2026-11-12T15:59:59Z')
 const NOV_13_0000_PHT = new Date('2026-11-12T16:00:00Z')
 
 async function balanceOf(id: string) {
-  return (await prisma.user.findUniqueOrThrow({ where: { id } })).balance
+  return (await prisma.user.findUniqueOrThrow({ where: { id } })).pointsBalance
 }
 
 describe('daily bonus', () => {
@@ -35,7 +35,7 @@ describe('daily bonus', () => {
     expect(await claimDailyBonus(u.id, NOV_13_0000_PHT)).toBe(100) // a new PHT day
     expect(await balanceOf(u.id)).toBe(200)
     const t = await prisma.transaction.findFirstOrThrow({ where: { userId: u.id } })
-    expect(t).toMatchObject({ type: 'DAILY_BONUS', amount: 100, note: 'Daily bonus' })
+    expect(t).toMatchObject({ type: 'DAILY_BONUS', amount: 100, note: 'Daily bonus', account: 'POINTS' })
     await expectLedgerConsistent()
   })
 

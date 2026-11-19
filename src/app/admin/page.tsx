@@ -104,14 +104,27 @@ async function OverviewBody() {
                     </Link>
                   </li>
                 ))}
-                {s.negativeBalances.map((u) => (
-                  <li key={u.id}>
-                    <Link href={`/admin/players?player=${u.id}`} className="flex justify-between gap-2 py-2">
-                      <span>Negative balance: {u.username}</span>
-                      <PointsAmount value={u.balance} className="text-danger" />
-                    </Link>
-                  </li>
-                ))}
+                {s.negativeBalances.map((u) => {
+                  const which = [u.walletBalance < 0 && 'wallet', u.pointsBalance < 0 && 'points']
+                    .filter(Boolean)
+                    .join(' and ')
+                  return (
+                    <li key={u.id}>
+                      <Link
+                        href={`/admin/players?player=${u.id}`}
+                        className="flex justify-between gap-2 py-2"
+                      >
+                        <span>
+                          Negative {which}: {u.username}
+                        </span>
+                        <PointsAmount
+                          value={Math.min(u.walletBalance, 0) + Math.min(u.pointsBalance, 0)}
+                          className="text-danger"
+                        />
+                      </Link>
+                    </li>
+                  )
+                })}
                 {s.sharedDevicePlayers > 0 && (
                   <li>
                     <Link

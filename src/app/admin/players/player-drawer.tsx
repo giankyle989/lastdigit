@@ -11,12 +11,12 @@ import { formatDate, formatDateTime } from '@/lib/format'
 import { formatEnding } from '@/lib/game/ending'
 import { formatPhPhone } from '@/lib/phone'
 import { isSuspended } from '@/lib/suspension'
-import { TX_TYPE_LABELS } from '@/lib/wallet'
+import { ACCOUNT_LABELS, TX_TYPE_LABELS } from '@/lib/wallet'
 import type { getPlayerDetail } from '@/server/admin/queries'
 import type { LinkedAccount } from '@/server/sightings'
 
 import {
-  adjustPointsAction,
+  adjustBalanceAction,
   confirmPhoneAction,
   resetPasswordAction,
   setPhoneAction,
@@ -53,9 +53,15 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground text-xs">Balance</dt>
+          <dt className="text-muted-foreground text-xs">Wallet</dt>
           <dd>
-            <PointsAmount value={p.balance} unit className={p.balance < 0 ? 'text-danger' : ''} />
+            <PointsAmount value={p.walletBalance} unit className={p.walletBalance < 0 ? 'text-danger' : ''} />
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground text-xs">Points</dt>
+          <dd>
+            <PointsAmount value={p.pointsBalance} unit className={p.pointsBalance < 0 ? 'text-danger' : ''} />
           </dd>
         </div>
         <div>
@@ -128,7 +134,7 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
         <ActionDialog
           triggerLabel="Edit number"
           title={`Phone number for ${p.username}`}
-          description="Changing it means confirming it again before the next grant."
+          description="Changing it means confirming it again before the next cash in or points."
           submitLabel="Save number"
           action={setPhoneAction.bind(null, p.id)}
         >
@@ -144,33 +150,45 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
           </Field>
         </ActionDialog>
         <ActionDialog
-          triggerLabel="Grant"
+          triggerLabel="Cash in"
           disabled={!p.phoneConfirmedAt}
-          title={`Grant points to ${p.username}`}
-          submitLabel="Grant points"
-          action={adjustPointsAction.bind(null, p.id)}
+          title={`Cash in for ${p.username}`}
+          description="Adds to the wallet. The first cash in pays the welcome and referral bonuses as points."
+          submitLabel="Record cash in"
+          action={adjustBalanceAction.bind(null, p.id)}
         >
-          <input type="hidden" name="direction" value="GRANT" />
-          <Field id="amount" label="Amount">
-            <Input id="amount" name="amount" type="number" min={1} step={1} required />
-          </Field>
-          <Field id="note" label="Note">
-            <Input id="note" name="note" maxLength={500} required />
-          </Field>
+          <input type="hidden" name="kind" value="CASH_IN" />
+          <AmountAndNote />
         </ActionDialog>
         <ActionDialog
-          triggerLabel="Deduct"
-          title={`Deduct points from ${p.username}`}
-          submitLabel="Deduct points"
-          action={adjustPointsAction.bind(null, p.id)}
+          triggerLabel="Cash out"
+          title={`Cash out for ${p.username}`}
+          description="Takes from the wallet only; points can't be cashed out."
+          submitLabel="Record cash out"
+          action={adjustBalanceAction.bind(null, p.id)}
         >
-          <input type="hidden" name="direction" value="DEDUCT" />
-          <Field id="amount" label="Amount">
-            <Input id="amount" name="amount" type="number" min={1} step={1} required />
-          </Field>
-          <Field id="note" label="Note">
-            <Input id="note" name="note" maxLength={500} required />
-          </Field>
+          <input type="hidden" name="kind" value="CASH_OUT" />
+          <AmountAndNote />
+        </ActionDialog>
+        <ActionDialog
+          triggerLabel="Give points"
+          disabled={!p.phoneConfirmedAt}
+          title={`Give points to ${p.username}`}
+          description="Bonus points can only be bet."
+          submitLabel="Add points"
+          action={adjustBalanceAction.bind(null, p.id)}
+        >
+          <input type="hidden" name="kind" value="GIVE_POINTS" />
+          <AmountAndNote />
+        </ActionDialog>
+        <ActionDialog
+          triggerLabel="Take points"
+          title={`Take points from ${p.username}`}
+          submitLabel="Remove points"
+          action={adjustBalanceAction.bind(null, p.id)}
+        >
+          <input type="hidden" name="kind" value="TAKE_POINTS" />
+          <AmountAndNote />
         </ActionDialog>
         {/* Both stay mounted (hidden, not swapped) so the success toast and onSuccess of the form
             that just submitted are not lost when the revalidated render flips `suspended`. */}
@@ -261,7 +279,7 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
             {p.transactions.map((t) => (
               <li key={t.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2">
                 <span>
-                  {TX_TYPE_LABELS[t.type]}
+                  {TX_TYPE_LABELS[t.type]} · {ACCOUNT_LABELS[t.account]}
                   <span className="text-muted-foreground block text-xs">
                     {formatDateTime(t.createdAt)}
                     {t.note ? ` · ${t.note}` : ''}
@@ -288,6 +306,19 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
           </ul>
         </TabsContent>
       </Tabs>
+    </>
+  )
+}
+
+function AmountAndNote() {
+  return (
+    <>
+      <Field id="amount" label="Amount">
+        <Input id="amount" name="amount" type="number" min={1} step={1} required />
+      </Field>
+      <Field id="note" label="Note">
+        <Input id="note" name="note" maxLength={500} required />
+      </Field>
     </>
   )
 }

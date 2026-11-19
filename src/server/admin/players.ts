@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client'
+import { type Account, Prisma } from '@prisma/client'
 import { z } from 'zod'
 
 import { prisma, type Tx } from '@/lib/db'
@@ -6,8 +6,9 @@ import { DomainError } from '@/lib/errors'
 import { MAX_GRANT, MAX_STAKE } from '@/lib/game/limits'
 import { phoneSchema } from '@/lib/phone'
 import { intFromForm } from '@/lib/validation'
+import { ADJUST_KINDS, type AdjustKind, type AdjustResult } from '@/lib/wallet'
 
-import { logAdminAction } from '../audit'
+import { type AdminActionType, logAdminAction } from '../audit'
 import { assertCan } from '../authz'
 import { lockUsers, postEntry } from '../ledger'
 import { hashPassword } from '../passwords'
@@ -21,31 +22,34 @@ async function requirePlayer(tx: Tx, userId: string) {
 }
 
 const adjustSchema = z.object({
-  direction: z.enum(['GRANT', 'DEDUCT'], { errorMap: () => ({ message: 'Choose grant or deduct' }) }),
+  kind: z.enum(ADJUST_KINDS, { errorMap: () => ({ message: 'Choose what to do' }) }),
   amount: intFromForm('Amount', 1, MAX_GRANT),
   note: z.string({ required_error: 'A note is required' }).trim().min(1, 'A note is required').max(500),
 })
 
+const KINDS: Record<AdjustKind, { account: Account; grant: boolean; audit: AdminActionType }> = {
+  CASH_IN: { account: 'WALLET', grant: true, audit: 'CASH_IN' },
+  CASH_OUT: { account: 'WALLET', grant: false, audit: 'CASH_OUT' },
+  GIVE_POINTS: { account: 'POINTS', grant: true, audit: 'GRANT_POINTS' },
+  TAKE_POINTS: { account: 'POINTS', grant: false, audit: 'DEDUCT_POINTS' },
+}
+
 /**
- * Grants or deducts points. A player's first grant is their first top-up:
- * - it is matched 1:1 as a welcome bonus, up to `welcomeBonusCap`;
- * - if they were referred, the referrer gets `referralPercent`% of it, up to `referralBonusCap`
- *   (once per referred player, guarded by `referralBonusPaidAt`), but only if the referrer's
- *   phone is confirmed.
- * Returns the bonuses credited (0 when none).
+ * Cash in / cash out (wallet) or give / take points. Grants need a confirmed phone; deductions
+ * can't take a balance below 0. A player's first cash in is their first top-up:
+ * - it is matched 1:1 as a welcome bonus in points, up to `welcomeBonusCap`;
+ * - if they were referred, the referrer gets `referralPercent`% of it in points, up to
+ *   `referralBonusCap` (once per referred player, guarded by `referralBonusPaidAt`), but only if
+ *   the referrer's phone is confirmed.
  */
-export async function adjustPoints(
-  adminId: string,
-  userId: string,
-  input: unknown,
-): Promise<{ welcomeBonus: number; referralBonus: number }> {
+export async function adjustBalance(adminId: string, userId: string, input: unknown): Promise<AdjustResult> {
   await assertCan(prisma, adminId, 'points.adjust')
-  const { direction, amount, note } = adjustSchema.parse(input)
+  const { kind, amount, note } = adjustSchema.parse(input)
+  const { account, grant, audit } = KINDS[kind]
   return prisma.$transaction(async (tx) => {
     const player = await requirePlayer(tx, userId)
-    const grant = direction === 'GRANT'
-    // Lock the player (and referrer) first so two concurrent first grants can't both see
-    // "no earlier grant".
+    // Lock the player (and referrer) first so two concurrent first cash-ins can't both see
+    // "no earlier cash in".
     await lockUsers(tx, player.referredById ? [userId, player.referredById] : [userId])
     if (grant) {
       const { phoneConfirmedAt } = await tx.user.findUniqueOrThrow({
@@ -54,11 +58,14 @@ export async function adjustPoints(
       })
       if (!phoneConfirmedAt) throw new DomainError('PHONE_NOT_CONFIRMED', 'Confirm the phone number first')
     }
-    const firstTopUp = grant && (await tx.transaction.count({ where: { userId, type: 'ADMIN_GRANT' } })) === 0
+    const firstTopUp =
+      kind === 'CASH_IN' &&
+      (await tx.transaction.count({ where: { userId, type: 'ADMIN_GRANT', account: 'WALLET' } })) === 0
     await postEntry(
       tx,
       {
         userId,
+        account,
         type: grant ? 'ADMIN_GRANT' : 'ADMIN_DEDUCT',
         amount: grant ? amount : -amount,
         adminId,
@@ -66,17 +73,13 @@ export async function adjustPoints(
       },
       { requireFunds: !grant },
     )
-    await logAdminAction(tx, {
-      adminId,
-      action: grant ? 'GRANT_POINTS' : 'DEDUCT_POINTS',
-      targetUserId: userId,
-      details: { amount, note },
-    })
-    if (!firstTopUp) return { welcomeBonus: 0, referralBonus: 0 }
+    await logAdminAction(tx, { adminId, action: audit, targetUserId: userId, details: { amount, note } })
+    if (!firstTopUp) return { kind, welcomeBonus: 0, referralBonus: 0 }
     const bonuses = await getBonuses(tx)
     const welcomeBonus = Math.min(amount, bonuses.welcomeBonusCap)
     if (welcomeBonus > 0) {
       await postEntry(tx, {
+        account: 'POINTS',
         userId,
         type: 'SIGNUP_BONUS',
         amount: welcomeBonus,
@@ -96,6 +99,7 @@ export async function adjustPoints(
       if (referralBonus > 0) {
         await tx.user.update({ where: { id: userId }, data: { referralBonusPaidAt: new Date() } })
         await postEntry(tx, {
+          account: 'POINTS',
           userId: fresh.referredById,
           type: 'REFERRAL_BONUS',
           amount: referralBonus,
@@ -104,7 +108,7 @@ export async function adjustPoints(
         })
       }
     }
-    return { welcomeBonus, referralBonus }
+    return { kind, welcomeBonus, referralBonus }
   })
 }
 

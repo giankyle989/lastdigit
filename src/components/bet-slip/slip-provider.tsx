@@ -19,6 +19,8 @@ type SlipContextValue = {
   lastStake: number
   /** Balance from the last server render; the slip refreshes it via getSlipStatusAction. */
   balance: number
+  /** Points from the last server render; spent first. */
+  points: number
   add: (pick: NewPick) => void
   /** Adds several picks at once, or none if the slip lacks room (multi-select spec §2.4). */
   addMany: (picks: SlipPick[], lastStake: number) => void
@@ -59,10 +61,12 @@ function writeStorage(key: string, value: string): void {
 export function SlipProvider({
   userId,
   balance,
+  points,
   children,
 }: {
   userId: string
   balance: number
+  points: number
   children: React.ReactNode
 }) {
   const key = slipStorageKey(userId)
@@ -96,6 +100,7 @@ export function SlipProvider({
       picks: slip.picks,
       lastStake: slip.lastStake,
       balance,
+      points,
       add,
       addMany: (picks, lastStake) => {
         dispatch({ type: 'addMany', picks, lastStake })
@@ -111,7 +116,7 @@ export function SlipProvider({
       sheetOpen,
       setSheetOpen,
     }),
-    [slip, balance, add, sheetOpen],
+    [slip, balance, points, add, sheetOpen],
   )
 
   return <SlipContext.Provider value={value}>{children}</SlipContext.Provider>

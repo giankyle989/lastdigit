@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 import { prisma } from '../src/lib/db'
-import { adjustPoints, confirmPhone } from '../src/server/admin/players'
+import { adjustBalance, confirmPhone } from '../src/server/admin/players'
 import { placeBet } from '../src/server/bets'
 import { setBonuses } from '../src/server/settings'
 import type { ApiGame } from '../src/server/sync/balldontlie'
@@ -35,7 +35,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await logout(page, 'player')
   // players start at 0; alice's referral bonus waits for bob's first top-up
   const aliceRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect(aliceRow.balance).toBe(0)
+  expect(aliceRow.walletBalance).toBe(0)
   // a referral bonus only goes to a referrer whose phone is confirmed
   const adminRow = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
   await confirmPhone(adminRow.id, aliceRow.id)
@@ -47,17 +47,19 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await page.goto(`/admin/players?q=${bob}`)
   await page.getByRole('link', { name: bob, exact: true }).click()
   await expect(page.getByRole('dialog', { name: bob })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Cash in', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: 'Confirm phone' }).click()
   await expect(page.getByText('Phone confirmed')).toBeVisible()
   await expect(page.getByText(/^Confirmed .+ by /)).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Grant', exact: true })).toBeEnabled()
-  await page.getByRole('button', { name: 'Grant', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Cash in', exact: true })).toBeEnabled()
+  await page.getByRole('button', { name: 'Cash in', exact: true }).click()
   await page.getByLabel('Amount').fill('1000')
   await page.getByLabel('Note').fill('Welcome bonus')
-  await page.getByRole('button', { name: 'Grant points', exact: true }).click()
-  await expect(page.getByText('Points updated (+1,000 welcome bonus, +200 to their referrer)')).toBeVisible()
-  expect((await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })).balance).toBe(200)
+  await page.getByRole('button', { name: 'Record cash in', exact: true }).click()
+  await expect(
+    page.getByText('Cash in recorded (+1,000 welcome bonus points, +200 points to their referrer)'),
+  ).toBeVisible()
+  expect((await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })).pointsBalance).toBe(200)
   await logout(page, 'admin')
 
   // a game exists; bob picks 9-6 with the pickers, adds it to the slip and confirms
@@ -71,7 +73,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
     },
   })
   // alice tops up 100 (+100 matched) and joins the pool on a losing ending, so it is not a solo pool
-  await adjustPoints(adminRow.id, aliceRow.id, { direction: 'GRANT', amount: 100, note: 'top-up' })
+  await adjustBalance(adminRow.id, aliceRow.id, { kind: 'CASH_IN', amount: 100, note: 'top-up' })
   await placeBet(aliceRow.id, { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
 
   await login(page, bob, 'secret123')
@@ -115,6 +117,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await expect(slipText('Bet slip cleared.')).toBeVisible()
   await page.getByRole('button', { name: 'Undo' }).click()
   await expect(slipText('4 picks')).toBeVisible()
+  await expect(slipText('Uses 400 points')).toBeVisible()
   await page.getByRole('button', { name: 'Confirm bets' }).click()
   await expect(page.getByText('4 bets placed')).toBeVisible()
 
@@ -133,14 +136,21 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   const result = await syncGames({ fetchGames: async () => [final] })
   expect(result.settled).toBe(1)
 
-  // bob: 1000 top-up + 1000 matched + 100 daily - 400 staked + 450 (sole winner: 90% of a 500 pool)
+  // bob: wallet 1000 top-up + 350 (payout 450 minus the 100 points stake on 9-6);
+  // points 1000 welcome + 100 daily - 400 staked + 100 points stake back
   await page.goto('/wallet')
-  await expect(page.getByTestId('balance')).toHaveText('2,150 pts')
-  await expect(page.getByText('Payout', { exact: true })).toBeVisible()
+  await expect(page.getByTestId('wallet-balance')).toHaveText('1,350 pts')
+  await expect(page.getByTestId('points-balance')).toHaveText('800 pts')
+  await expect(
+    page
+      .getByRole('listitem')
+      .filter({ hasText: /^Payout/ })
+      .first(),
+  ).toBeVisible()
 
-  // alice: 200 referral + 100 top-up + 100 matched - 100 stake (her bet lost)
+  // alice: wallet 100 top-up; points 200 referral + 100 welcome - 100 stake (her bet lost)
   const aliceAfter = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect(aliceAfter.balance).toBe(300)
+  expect([aliceAfter.walletBalance, aliceAfter.pointsBalance]).toEqual([100, 200])
 })
 
 test.afterAll(async () => {

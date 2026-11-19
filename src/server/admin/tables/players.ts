@@ -13,7 +13,7 @@ import {
 
 import { sharedDevicePlayerIds } from '../../sightings'
 
-export const PLAYER_SORTS = ['username', 'balance', 'joined', 'referrals'] as const
+export const PLAYER_SORTS = ['username', 'wallet', 'points', 'joined', 'referrals'] as const
 export const PLAYER_STATUSES = ['active', 'suspended'] as const
 export const PLAYER_FLAGS = ['shared-device'] as const
 
@@ -39,8 +39,10 @@ function orderBy(sort: PlayerListParams['sort']): Prisma.UserOrderByWithRelation
   switch (sort.field) {
     case 'username':
       return { usernameKey: sort.dir }
-    case 'balance':
-      return { balance: sort.dir }
+    case 'wallet':
+      return { walletBalance: sort.dir }
+    case 'points':
+      return { pointsBalance: sort.dir }
     case 'joined':
       return { createdAt: sort.dir }
     case 'referrals':
@@ -51,7 +53,8 @@ function orderBy(sort: PlayerListParams['sort']): Prisma.UserOrderByWithRelation
 const select = {
   id: true,
   username: true,
-  balance: true,
+  walletBalance: true,
+  pointsBalance: true,
   status: true,
   suspendedUntil: true,
   stakeLimitPerGame: true,

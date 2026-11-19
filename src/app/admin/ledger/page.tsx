@@ -9,8 +9,9 @@ import { PointsAmount } from '@/components/points-amount'
 import { Input } from '@/components/ui/input'
 import { formatDateTime } from '@/lib/format'
 import { formatSort, type SearchParams } from '@/lib/table-params'
-import { TX_TYPE_LABELS } from '@/lib/wallet'
+import { ACCOUNT_LABELS, TX_TYPE_LABELS } from '@/lib/wallet'
 import {
+  LEDGER_ACCOUNTS,
   LEDGER_TYPES,
   type LedgerListParams,
   type LedgerRow,
@@ -41,6 +42,16 @@ export default async function AdminLedgerPage({ searchParams }: { searchParams: 
           options={[
             { value: 'all', label: 'All' },
             ...LEDGER_TYPES.map((t) => ({ value: t, label: TX_TYPE_LABELS[t] })),
+          ]}
+        />
+        <SelectField
+          id="account"
+          name="account"
+          label="Account"
+          defaultValue={params.account ?? 'all'}
+          options={[
+            { value: 'all', label: 'All' },
+            ...LEDGER_ACCOUNTS.map((a) => ({ value: a, label: ACCOUNT_LABELS[a] })),
           ]}
         />
         <Field id="from" label="From (PHT)">
@@ -80,6 +91,7 @@ async function LedgerTable({ sp, params }: { sp: SearchParams; params: LedgerLis
           ),
         },
         { key: 'type', header: 'Type', cell: (t) => TX_TYPE_LABELS[t.type] },
+        { key: 'account', header: 'Account', cell: (t) => ACCOUNT_LABELS[t.account] },
         {
           key: 'amount',
           header: 'Amount',
@@ -97,7 +109,7 @@ async function LedgerTable({ sp, params }: { sp: SearchParams; params: LedgerLis
       ]}
       footer={
         <tr>
-          <td colSpan={3} className="px-3 py-2">
+          <td colSpan={4} className="px-3 py-2">
             Total for this filter
           </td>
           <td className="px-3 py-2 text-right">
