@@ -1,9 +1,12 @@
 import { expect, test } from '@playwright/test'
 
 import { prisma } from '../src/lib/db'
-import { signup } from './helpers'
+import { confirmPhone } from '../src/server/admin/players'
+import { login, logout, signup } from './helpers'
 
-test('a cash in ticket starts from an editable template', async ({ page }, testInfo) => {
+test('a cash in ticket starts from a template, and staff record it from the ticket', async ({
+  page,
+}, testInfo) => {
   const tag = testInfo.project.name
   const dana = `dana_${tag}`
   const phone = tag === 'desktop' ? '0917 000 0501' : '0917 000 0502'
@@ -34,4 +37,21 @@ test('a cash in ticket starts from an editable template', async ({ page }, testI
   expect(ticket.subject).toBe('Cash in')
   expect(ticket.messages[0]?.body).toContain('Reference no.: 12345')
   await expect(page.getByText('Reference no.: 12345')).toBeVisible()
+  await logout(page, 'player')
+
+  // Staff record the cash in from the ticket: amount prefilled, then replied and closed.
+  const admin = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
+  await confirmPhone(admin.id, user.id)
+  await login(page, 'admin', 'admin12345')
+  await page.waitForURL('**/admin')
+  await page.goto(`/admin/support?ticket=${ticket.id}`)
+  await page.getByRole('button', { name: 'Record cash in' }).click()
+  await expect(page.getByLabel('Amount')).toHaveValue('500')
+  await page.getByLabel('Note').fill('ref 12345')
+  await page.getByRole('dialog').getByRole('button', { name: 'Record cash in' }).click()
+  await expect(page.getByText(/^Cash in recorded/)).toBeVisible()
+  await expect(page.getByText('Cash in of 500 recorded.')).toBeVisible()
+  const after = await prisma.inquiry.findUniqueOrThrow({ where: { id: ticket.id } })
+  expect(after.status).toBe('CLOSED')
+  expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).walletBalance).toBe(500)
 })

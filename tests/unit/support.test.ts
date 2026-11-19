@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { nextMessage, topicSubject, topicTemplate } from '@/lib/support'
+import {
+  cashReply,
+  nextMessage,
+  parseTicketAmount,
+  subjectTopic,
+  topicSubject,
+  topicTemplate,
+} from '@/lib/support'
 
 const phone = '+639170000201'
 
@@ -43,5 +50,28 @@ describe('nextMessage', () => {
     const edited = topicTemplate('CASH_IN', phone).replace('Amount: ', 'Amount: 500')
     expect(nextMessage(edited, 'CASH_IN', 'CASH_OUT', phone)).toBe(edited)
     expect(nextMessage('My bet is missing', 'OTHER', 'CASH_IN', phone)).toBe('My bet is missing')
+  })
+})
+
+describe('cash tickets', () => {
+  it('maps a saved subject back to its topic', () => {
+    expect(subjectTopic('Cash in')).toBe('CASH_IN')
+    expect(subjectTopic('Cash out')).toBe('CASH_OUT')
+    expect(subjectTopic('cash in')).toBe('OTHER')
+    expect(subjectTopic('Missing points')).toBe('OTHER')
+  })
+
+  it('reads the amount line of a cash message', () => {
+    expect(parseTicketAmount(topicTemplate('CASH_IN', phone).replace('Amount: ', 'Amount: 1,500'))).toBe(1500)
+    expect(parseTicketAmount('Hello\namount:  250 pts\nthanks')).toBe(250)
+    expect(parseTicketAmount(topicTemplate('CASH_IN', phone))).toBeNull()
+    expect(parseTicketAmount('Amount: 0')).toBeNull()
+    expect(parseTicketAmount('Amount: five hundred')).toBeNull()
+    expect(parseTicketAmount('no amount here')).toBeNull()
+  })
+
+  it('writes the staff reply', () => {
+    expect(cashReply('CASH_IN', 1500)).toBe('Cash in of 1,500 recorded.')
+    expect(cashReply('CASH_OUT', 200)).toBe('Cash out of 200 recorded.')
   })
 })
