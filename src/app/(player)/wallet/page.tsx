@@ -16,7 +16,7 @@ import {
   WALLET_FILTERS,
   type WalletFilter,
 } from '@/lib/wallet'
-import { canClaimDailyBonus } from '@/server/bonuses'
+import { canClaimDailyBonus, DAILY_BONUS_NEEDS_PHONE } from '@/server/bonuses'
 import { listMyTransactions } from '@/server/queries/player'
 import { requireUser } from '@/server/session'
 import { getBonus } from '@/server/settings'
@@ -53,13 +53,15 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
           <div>
             <div className="text-sm font-medium">Daily bonus</div>
             <div className="text-muted-foreground text-xs">
-              {canClaimDailyBonus(user)
-                ? `Claim ${daily.toLocaleString('en-US')} free points once a day.`
-                : 'Claimed today — come back tomorrow (resets at midnight PHT).'}
+              {!user.phoneConfirmedAt
+                ? `${DAILY_BONUS_NEEDS_PHONE}.`
+                : canClaimDailyBonus(user)
+                  ? `Claim ${daily.toLocaleString('en-US')} free points once a day.`
+                  : 'Claimed today — come back tomorrow (resets at midnight PHT).'}
             </div>
           </div>
           {/* Kept mounted after a claim (only hidden) so its success toast still fires. */}
-          <div hidden={!canClaimDailyBonus(user)}>
+          <div hidden={!user.phoneConfirmedAt || !canClaimDailyBonus(user)}>
             <ActionForm action={claimDailyBonusAction} submitLabel="Claim" />
           </div>
         </section>

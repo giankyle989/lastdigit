@@ -6,6 +6,8 @@ import { isSuspended } from '@/lib/suspension'
 import { postEntry } from './ledger'
 import { getBonus } from './settings'
 
+export const DAILY_BONUS_NEEDS_PHONE = 'Confirm your number with support to claim the daily bonus'
+
 /** True when the player hasn't claimed the daily bonus yet on this PHT calendar day. */
 export function canClaimDailyBonus(
   user: { lastDailyBonusOn: string | null },
@@ -20,6 +22,10 @@ export async function claimDailyBonus(userId: string, now: Date = new Date()): P
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.findUniqueOrThrow({ where: { id: userId } })
     if (isSuspended(user, now)) throw new DomainError('SUSPENDED', 'Account suspended')
+    // Same rule as cash in and given points: free points only for a confirmed number.
+    if (!user.phoneConfirmedAt) {
+      throw new DomainError('PHONE_NOT_CONFIRMED', DAILY_BONUS_NEEDS_PHONE)
+    }
     const amount = await getBonus('dailyBonus', tx)
     if (amount <= 0) throw new DomainError('CONFLICT', 'The daily bonus is turned off')
     // Conditional update: two concurrent claims on the same day credit once.

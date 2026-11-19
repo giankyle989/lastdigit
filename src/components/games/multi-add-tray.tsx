@@ -119,6 +119,7 @@ export function MultiAddTray({ gameId, matchup, endings, onAdded, onClear }: Pro
         size="lg"
         className="w-full"
         disabled={plan.blocked !== null}
+        aria-describedby={plan.blocked ? `${gameId}-add-blocked` : undefined}
         onClick={() => {
           slip.addMany(plan.picks, plan.lastStake)
           onAdded()
@@ -126,7 +127,11 @@ export function MultiAddTray({ gameId, matchup, endings, onAdded, onClear }: Pro
       >
         Add {n} to slip
       </Button>
-      {plan.blocked && <p className="text-muted-foreground text-center text-xs">{plan.blocked}</p>}
+      {plan.blocked && (
+        <p id={`${gameId}-add-blocked`} className="text-muted-foreground text-center text-xs">
+          {plan.blocked}
+        </p>
+      )}
     </div>
   )
 }

@@ -41,10 +41,15 @@ test('a cash in ticket starts from a template, and staff record it from the tick
 
   // Staff record the cash in from the ticket: amount prefilled, then replied and closed.
   const admin = await prisma.user.findUniqueOrThrow({ where: { usernameKey: 'admin' } })
-  await confirmPhone(admin.id, user.id)
   await login(page, 'admin', 'admin12345')
   await page.waitForURL('**/admin')
   await page.goto(`/admin/support?ticket=${ticket.id}`)
+  // An unconfirmed number blocks the cash in up front, with a pointer to the player drawer.
+  await expect(page.getByTestId('ticket-cash-hint')).toContainText("Confirm the player's number")
+  await expect(page.getByRole('button', { name: 'Record cash in' })).toBeDisabled()
+  await confirmPhone(admin.id, user.id)
+  await page.reload()
+  await expect(page.getByTestId('ticket-cash-hint')).toHaveText('Wallet: 0 pts')
   await page.getByRole('button', { name: 'Record cash in' }).click()
   await expect(page.getByLabel('Amount')).toHaveValue('500')
   await page.getByLabel('Note').fill('ref 12345')
