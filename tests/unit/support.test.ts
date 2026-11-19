@@ -5,6 +5,7 @@ import {
   nextMessage,
   parseTicketAmount,
   subjectTopic,
+  ticketAmount,
   topicSubject,
   topicTemplate,
 } from '@/lib/support'
@@ -68,6 +69,25 @@ describe('cash tickets', () => {
     expect(parseTicketAmount('Amount: 0')).toBeNull()
     expect(parseTicketAmount('Amount: five hundred')).toBeNull()
     expect(parseTicketAmount('no amount here')).toBeNull()
+  })
+
+  it("takes the ticket amount from the player's newest message that states one", () => {
+    const player = 'u1'
+    const staff = 'a1'
+    const msg = (authorId: string, body: string) => ({ authorId, body })
+    // the player changes the amount in a later reply
+    expect(
+      ticketAmount(
+        [msg(player, 'Amount: 500'), msg(staff, 'Please confirm'), msg(player, 'Amount: 300')],
+        player,
+      ),
+    ).toBe(300)
+    // a later reply without an amount keeps the earlier one
+    expect(ticketAmount([msg(player, 'Amount: 500'), msg(player, 'sent it, thanks')], player)).toBe(500)
+    // staff messages never count
+    expect(ticketAmount([msg(player, 'Amount: 500'), msg(staff, 'Amount: 900')], player)).toBe(500)
+    expect(ticketAmount([msg(player, 'hello')], player)).toBeNull()
+    expect(ticketAmount([], player)).toBeNull()
   })
 
   it('writes the staff reply', () => {
