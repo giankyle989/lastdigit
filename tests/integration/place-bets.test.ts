@@ -343,3 +343,32 @@ describe('placeBets', () => {
     await expectLedgerConsistent()
   })
 })
+
+describe('placeBets and suspension', () => {
+  beforeEach(resetDb)
+
+  it('a suspension committed while a slip waits on the player lock refuses the slip', async () => {
+    const u = await makeUser()
+    await fundUser(u.id, 100)
+    const g = await makeGame()
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    let locked!: () => void
+    const isLocked = new Promise<void>((r) => (locked = r))
+    // Staff hold the player row, then suspend them while the slip is queued behind the lock.
+    const staff = prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${u.id} FOR UPDATE`
+      locked()
+      await gate
+      await tx.user.update({ where: { id: u.id }, data: { status: 'SUSPENDED' } })
+    })
+    await isLocked
+    const slip = placeBets(u.id, [{ gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 50 }])
+    await new Promise((r) => setTimeout(r, 300)) // let the slip reach the player lock
+    release()
+    await staff
+    await expect(slip).rejects.toMatchObject({ code: 'SUSPENDED' })
+    expect(await prisma.bet.count({ where: { userId: u.id } })).toBe(0)
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: u.id } })).walletBalance).toBe(100)
+  })
+})
