@@ -54,6 +54,23 @@ export function parseTicketAmount(body: string): number | null {
   return Number.isSafeInteger(n) && n > 0 ? n : null
 }
 
+/**
+ * The amount a cash ticket asks for: from the player's newest message that states one clearly, so a
+ * corrected amount in a later reply wins. Messages are oldest first; staff messages never count.
+ */
+export function ticketAmount(
+  messages: readonly { authorId: string; body: string }[],
+  playerId: string,
+): number | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (m?.authorId !== playerId) continue
+    const amount = parseTicketAmount(m.body)
+    if (amount !== null) return amount
+  }
+  return null
+}
+
 /** The reply staff post on a cash ticket once it is recorded. */
 export function cashReply(kind: 'CASH_IN' | 'CASH_OUT', amount: number): string {
   return `${TOPIC_LABELS[kind]} of ${amount.toLocaleString('en-US')} recorded.`

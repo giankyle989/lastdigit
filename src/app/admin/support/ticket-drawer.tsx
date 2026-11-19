@@ -8,7 +8,7 @@ import { ChatThread } from '@/components/support/chat-thread'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { parseTicketAmount, subjectTopic } from '@/lib/support'
+import { subjectTopic, ticketAmount } from '@/lib/support'
 import type { getInquiryThread } from '@/server/inquiries'
 
 import { adminCloseAction, adminReplyAction, ticketCashAction } from '../actions'
@@ -17,8 +17,8 @@ type Thread = Awaited<ReturnType<typeof getInquiryThread>>
 
 export function TicketDrawer({ thread, canAdjust }: { thread: Thread; canAdjust: boolean }) {
   const topic = subjectTopic(thread.subject)
-  // The amount the player wrote in their opening message, when it is clear.
-  const asked = parseTicketAmount(thread.messages.find((m) => m.authorId === thread.userId)?.body ?? '')
+  // The amount the player last asked for, when it is clear.
+  const asked = ticketAmount(thread.messages, thread.userId)
   const cash =
     canAdjust && topic !== 'OTHER'
       ? topic === 'CASH_IN'
