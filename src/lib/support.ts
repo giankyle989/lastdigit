@@ -38,3 +38,23 @@ export function nextMessage(
   const untouched = current.trim() === '' || current === topicTemplate(from, phone)
   return untouched ? topicTemplate(to, phone) : current
 }
+
+/** The topic a saved subject belongs to (exact match, as the form saves it). */
+export function subjectTopic(subject: string): SupportTopic {
+  if (subject === TOPIC_LABELS.CASH_IN) return 'CASH_IN'
+  if (subject === TOPIC_LABELS.CASH_OUT) return 'CASH_OUT'
+  return 'OTHER'
+}
+
+/** The amount from a cash message's "Amount:" line, or null when it is missing or unclear. */
+export function parseTicketAmount(body: string): number | null {
+  const m = /^\s*amount:[ \t]*([\d,]+)/im.exec(body)
+  if (!m?.[1]) return null
+  const n = Number(m[1].replace(/,/g, ''))
+  return Number.isSafeInteger(n) && n > 0 ? n : null
+}
+
+/** The reply staff post on a cash ticket once it is recorded. */
+export function cashReply(kind: 'CASH_IN' | 'CASH_OUT', amount: number): string {
+  return `${TOPIC_LABELS[kind]} of ${amount.toLocaleString('en-US')} recorded.`
+}

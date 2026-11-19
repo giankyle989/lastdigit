@@ -51,9 +51,6 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
 
   return prisma.$transaction(
     async (tx) => {
-      const user = await tx.user.findUniqueOrThrow({ where: { id: userId } })
-      if (isSuspended(user, now)) throw new DomainError('SUSPENDED', 'Account suspended')
-
       const games = await lockGames(
         tx,
         picks.map((p) => p.gameId),
@@ -66,13 +63,12 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
 
       // Games first, then the player (the order settlement and void use), so concurrent
       // slips queue on the player row and can't spend the same points twice.
+      // Read the player only under the lock, so a suspension committed meanwhile is seen.
       await lockUsers(tx, [userId])
-      const funds = await tx.user.findUniqueOrThrow({
-        where: { id: userId },
-        select: { walletBalance: true, pointsBalance: true },
-      })
-      let pointsLeft = Math.max(0, funds.pointsBalance)
-      let walletLeft = Math.max(0, funds.walletBalance)
+      const user = await tx.user.findUniqueOrThrow({ where: { id: userId } })
+      if (isSuspended(user, now)) throw new DomainError('SUSPENDED', 'Account suspended')
+      let pointsLeft = Math.max(0, user.pointsBalance)
+      let walletLeft = Math.max(0, user.walletBalance)
 
       // Endings already held on each game; read under the player lock so two slips can't both
       // fit. A pick on an ending already held tops it up and takes no room.

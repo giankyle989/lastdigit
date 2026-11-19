@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { DomainError } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { firstParam } from '@/lib/pagination'
+import { can } from '@/lib/permissions'
 import { formatSort, isRecordId, type SearchParams } from '@/lib/table-params'
 import { hrefWith } from '@/lib/url'
 import {
@@ -53,7 +54,9 @@ export default async function AdminSupportPage({ searchParams }: { searchParams:
         </FilterForm>
       </div>
       <TicketsTable sp={sp} params={params} />
-      {drawerId !== undefined && <TicketSheet sp={sp} id={drawerId} adminId={admin.id} />}
+      {drawerId !== undefined && (
+        <TicketSheet sp={sp} id={drawerId} adminId={admin.id} canAdjust={can(admin.role, 'points.adjust')} />
+      )}
     </>
   )
 }
@@ -83,7 +86,17 @@ async function TicketsTable({ sp, params }: { sp: SearchParams; params: TicketLi
   )
 }
 
-async function TicketSheet({ sp, id, adminId }: { sp: SearchParams; id: string; adminId: string }) {
+async function TicketSheet({
+  sp,
+  id,
+  adminId,
+  canAdjust,
+}: {
+  sp: SearchParams
+  id: string
+  adminId: string
+  canAdjust: boolean
+}) {
   // getInquiryThread throws NOT_FOUND for unknown ids: show "Not found" instead of an error page.
   const thread = isRecordId(id)
     ? await getInquiryThread(adminId, id).catch((e: unknown) => {
@@ -97,7 +110,11 @@ async function TicketSheet({ sp, id, adminId }: { sp: SearchParams; id: string; 
       closeHref={hrefWith(BASE, sp, { ticket: undefined })}
       title={thread?.subject ?? 'Not found'}
     >
-      {thread ? <TicketDrawer thread={thread} /> : <p className="text-muted-foreground">Ticket not found.</p>}
+      {thread ? (
+        <TicketDrawer thread={thread} canAdjust={canAdjust} />
+      ) : (
+        <p className="text-muted-foreground">Ticket not found.</p>
+      )}
     </UrlSheet>
   )
 }

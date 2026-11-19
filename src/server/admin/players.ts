@@ -44,72 +44,83 @@ const KINDS: Record<AdjustKind, { account: Account; grant: boolean; audit: Admin
  */
 export async function adjustBalance(adminId: string, userId: string, input: unknown): Promise<AdjustResult> {
   await assertCan(prisma, adminId, 'points.adjust')
-  const { kind, amount, note } = adjustSchema.parse(input)
+  const parsed = adjustSchema.parse(input)
+  return prisma.$transaction((tx) => applyAdjustment(tx, adminId, userId, parsed))
+}
+
+export type Adjustment = z.infer<typeof adjustSchema>
+export const parseAdjustment = (input: unknown): Adjustment => adjustSchema.parse(input)
+
+/** The body of `adjustBalance`, for callers that already hold a transaction (and checked permission). */
+export async function applyAdjustment(
+  tx: Tx,
+  adminId: string,
+  userId: string,
+  { kind, amount, note }: Adjustment,
+): Promise<AdjustResult> {
   const { account, grant, audit } = KINDS[kind]
-  return prisma.$transaction(async (tx) => {
-    const player = await requirePlayer(tx, userId)
-    // Lock the player (and referrer) first so two concurrent first cash-ins can't both see
-    // "no earlier cash in".
-    await lockUsers(tx, player.referredById ? [userId, player.referredById] : [userId])
-    if (grant) {
-      const { phoneConfirmedAt } = await tx.user.findUniqueOrThrow({
-        where: { id: userId },
-        select: { phoneConfirmedAt: true },
-      })
-      if (!phoneConfirmedAt) throw new DomainError('PHONE_NOT_CONFIRMED', 'Confirm the phone number first')
-    }
-    const firstTopUp =
-      kind === 'CASH_IN' &&
-      (await tx.transaction.count({ where: { userId, type: 'ADMIN_GRANT', account: 'WALLET' } })) === 0
-    await postEntry(
-      tx,
-      {
-        userId,
-        account,
-        type: grant ? 'ADMIN_GRANT' : 'ADMIN_DEDUCT',
-        amount: grant ? amount : -amount,
-        adminId,
-        note,
-      },
-      { requireFunds: !grant },
-    )
-    await logAdminAction(tx, { adminId, action: audit, targetUserId: userId, details: { amount, note } })
-    if (!firstTopUp) return { kind, welcomeBonus: 0, referralBonus: 0 }
-    const bonuses = await getBonuses(tx)
-    const welcomeBonus = Math.min(amount, bonuses.welcomeBonusCap)
-    if (welcomeBonus > 0) {
+  const player = await requirePlayer(tx, userId)
+  // Lock the player (and referrer) first so two concurrent first cash-ins can't both see
+  // "no earlier cash in".
+  await lockUsers(tx, player.referredById ? [userId, player.referredById] : [userId])
+  if (grant) {
+    const { phoneConfirmedAt } = await tx.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { phoneConfirmedAt: true },
+    })
+    if (!phoneConfirmedAt) throw new DomainError('PHONE_NOT_CONFIRMED', 'Confirm the phone number first')
+  }
+  const firstTopUp =
+    kind === 'CASH_IN' &&
+    (await tx.transaction.count({ where: { userId, type: 'ADMIN_GRANT', account: 'WALLET' } })) === 0
+  await postEntry(
+    tx,
+    {
+      userId,
+      account,
+      type: grant ? 'ADMIN_GRANT' : 'ADMIN_DEDUCT',
+      amount: grant ? amount : -amount,
+      adminId,
+      note,
+    },
+    { requireFunds: !grant },
+  )
+  await logAdminAction(tx, { adminId, action: audit, targetUserId: userId, details: { amount, note } })
+  if (!firstTopUp) return { kind, welcomeBonus: 0, referralBonus: 0 }
+  const bonuses = await getBonuses(tx)
+  const welcomeBonus = Math.min(amount, bonuses.welcomeBonusCap)
+  if (welcomeBonus > 0) {
+    await postEntry(tx, {
+      account: 'POINTS',
+      userId,
+      type: 'SIGNUP_BONUS',
+      amount: welcomeBonus,
+      adminId,
+      note: 'Welcome bonus: first top-up matched',
+    })
+  }
+
+  let referralBonus = 0
+  const fresh = await tx.user.findUniqueOrThrow({ where: { id: userId } })
+  const referrer = fresh.referredById
+    ? await tx.user.findUnique({ where: { id: fresh.referredById }, select: { phoneConfirmedAt: true } })
+    : null
+  // Only a referrer with a confirmed phone is paid, so an unconfirmed alt can't farm the bonus.
+  if (fresh.referredById && !fresh.referralBonusPaidAt && referrer?.phoneConfirmedAt) {
+    referralBonus = Math.min(Math.floor((amount * bonuses.referralPercent) / 100), bonuses.referralBonusCap)
+    if (referralBonus > 0) {
+      await tx.user.update({ where: { id: userId }, data: { referralBonusPaidAt: new Date() } })
       await postEntry(tx, {
         account: 'POINTS',
-        userId,
-        type: 'SIGNUP_BONUS',
-        amount: welcomeBonus,
+        userId: fresh.referredById,
+        type: 'REFERRAL_BONUS',
+        amount: referralBonus,
         adminId,
-        note: 'Welcome bonus: first top-up matched',
+        note: `Referral: ${fresh.username} topped up ${amount.toLocaleString('en-US')}`,
       })
     }
-
-    let referralBonus = 0
-    const fresh = await tx.user.findUniqueOrThrow({ where: { id: userId } })
-    const referrer = fresh.referredById
-      ? await tx.user.findUnique({ where: { id: fresh.referredById }, select: { phoneConfirmedAt: true } })
-      : null
-    // Only a referrer with a confirmed phone is paid, so an unconfirmed alt can't farm the bonus.
-    if (fresh.referredById && !fresh.referralBonusPaidAt && referrer?.phoneConfirmedAt) {
-      referralBonus = Math.min(Math.floor((amount * bonuses.referralPercent) / 100), bonuses.referralBonusCap)
-      if (referralBonus > 0) {
-        await tx.user.update({ where: { id: userId }, data: { referralBonusPaidAt: new Date() } })
-        await postEntry(tx, {
-          account: 'POINTS',
-          userId: fresh.referredById,
-          type: 'REFERRAL_BONUS',
-          amount: referralBonus,
-          adminId,
-          note: `Referral: ${fresh.username} topped up ${amount.toLocaleString('en-US')}`,
-        })
-      }
-    }
-    return { kind, welcomeBonus, referralBonus }
-  })
+  }
+  return { kind, welcomeBonus, referralBonus }
 }
 
 export async function suspendPlayer(

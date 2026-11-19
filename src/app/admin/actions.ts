@@ -14,6 +14,7 @@ import {
   suspendPlayer,
   unsuspendPlayer,
 } from '@/server/admin/players'
+import { recordTicketCash } from '@/server/admin/ticket-cash'
 import { closeInquiry, replyToInquiry } from '@/server/inquiries'
 import { requireAdmin } from '@/server/session'
 import { setBonuses } from '@/server/settings'
@@ -107,6 +108,26 @@ export async function adminReplyAction(
 ): Promise<ActionState> {
   const admin = await requireAdmin('support.answer')
   const r = await runAction(() => replyToInquiry(admin.id, inquiryId, { body: fd.get('body') }), 'Reply sent')
+  revalidatePath('/admin', 'layout')
+  return r
+}
+
+/** Records the cash in / cash out a Cash in or Cash out ticket asks for, then closes the ticket. */
+export async function ticketCashAction(
+  inquiryId: string,
+  _prev: ActionState,
+  fd: FormData,
+): Promise<ActionState> {
+  const admin = await requireAdmin('points.adjust')
+  const r = await runAction(
+    () =>
+      recordTicketCash(admin.id, inquiryId, {
+        kind: fd.get('kind'),
+        amount: fd.get('amount'),
+        note: fd.get('note'),
+      }),
+    adjustToast,
+  )
   revalidatePath('/admin', 'layout')
   return r
 }
