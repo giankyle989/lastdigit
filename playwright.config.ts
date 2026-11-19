@@ -27,6 +27,8 @@ export default defineConfig({
     reuseExistingServer: false,
     env: {
       PORT: '3100',
+      // Build and serve from .next-e2e, never the app's own .next.
+      NEXT_DIST_DIR: '.next-e2e',
       HOST: '127.0.0.1',
       DATABASE_URL: requireEnv('DATABASE_URL'),
       AUTH_SECRET: requireEnv('AUTH_SECRET'),
