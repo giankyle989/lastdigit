@@ -73,6 +73,16 @@ describe('daily bonus', () => {
     await expect(claimDailyBonus(u.id, NOV_12_0900_PHT)).rejects.toMatchObject({ code: 'SUSPENDED' })
   })
 
+  it('refuses a player whose phone is not confirmed, without using up the day', async () => {
+    const u = await makeUser({ phoneConfirmedAt: null })
+    await expect(claimDailyBonus(u.id, NOV_12_0900_PHT)).rejects.toMatchObject({
+      code: 'PHONE_NOT_CONFIRMED',
+      message: 'Confirm your number with support to claim the daily bonus',
+    })
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: u.id } })
+    expect([after.pointsBalance, after.lastDailyBonusOn]).toEqual([0, null])
+  })
+
   it('canClaimDailyBonus follows the PHT day', () => {
     expect(canClaimDailyBonus({ lastDailyBonusOn: null }, NOV_12_0900_PHT)).toBe(true)
     expect(canClaimDailyBonus({ lastDailyBonusOn: '2026-11-12' }, NOV_12_2359_PHT)).toBe(false)

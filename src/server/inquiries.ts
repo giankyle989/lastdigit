@@ -59,7 +59,8 @@ export async function getInquiryThread(viewerId: string, inquiryId: string) {
   return prisma.inquiry.findUniqueOrThrow({
     where: { id: inquiryId },
     include: {
-      user: { select: { username: true } },
+      // Wallet and phone status let staff see up front whether a cash ticket can be recorded.
+      user: { select: { username: true, walletBalance: true, phoneConfirmedAt: true } },
       messages: {
         include: { author: { select: { username: true, role: true } } },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
