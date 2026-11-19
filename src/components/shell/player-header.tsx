@@ -34,12 +34,15 @@ export function PlayerHeader({
               Admin
             </Link>
           )}
+          {/* The accessible name starts with the visible total (WCAG 2.5.3), then the split. */}
           <Link
             href="/wallet"
-            aria-label={`Balance: ${formatPoints(total)} (wallet ${formatPoints(wallet)}, points ${formatPoints(points)})`}
             className="bg-surface-2 border-border hover:border-primary/60 rounded-full border px-3 py-1 text-sm"
           >
             <PointsAmount value={total} unit className="text-primary font-semibold" />
+            <span className="sr-only">
+              (wallet {formatPoints(wallet)}, points {formatPoints(points)})
+            </span>
           </Link>
         </div>
       </div>

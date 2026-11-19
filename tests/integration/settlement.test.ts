@@ -358,6 +358,36 @@ describe('settlement with wallet and points', () => {
     await expectLedgerConsistent()
   })
 
+  it('void of a mixed bet that lost refunds each part to the balance that paid it', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const a = await makeUser()
+    const b = await makeUser()
+    const g = await makeGame()
+    await fundUser(a.id, 40, 'WALLET')
+    await fundUser(a.id, 60, 'POINTS')
+    await fundUser(b.id, 900, 'WALLET')
+    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 }) // 60 pts + 40 wallet
+    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 900 })
+    await finishAndSettle(g.id, 103, 103) // ending 3-3: a loses
+    expect(await balancesOf(a.id)).toEqual({ wallet: 0, points: 0 })
+    await voidGame(admin.id, g.id, 'wrong score')
+    expect(await balancesOf(a.id)).toEqual({ wallet: 40, points: 60 })
+    expect(await balancesOf(b.id)).toEqual({ wallet: 900, points: 0 })
+    await expectLedgerConsistent()
+  })
+
+  it('void before settlement refunds a mixed bet part by part', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const a = await makeUser()
+    const g = await makeGame()
+    await fundUser(a.id, 40, 'WALLET')
+    await fundUser(a.id, 60, 'POINTS')
+    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await voidGame(admin.id, g.id, 'postponed')
+    expect(await balancesOf(a.id)).toEqual({ wallet: 40, points: 60 })
+    await expectLedgerConsistent()
+  })
+
   it('void of a wallet-only win (as settled before points existed) reverses on the wallet', async () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const a = await makeUser()

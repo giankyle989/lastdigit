@@ -72,6 +72,8 @@ test('staff give and take points; a bet spends points first, then the wallet', a
   await page.goto('/wallet')
   await expect(page.getByTestId('wallet-balance')).toHaveText('140 pts')
   await expect(page.getByTestId('points-balance')).toHaveText('0 pts')
+  // the header's accessible name starts with the visible total, then the split
+  await expect(page.getByRole('link', { name: '140 pts (wallet 140, points 0)', exact: true })).toBeVisible()
   // the bet appears as one row per account, tagged Points and Wallet
   await expect(page.getByRole('listitem').filter({ hasText: /^BetPoints/ })).toHaveCount(1)
   await expect(page.getByRole('listitem').filter({ hasText: /^BetWallet/ })).toHaveCount(1)

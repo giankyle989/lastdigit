@@ -339,6 +339,9 @@ describe('placeBets', () => {
       placeBets(u.id, [{ gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 80 }]),
     ])
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+    // The loser was refused for funds (serialized by the player lock), not by a deadlock.
+    const refused = results.find((r) => r.status === 'rejected')
+    expect(refused?.status === 'rejected' && refused.reason).toMatchObject({ code: 'INSUFFICIENT_BALANCE' })
     expect(await balancesOf(u.id)).toEqual({ wallet: 0, points: 20 })
     await expectLedgerConsistent()
   })
