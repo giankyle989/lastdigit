@@ -14,7 +14,7 @@ npm run dev
 
 ## Branches and commits
 
-- Branch from `master`: `feat/…`, `fix/…`, `chore/…`, `docs/…`, `refactor/…`, `test/…`.
+- Branch from `develop`: `feat/…`, `fix/…`, `chore/…`, `docs/…`, `refactor/…`, `test/…`.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org): `feat: add bet slip`, `fix(sync): …`. Allowed types: feat, fix, chore, docs, test, refactor, style, perf, ci, build, revert.
 - No AI attribution in commits or PR descriptions: no `Co-Authored-By` naming Claude or Anthropic, no "Generated with Claude Code", no `noreply@anthropic.com`. commitlint rejects these, and the Claude Code guard hook blocks them too.
 - Never skip hooks: no `--no-verify`, `git commit -n` or `HUSKY=0`. If a hook fails, fix the reported problem.
@@ -24,7 +24,7 @@ npm run dev
 1. Features: write a spec in `docs/superpowers/specs/`, then a plan in `docs/superpowers/plans/`, then implement task by task with tests first.
 2. Run `npm run check` (and `npm run test:e2e` for UI changes) before pushing.
 3. Open a PR using the template; the title must be a Conventional Commit (it becomes the squash commit message).
-4. There is no CI: run `npm run check` and `npm run test:e2e` before merging. `master` is protected: PRs only, no force pushes.
+4. There is no CI: run `npm run check` and `npm run test:e2e` before merging. `develop` is protected: PRs only, no force pushes.
 
 ## Standards
 

@@ -92,7 +92,10 @@ function currentBranch(cwd) {
   }
 }
 
-function pushTargetsMaster(args, cwd) {
+// The integration branch (develop) and any future release branch.
+const PROTECTED_BRANCHES = new Set(['develop', 'main', 'master'])
+
+function pushTargetsProtected(args, cwd) {
   const refs = args.filter((a) => !a.startsWith('-'))
   const refspecs = refs.slice(1)
   const force =
@@ -104,14 +107,14 @@ function pushTargetsMaster(args, cwd) {
         /^-[a-zA-Z]*f[a-zA-Z]*$/.test(a),
     ) || refspecs.some((r) => r.startsWith('+'))
   if (!force) return false
-  if (refspecs.length === 0) return currentBranch(cwd) === 'master'
+  if (refspecs.length === 0) return PROTECTED_BRANCHES.has(currentBranch(cwd))
   return refspecs.some((r) => {
     const spec = r.replace(/^\+/, '')
     const dest = (spec.includes(':') ? spec.slice(spec.lastIndexOf(':') + 1) : spec).replace(
       /^refs\/heads\//,
       '',
     )
-    return (dest === 'HEAD' ? currentBranch(cwd) : dest) === 'master'
+    return PROTECTED_BRANCHES.has(dest === 'HEAD' ? currentBranch(cwd) : dest)
   })
 }
 
@@ -156,7 +159,8 @@ function checkSegment({ text, head }, cwd) {
   if (sub === 'commit' && args.some((a) => /^-[a-zA-Z]*n[a-zA-Z]*$/.test(a))) {
     return 'git commit -n skips the git hooks; fix the reported problem instead'
   }
-  if (sub === 'push' && pushTargetsMaster(args, gitCwd)) return 'force-pushing to master is forbidden'
+  if (sub === 'push' && pushTargetsProtected(args, gitCwd))
+    return 'force-pushing to develop (or main/master) is forbidden'
   return null
 }
 
