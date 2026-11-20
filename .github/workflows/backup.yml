@@ -1,0 +1,39 @@
+# Nightly encrypted backup of the production database to Cloudflare R2 (docs/deploy.md).
+# Supabase's free plan has no backups. This repository is public, so backups never go to GitHub
+# artifacts; they are encrypted with BACKUP_PASSPHRASE before upload.
+name: backup
+
+on:
+  schedule:
+    - cron: '0 18 * * *' # 02:00 Philippine time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Dump, encrypt and upload
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          file="lastdigit-$(date -u +%Y-%m-%dT%H%MZ).dump.gpg"
+          # pg_dump must be at least the server's major version; Supabase runs 15 or 17.
+          docker run --rm -e DIRECT_URL postgres:17 \
+            sh -c 'pg_dump --format=custom --no-owner --no-privileges "$DIRECT_URL"' \
+            | gpg --batch --yes --pinentry-mode loopback --symmetric --cipher-algo AES256 \
+                --passphrase-fd 3 3<<<"$BACKUP_PASSPHRASE" -o "$file"
+          test -s "$file"
+          aws s3 cp "$file" "s3://$R2_BUCKET/$file" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          echo "Uploaded $file ($(stat -c %s "$file") bytes)"
+          rm -f "$file"
