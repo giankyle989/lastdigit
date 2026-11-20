@@ -59,6 +59,13 @@ test('superadmin adds a manager; the manager grants points but cannot manage gam
   await expect(nav.getByRole('link', { name: 'Staff' })).toHaveCount(0)
   if (mobile) await page.keyboard.press('Escape')
 
+  // staff have no player side: no link to it, and its pages send them back to the console
+  await expect(page.getByRole('link', { name: 'Player site' })).toHaveCount(0)
+  for (const path of ['/games', '/wallet', '/bets', '/more/support']) {
+    await page.goto(path)
+    await page.waitForURL(/\/admin$/)
+  }
+
   await page.goto('/admin/settings')
   await page.waitForURL(/\/admin$/)
   await page.goto('/admin/staff')

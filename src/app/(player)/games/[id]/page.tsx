@@ -9,10 +9,10 @@ import { formatEnding } from '@/lib/game/ending'
 import { isBettingOpen } from '@/lib/game/status'
 import { getGameForPlayer } from '@/server/queries/player'
 import { getEndingStakes } from '@/server/queries/stakes'
-import { requireUser } from '@/server/session'
+import { requirePlayer } from '@/server/session'
 
 export default async function GamePage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser()
+  const user = await requirePlayer()
   const { id } = await params
   const data = await getGameForPlayer(id, user.id)
   if (!data) notFound()

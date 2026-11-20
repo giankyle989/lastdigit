@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 import { LogoutButton } from '@/components/logout-button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { requireUser } from '@/server/session'
+import { requirePlayer } from '@/server/session'
 
 const LINKS = [
   { href: '/more/referral', label: 'Refer friends', icon: Gift },
@@ -11,7 +11,7 @@ const LINKS = [
 ]
 
 export default async function MorePage() {
-  const user = await requireUser()
+  const user = await requirePlayer()
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">More</h1>

@@ -14,7 +14,7 @@ import { BET_TAB_LABELS, BET_TABS, type BetTab, parseBetTab } from '@/lib/my-bet
 import { parsePage } from '@/lib/pagination'
 import type { SearchParams } from '@/lib/table-params'
 import { listMyBetsGrouped } from '@/server/queries/player'
-import { requireUser } from '@/server/session'
+import { requirePlayer } from '@/server/session'
 
 const EMPTY: Record<BetTab, string> = {
   open: 'No open bets.',
@@ -23,7 +23,7 @@ const EMPTY: Record<BetTab, string> = {
 }
 
 export default async function MyBetsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const user = await requireUser()
+  const user = await requirePlayer()
   const sp = await searchParams
   const tab = parseBetTab(sp.tab)
   const page = parsePage(sp.page)

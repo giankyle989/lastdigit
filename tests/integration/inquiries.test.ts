@@ -9,6 +9,16 @@ import { makeUser, resetDb } from '../helpers/db'
 describe('inquiries', () => {
   beforeEach(resetDb)
 
+  it('refuses tickets opened by staff accounts', async () => {
+    for (const role of ['MANAGER', 'SUPERADMIN'] as const) {
+      const staff = await makeUser({ role })
+      await expect(createInquiry(staff.id, { subject: 'Hi', body: 'Hello' })).rejects.toMatchObject({
+        code: 'FORBIDDEN',
+      })
+    }
+    expect(await prisma.inquiry.count()).toBe(0)
+  })
+
   it('runs the OPEN → ANSWERED → OPEN → CLOSED flow', async () => {
     const admin = await makeUser({ role: 'SUPERADMIN' })
     const p = await makeUser()

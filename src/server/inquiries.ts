@@ -28,6 +28,8 @@ async function loadForActor(db: Tx, actorId: string, inquiryId: string) {
 
 export async function createInquiry(userId: string, input: unknown) {
   const { subject, body } = z.object({ subject: subjectSchema, body: bodySchema }).parse(input)
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true } })
+  if (isStaff(user.role)) throw new DomainError('FORBIDDEN', 'Staff accounts cannot open tickets')
   return prisma.inquiry.create({
     data: { userId, subject, messages: { create: { authorId: userId, body } } },
   })

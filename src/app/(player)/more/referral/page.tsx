@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDateTime } from '@/lib/format'
 import { isStaff } from '@/lib/permissions'
 import { listMyReferrals } from '@/server/queries/player'
-import { requireUser } from '@/server/session'
+import { requirePlayer } from '@/server/session'
 import { getBonuses } from '@/server/settings'
 
 export default async function ReferralPage() {
-  const user = await requireUser()
+  const user = await requirePlayer()
   if (isStaff(user.role)) {
     return (
       <div className="space-y-4">

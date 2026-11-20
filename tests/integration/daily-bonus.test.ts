@@ -27,6 +27,14 @@ describe('daily bonus', () => {
     await expect(claimDailyBonus(u.id, NOV_12_0900_PHT)).rejects.toMatchObject({ code: 'CONFLICT' })
   })
 
+  it('refuses staff accounts', async () => {
+    for (const role of ['MANAGER', 'SUPERADMIN'] as const) {
+      const staff = await makeUser({ role })
+      await expect(claimDailyBonus(staff.id, NOV_12_0900_PHT)).rejects.toMatchObject({ code: 'FORBIDDEN' })
+      expect(await balanceOf(staff.id)).toBe(0)
+    }
+  })
+
   it('credits the bonus once per PHT day', async () => {
     const u = await makeUser()
     expect(await claimDailyBonus(u.id, NOV_12_0900_PHT)).toBe(100)

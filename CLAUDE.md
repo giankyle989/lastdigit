@@ -24,7 +24,7 @@ npx prisma migrate dev --name <name>   # schema change (never migrate reset)
 ## Hard rules
 
 1. `User.walletBalance` and `User.pointsBalance` change only through `postEntry()` (`src/server/ledger.ts`).
-2. Every page and every exported server action calls `requireUser()` / `requireAdmin()` itself (exceptions: login/signup/logout actions). Never rely on a layout guard.
+2. Every page and every exported server action calls its guard itself: `requirePlayer()` on the player side (staff are sent to `/admin`), `requireAdmin()` in the console (exceptions: login/signup/logout actions). Never rely on a layout guard.
 3. Validate all external input (forms, search/route params, API data) with zod in `src/server` or at the action boundary.
 4. Money-like state changes run in a transaction with a row lock or a conditional update; lock multiple rows in ascending id order.
 5. Never run `prisma migrate reset`. Schema changes = committed migration.

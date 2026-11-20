@@ -5,10 +5,10 @@ import { dateStrip, parseStripDate } from '@/lib/dates'
 import { groupIntoSections } from '@/lib/game/sections'
 import type { SearchParams } from '@/lib/table-params'
 import { listGamesForDate } from '@/server/queries/player'
-import { requireUser } from '@/server/session'
+import { requirePlayer } from '@/server/session'
 
 export default async function GamesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const user = await requireUser()
+  const user = await requirePlayer()
   const now = new Date()
   const date = parseStripDate((await searchParams).date, now)
   const sections = groupIntoSections(await listGamesForDate(date, user.id), now)

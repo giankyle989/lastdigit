@@ -13,15 +13,7 @@ export function Logo({ href = '/' }: { href?: string }) {
   )
 }
 
-export function PlayerHeader({
-  wallet,
-  points,
-  isAdmin,
-}: {
-  wallet: number
-  points: number
-  isAdmin: boolean
-}) {
+export function PlayerHeader({ wallet, points }: { wallet: number; points: number }) {
   const total = wallet + points
   return (
     <header className="bg-background/95 border-border sticky top-0 z-40 border-b backdrop-blur">
@@ -29,11 +21,6 @@ export function PlayerHeader({
         <Logo href="/games" />
         <PlayerTopNav />
         <div className="ml-auto flex items-center gap-2">
-          {isAdmin && (
-            <Link href="/admin" className="text-muted-foreground hover:text-foreground text-sm">
-              Admin
-            </Link>
-          )}
           {/* The accessible name starts with the visible total (WCAG 2.5.3), then the split. */}
           <Link
             href="/wallet"

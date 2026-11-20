@@ -75,7 +75,10 @@ export function findBalanceWrites(source: string): number[] {
   return [...lines].sort((a, b) => a - b)
 }
 
-export function hasGuardCall(source: string, guard: 'requireUser' | 'requireAdmin'): boolean {
+export function hasGuardCall(
+  source: string,
+  guard: 'requireUser' | 'requirePlayer' | 'requireAdmin',
+): boolean {
   return new RegExp(`\\bawait\\s+${guard}\\s*\\(`).test(source)
 }
 
@@ -98,7 +101,9 @@ export function serverActionsMissingGuard(source: string, allow: readonly string
   return parseServerActions(source)
     .filter(({ name, body }) => {
       if (allow.includes(name)) return false
-      return !hasGuardCall(body, 'requireUser') && !hasGuardCall(body, 'requireAdmin')
+      return !(['requireUser', 'requirePlayer', 'requireAdmin'] as const).some((guard) =>
+        hasGuardCall(body, guard),
+      )
     })
     .map(({ name }) => name)
 }

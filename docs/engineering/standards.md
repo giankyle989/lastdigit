@@ -29,7 +29,7 @@ Bad: a page that imports `prisma` and updates rows itself.
 ## 2. Hard rules
 
 1. **Ledger only.** `User.balance` changes only via `postEntry()` in `src/server/ledger.ts`, which writes a `Transaction` row in the same DB transaction.
-2. **Guards everywhere.** Every `page.tsx` and every exported server action calls `requireUser()`/`requireAdmin()` in its own body. Layouts can be skipped by crafted RSC requests, so a layout guard is never enough.
+2. **Guards everywhere.** Every `page.tsx` and every exported server action calls its guard in its own body: `requirePlayer()` on the player side (staff accounts are sent to `/admin`), `requireAdmin()` in the console. Layouts can be skipped by crafted RSC requests, so a layout guard is never enough.
 3. **Validate input** with zod (`intFromForm` for numeric form fields) before it reaches domain logic.
 4. **Concurrency.** Money-like changes run in `prisma.$transaction` with `SELECT … FOR UPDATE` or a conditional `updateMany` (e.g. `where: { status: 'FINAL' }`). Lock multiple rows in ascending id order.
 5. **Migrations.** `npx prisma migrate dev --name <name>`; commit the migration. Never `prisma migrate reset`.
