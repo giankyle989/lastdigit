@@ -4,6 +4,9 @@ import 'dotenv/config'
 
 import { defineConfig } from 'prisma/config'
 
+// Locally and in tests the app and migrations share one connection.
+process.env.DIRECT_URL ||= process.env.DATABASE_URL
+
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {

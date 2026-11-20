@@ -1,0 +1,122 @@
+# Deploys the `staging` and `production` branches to Cloud Run (docs/deploy.md).
+# Each branch uses the GitHub Environment of the same name for its secrets and variables.
+name: deploy
+
+on:
+  push:
+    branches: [staging, production]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lastdigit_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s
+          --health-retries 10
+    env:
+      # Throwaway values for the test database only.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/lastdigit_test
+      AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-else
+      AUTH_TRUST_HOST: 'true'
+      CRON_SECRET: ci-only-cron-secret
+      BALLDONTLIE_API_KEY: ci-only
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin12345
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # tests/hooks.test.ts creates throwaway git repositories
+      - run: git config --global user.name ci && git config --global user.email ci@example.invalid
+      - run: npm run check
+
+  deploy:
+    needs: test
+    if: github.ref_name == 'staging' || github.ref_name == 'production'
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation: no Google key stored in GitHub
+    env:
+      IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/lastdigit/app:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push the image
+        run: |
+          gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      # Before the new code goes live; migrations must keep the old code working.
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Write the service settings
+        # A file (not --set-env-vars) so values containing commas survive. JSON is valid YAML.
+        run: |
+          node -e '
+            const keys = ["DATABASE_URL", "AUTH_SECRET", "AUTH_URL", "CRON_SECRET", "ORIGIN_SECRET",
+              "BALLDONTLIE_API_KEY", "SIGNUP_LIMIT_PER_HOUR"];
+            const out = {};
+            for (const k of keys) {
+              if (process.env[k]) out[k] = process.env[k];
+              else if (k !== "SIGNUP_LIMIT_PER_HOUR") throw new Error(`missing ${k}`);
+            }
+            require("fs").writeFileSync("env.yaml", JSON.stringify(out));
+          '
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          AUTH_URL: ${{ vars.PUBLIC_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ORIGIN_SECRET: ${{ secrets.ORIGIN_SECRET }}
+          BALLDONTLIE_API_KEY: ${{ secrets.BALLDONTLIE_API_KEY }}
+          SIGNUP_LIMIT_PER_HOUR: ${{ vars.SIGNUP_LIMIT_PER_HOUR }}
+
+      - name: Deploy to Cloud Run
+        # One instance at most: the game sync must not run twice at once. Zero when idle (free tier).
+        # Public on purpose: the Cloudflare Worker calls it, and the app rejects anything without
+        # the Worker's ORIGIN_SECRET header (src/middleware.ts).
+        run: |
+          gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE }}" \
+            --image "$IMAGE" \
+            --region "${{ vars.GCP_REGION }}" \
+            --env-vars-file env.yaml \
+            --min-instances 0 --max-instances 1 \
+            --cpu 1 --memory 512Mi --concurrency 80 --timeout 120 \
+            --allow-unauthenticated \
+            --quiet
+          rm -f env.yaml
