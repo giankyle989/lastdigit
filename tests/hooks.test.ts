@@ -50,6 +50,11 @@ describe('guard-bash hook', () => {
     'git push -fu origin master',
     'git push -uf origin master',
     'git push --force origin refs/heads/master',
+    'git push --force origin develop',
+    'git push -f origin HEAD:develop',
+    'git push origin +develop',
+    'git push --force-with-lease origin refs/heads/develop',
+    'git push --force origin main',
     'gh pr create --title "feat: x" --body "Summary\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)"',
     `gh pr edit 1 --body "$(cat <<'EOF'\nSummary\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)"`,
     "git commit -F - <<'EOF'\nfeat: x\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\nEOF",
@@ -66,6 +71,8 @@ describe('guard-bash hook', () => {
     'git log -n 5',
     'git push --force origin feat/redesign',
     'git push origin master',
+    'git push origin develop',
+    'git push --force origin feat/develop-docs',
     'npx prisma migrate dev --name add_index',
     'npm test',
     'grep -r "noreply@anthropic.com" . && git commit -m "chore: x"',
@@ -80,15 +87,19 @@ describe('guard-bash hook', () => {
   })
 
   // Review Focus #2
-  it('blocks a bare force push while on master, allows it on another branch', () => {
+  it('blocks a bare force push while on develop or master, allows it on another branch', () => {
+    const onDevelop = tempRepo('develop')
     const onMaster = tempRepo('master')
     const onFeature = tempRepo('feat/x')
     try {
+      expect(guard('git push --force', onDevelop).code).toBe(2)
+      expect(guard('git push --force origin HEAD', onDevelop).code).toBe(2)
       expect(guard('git push --force', onMaster).code).toBe(2)
       expect(guard('git push --force', onFeature).code).toBe(0)
       expect(guard('git push --force origin HEAD', onMaster).code).toBe(2)
       expect(guard('git push --force origin HEAD', onFeature).code).toBe(0)
     } finally {
+      rmSync(onDevelop, { recursive: true, force: true })
       rmSync(onMaster, { recursive: true, force: true })
       rmSync(onFeature, { recursive: true, force: true })
     }
