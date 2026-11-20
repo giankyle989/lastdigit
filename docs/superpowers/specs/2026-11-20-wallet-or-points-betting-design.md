@@ -91,7 +91,7 @@ Tests must pin this.
 - **Totals**: "Total stake" uses the chosen unit (`₱100` or `100 pts`).
 - **Return lines** ("Est. return if it hits" and "Est. max return"):
   - Wallet slip: one ₱ figure, e.g. `₱310`.
-  - Points slip: the stake comes back as points and the rest is ₱: `100 pts + ₱210`. The ₱ part
+  - Points slip: the stake comes back as points and the rest is ₱, wallet first: `₱210 + 100 pts`. The ₱ part
     is the estimate minus the stake; when the estimate is at or below the stake, show only the pts
     part.
 - **Not enough**: if the total is more than the chosen balance, the slip shows
@@ -118,9 +118,9 @@ keeps its current visual role (tabular figures, optional sign).
 
 | Screen                                                | Change                                                                                                                                                                |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Player header                                         | Two figures in the `/wallet` link: `₱140 · 40 pts`. Accessible name `Wallet ₱140, points 40` (the visible text starts the name, WCAG 2.5.3).                          |
+| Player header                                         | Two figures in the `/wallet` link: `₱140 · 40 pts`. Accessible name `₱140 · 40 pts (wallet ₱140, points 40 pts)` (the visible text starts the name, WCAG 2.5.3).                          |
 | Wallet page                                           | Wallet card in ₱, points card in pts. Each history row is in its own account's unit.                                                                                  |
-| My Bets                                               | Stake shows what paid: `₱100`, `40 pts`, or `₱60 + 40 pts` for a merged row. Payout and refund in the units they were paid in (payout: `40 pts + ₱210` style when points were staked). |
+| My Bets                                               | Stake shows what paid: `₱100`, `40 pts`, or `₱60 + 40 pts` for a merged row. Payout and refund in the units they were paid in (payout: `₱210 + 40 pts` style when points were staked). |
 | Game page, game cards, heatmap, ending picker, multi-add tray | Pools and ending totals: no unit. A player's own stake on an ending: per its account, as on My Bets.                                                          |
 | Referral page                                         | Bonus amounts keep the unit of the account they credit (welcome and referral bonuses are points: pts).                                                               |
 | Support new-ticket form                               | Cash out hint: `Wallet: ₱700 available. Points can't be cashed out.`                                                                                                  |
