@@ -1,0 +1,21 @@
+# Cloudflare Worker in front of Cloud Run. Setup: docs/deploy.md ("Cloudflare").
+# Deploy from this folder:   npx wrangler@4 deploy --env staging   (or --env production)
+# Set the shared secret once per environment (the same value as Cloud Run's ORIGIN_SECRET):
+#   npx wrangler@4 secret put ORIGIN_SECRET --env staging
+name = "lastdigit"
+main = "src/worker.ts"
+compatibility_date = "2026-11-01"
+
+[env.staging]
+name = "lastdigit-staging"
+# Without a domain the Worker answers on https://lastdigit-staging.<account>.workers.dev
+workers_dev = true
+vars = { ORIGIN_URL = "https://REPLACE-with-staging-cloud-run-url.a.run.app" }
+# With a domain on Cloudflare, uncomment:
+# routes = [{ pattern = "staging.example.com", custom_domain = true }]
+
+[env.production]
+name = "lastdigit-production"
+workers_dev = true
+vars = { ORIGIN_URL = "https://REPLACE-with-production-cloud-run-url.a.run.app" }
+# routes = [{ pattern = "example.com", custom_domain = true }]
