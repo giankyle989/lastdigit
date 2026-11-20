@@ -5,8 +5,8 @@ import { AuthError } from 'next-auth'
 
 import { signIn, signOut } from '@/auth'
 import { type ActionState, runAction } from '@/lib/action-state'
-import { createRateLimiter, positiveIntOr } from '@/lib/rate-limit'
-import { recordLoginSighting, recordSighting, type Seen } from '@/server/sightings'
+import { positiveIntOr } from '@/lib/rate-limit'
+import { recordLoginSighting, recordSighting, type Seen, signupAllowed } from '@/server/sightings'
 import { registerPlayer } from '@/server/users'
 
 import { clientIp, deviceId } from '../request-info'
@@ -46,22 +46,15 @@ export async function loginAction(_prev: ActionState, fd: FormData): Promise<Act
 }
 
 // Accounts created per client IP per hour; slows down farming referral and signup bonuses.
-const SIGNUP_KEY = Symbol.for('lastdigit.signupLimiter')
-type WithLimiter = typeof globalThis & { [SIGNUP_KEY]?: ReturnType<typeof createRateLimiter> }
-function signupLimiter() {
-  const g = globalThis as WithLimiter
-  g[SIGNUP_KEY] ??= createRateLimiter({
-    limit: positiveIntOr(process.env.SIGNUP_LIMIT_PER_HOUR, 5),
-    windowMs: 3_600_000,
-  })
-  return g[SIGNUP_KEY]
+function signupLimit(): number {
+  return positiveIntOr(process.env.SIGNUP_LIMIT_PER_HOUR, 5)
 }
 
 export async function signupAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   const seen = await seenNow()
-  const ip = seen.ip
-  const limiter = signupLimiter()
-  if (!limiter.allows(ip)) return { error: 'Too many new accounts from this network. Try again later.' }
+  if (!(await signupAllowed(seen.ip, signupLimit()))) {
+    return { error: 'Too many new accounts from this network. Try again later.' }
+  }
   const username = String(fd.get('username') ?? '')
   const password = String(fd.get('password') ?? '')
   let userId: string | undefined
@@ -76,7 +69,7 @@ export async function signupAction(_prev: ActionState, fd: FormData): Promise<Ac
     ).id
   })
   if (result.error) return result
-  limiter.record(ip)
+  // Recording the sighting is also what counts this signup against the network's limit.
   if (userId) {
     const id = userId
     await safely(() => recordSighting(id, seen))

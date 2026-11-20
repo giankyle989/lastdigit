@@ -28,6 +28,27 @@ export async function recordSighting(userId: string, seen: Seen, now: Date = new
   }
 }
 
+const SIGNUP_WINDOW_MS = 3_600_000
+
+/**
+ * True while fewer than `limit` accounts were created on this network in the past hour. Counts
+ * signup sightings in the database, so the limit holds across server instances and restarts.
+ * An unknown network is never blocked: it cannot be told apart from other unknown visitors.
+ */
+export async function signupAllowed(ip: string, limit: number, now: Date = new Date()): Promise<boolean> {
+  if (!ip || ip === 'unknown') return true
+  const since = new Date(now.getTime() - SIGNUP_WINDOW_MS)
+  const recent = await prisma.accountSighting.count({
+    where: {
+      kind: 'NETWORK',
+      fingerprint: fingerprint('NETWORK', ip),
+      firstSeenAt: { gte: since },
+      user: { createdAt: { gte: since } },
+    },
+  })
+  return recent < limit
+}
+
 /** Same as recordSighting, for a login where only the username is known. */
 export async function recordLoginSighting(username: string, seen: Seen): Promise<void> {
   const user = await prisma.user.findUnique({

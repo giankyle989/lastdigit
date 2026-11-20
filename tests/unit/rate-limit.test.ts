@@ -1,18 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createRateLimiter, positiveIntOr } from '@/lib/rate-limit'
-
-describe('createRateLimiter', () => {
-  it('allows up to the limit per key within the window, then frees up as events age out', () => {
-    const rl = createRateLimiter({ limit: 2, windowMs: 1000 })
-    expect(rl.allows('a', 0)).toBe(true)
-    rl.record('a', 0)
-    rl.record('a', 500)
-    expect(rl.allows('a', 900)).toBe(false)
-    expect(rl.allows('b', 900)).toBe(true) // other keys are independent
-    expect(rl.allows('a', 1000)).toBe(true) // the first event aged out
-  })
-})
+import { positiveIntOr } from '@/lib/rate-limit'
 
 describe('positiveIntOr', () => {
   it('parses positive integers and falls back otherwise', () => {

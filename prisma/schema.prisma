@@ -3,8 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Migrations need a direct (session) connection; DATABASE_URL may be a transaction pooler such as
+  // Supabase's. prisma.config.ts falls back to DATABASE_URL when this is unset.
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
