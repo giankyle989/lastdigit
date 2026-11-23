@@ -69,3 +69,33 @@ export function formatRelative(then: Date, now: Date): string {
   if (h < 48) return `${h} h ago`
   return `${Math.floor(h / 24)} d ago`
 }
+
+export type AmountKind = 'wallet' | 'points' | 'pool'
+
+/** "₱1,240" (wallet), "40 pts" (points), "1,240" (pool: stakes from both accounts). */
+export function formatAmount(kind: AmountKind, n: number, opts: { signed?: boolean } = {}): string {
+  const sign = n < 0 ? '-' : opts.signed && n > 0 ? '+' : ''
+  const abs = Math.abs(n).toLocaleString('en-US')
+  if (kind === 'wallet') return `${sign}₱${abs}`
+  if (kind === 'points') return `${sign}${abs} pts`
+  return `${sign}${abs}`
+}
+
+/** A wallet + points amount, wallet first: "₱60 + 40 pts". Zero parts are left out. */
+export function formatSplit(
+  parts: { wallet: number; points: number },
+  opts: { signed?: boolean } = {},
+): string {
+  const rendered: { kind: AmountKind; n: number }[] = []
+  if (parts.wallet !== 0) rendered.push({ kind: 'wallet', n: parts.wallet })
+  if (parts.points !== 0) rendered.push({ kind: 'points', n: parts.points })
+  if (rendered.length === 0) return formatAmount('wallet', 0)
+  // The sign prefixes the whole split: only the first rendered part gets "+".
+  return rendered
+    .map(({ kind, n }, i) => formatAmount(kind, n, { signed: opts.signed && i === 0 }))
+    .join(' + ')
+}
+
+export function accountKind(account: 'WALLET' | 'POINTS'): AmountKind {
+  return account === 'WALLET' ? 'wallet' : 'points'
+}
