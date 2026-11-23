@@ -2,9 +2,11 @@ import { expect, test } from '@playwright/test'
 
 import { prisma } from '../src/lib/db'
 import { adjustBalance, confirmPhone } from '../src/server/admin/players'
-import { login, logout, signup } from './helpers'
+import { login, logout, payFrom, signup } from './helpers'
 
-test('staff give and take points; a bet spends points first, then the wallet', async ({ page }, testInfo) => {
+test('staff give and take points; a slip is paid from points or from the wallet, as chosen', async ({
+  page,
+}, testInfo) => {
   const tag = testInfo.project.name
   const carol = `carol_${tag}`
   const mobile = testInfo.project.use.isMobile === true
@@ -46,7 +48,7 @@ test('staff give and take points; a bet spends points first, then the wallet', a
   expect([beforeBet.walletBalance, beforeBet.pointsBalance]).toEqual([200, 40])
   await logout(page, 'admin')
 
-  // carol bets 100 on one ending: 40 points + 60 wallet
+  // carol bets 30 from points, then 60 from the wallet, on one ending each
   const game = await prisma.game.create({
     data: {
       externalId,
@@ -59,22 +61,52 @@ test('staff give and take points; a bet spends points first, then the wallet', a
   await login(page, carol, 'secret123')
   await page.waitForURL('**/games')
   await page.goto(`/games/${game.id}`)
-  await page.getByRole('button', { name: 'LAL digit 1' }).click()
-  await page.getByRole('button', { name: 'GSW digit 2' }).click()
-  await page.getByRole('button', { name: 'Add to slip', exact: true }).click()
-  if (mobile) await page.getByRole('button', { name: /^Open bet slip/ }).click()
-  await expect(page.getByTestId('slip-funding').filter({ visible: true })).toHaveText(
-    'Uses 40 points + 60 wallet',
-  )
+
+  const addEnding = async (away: number, home: number) => {
+    await page.getByRole('button', { name: `LAL digit ${away}` }).click()
+    await page.getByRole('button', { name: `GSW digit ${home}` }).click()
+    await page.getByRole('button', { name: 'Add to slip', exact: true }).click()
+    if (mobile) await page.getByRole('button', { name: /^Open bet slip/ }).click()
+  }
+  const closeSlip = async () => {
+    if (mobile) await page.keyboard.press('Escape')
+  }
+
+  await addEnding(1, 2)
+  const stakeInput = page.getByLabel('Stake for LAL @ GSW 1-2', { exact: true }).filter({ visible: true })
+  await stakeInput.fill('30')
+  await payFrom(page, 'Points')
+  // too much from points: blocked, with the offer to switch
+  await stakeInput.fill('100')
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Not enough' }).filter({ visible: true }),
+  ).toContainText('Not enough points (40 pts).')
+  await expect(
+    page.getByRole('button', { name: 'Pay from Wallet instead' }).filter({ visible: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Confirm bets' })).toBeDisabled()
+  await stakeInput.fill('30')
+  await page.getByRole('button', { name: 'Confirm bets' }).click()
+  await expect(page.getByText('1 bet placed')).toBeVisible()
+  // let the first toast go, so the next "1 bet placed" is the second slip's
+  await expect(page.getByText('1 bet placed')).toBeHidden()
+  await closeSlip()
+
+  // second slip from the wallet, on another ending
+  await addEnding(3, 4)
+  await page.getByLabel('Stake for LAL @ GSW 3-4', { exact: true }).filter({ visible: true }).fill('60')
+  await payFrom(page, 'Wallet')
   await page.getByRole('button', { name: 'Confirm bets' }).click()
   await expect(page.getByText('1 bet placed')).toBeVisible()
 
   await page.goto('/wallet')
-  await expect(page.getByTestId('wallet-balance')).toHaveText('140 pts')
-  await expect(page.getByTestId('points-balance')).toHaveText('0 pts')
-  // the header's accessible name starts with the visible total, then the split
-  await expect(page.getByRole('link', { name: '140 pts (wallet 140, points 0)', exact: true })).toBeVisible()
-  // the bet appears as one row per account, tagged Points and Wallet
+  await expect(page.getByTestId('wallet-balance')).toHaveText('₱140')
+  await expect(page.getByTestId('points-balance')).toHaveText('10 pts')
+  // the header's accessible name starts with the visible totals, then the split
+  await expect(
+    page.getByRole('link', { name: '₱140 · 10 pts (wallet ₱140, points 10 pts)', exact: true }),
+  ).toBeVisible()
+  // the bets appear as one row per account, tagged Points and Wallet
   await expect(page.getByRole('listitem').filter({ hasText: /^BetPoints/ })).toHaveCount(1)
   await expect(page.getByRole('listitem').filter({ hasText: /^BetWallet/ })).toHaveCount(1)
 

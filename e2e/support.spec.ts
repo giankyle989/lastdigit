@@ -17,7 +17,7 @@ test('a cash in ticket starts from a template, and staff record it from the tick
   const message = page.getByLabel('Message')
   await page.getByRole('radio', { name: 'Cash out' }).check()
   await expect(message).toHaveValue(`I'd like to cash out from my wallet.\nAmount: \nSend to: ${phone}`)
-  await expect(page.getByText('Wallet: 0 pts available')).toBeVisible()
+  await expect(page.getByText('Wallet: ₱0 available')).toBeVisible()
 
   // An untouched template is swapped; the player's edits are kept from then on.
   await page.getByRole('radio', { name: 'Cash in' }).check()
@@ -49,7 +49,7 @@ test('a cash in ticket starts from a template, and staff record it from the tick
   await expect(page.getByRole('button', { name: 'Record cash in' })).toBeDisabled()
   await confirmPhone(admin.id, user.id)
   await page.reload()
-  await expect(page.getByTestId('ticket-cash-hint')).toHaveText('Wallet: 0 pts')
+  await expect(page.getByTestId('ticket-cash-hint')).toHaveText('Wallet: ₱0')
   await page.getByRole('button', { name: 'Record cash in' }).click()
   await expect(page.getByLabel('Amount')).toHaveValue('500')
   await page.getByLabel('Note').fill('ref 12345')

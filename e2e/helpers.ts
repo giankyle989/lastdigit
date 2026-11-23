@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 export async function signup(page: Page, username: string, phone: string, ref?: string) {
   await page.goto(ref ? `/signup?ref=${ref}` : '/signup')
@@ -21,4 +21,14 @@ export async function logout(page: Page, from: 'player' | 'admin') {
   await page.goto(from === 'player' ? '/more' : '/admin')
   await page.getByRole('button', { name: 'Log out' }).click()
   await page.waitForURL('**/login')
+}
+
+/** Choose the slip's "Pay from" account. The radio is visually hidden, so click its visible label. */
+export async function payFrom(page: Page, account: 'Wallet' | 'Points') {
+  const label = page
+    .locator('label')
+    .filter({ has: page.getByRole('radio', { name: account }) })
+    .filter({ visible: true })
+  await label.click()
+  await expect(label.getByRole('radio')).toBeChecked()
 }
