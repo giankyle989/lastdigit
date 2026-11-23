@@ -74,7 +74,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   })
   // alice tops up 100 (+100 matched) and joins the pool on a losing ending, so it is not a solo pool
   await adjustBalance(adminRow.id, aliceRow.id, { kind: 'CASH_IN', amount: 100, note: 'top-up' })
-  await placeBet(aliceRow.id, { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
+  await placeBet(aliceRow.id, 'WALLET', { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
 
   await login(page, bob, 'secret123')
   await page.waitForURL('**/games')

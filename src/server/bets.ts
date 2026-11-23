@@ -3,7 +3,7 @@ import { z } from 'zod'
 
 import { prisma, type Tx } from '@/lib/db'
 import { DomainError } from '@/lib/errors'
-import { splitStake } from '@/lib/funding'
+import { availableFor, type BetAccount, notEnoughMessage } from '@/lib/funding'
 import { formatEnding } from '@/lib/game/ending'
 import { endingLimitMessage, MAX_ENDINGS_PER_GAME, MAX_SLIP_PICKS, MAX_STAKE } from '@/lib/game/limits'
 import { isStaff } from '@/lib/permissions'
@@ -17,6 +17,10 @@ export const placeBetSchema = z.object({
   awayDigit: intFromForm('Away digit', 0, 9),
   homeDigit: intFromForm('Home digit', 0, 9),
   stake: intFromForm('Stake', 1, MAX_STAKE),
+})
+
+export const betAccountSchema = z.enum(['WALLET', 'POINTS'], {
+  errorMap: () => ({ message: 'Choose wallet or points' }),
 })
 
 export const placeBetsSchema = z
@@ -43,10 +47,16 @@ async function lockGames(tx: Tx, gameIds: string[]): Promise<Map<string, LockedG
  * Places every pick or none (spec §6.1). One transaction: games are locked in ascending id
  * order, then each pick is checked and written. A failing pick throws a DomainError carrying
  * `pickIndex`; with more than one pick its message is prefixed with the pick label
- * (`LAL @ GSW 9-6: Betting closed`). Each stake is paid from points first, then the wallet
- * (wallet-and-points spec §4).
+ * (`LAL @ GSW 9-6: Betting closed`). Each slip is paid entirely from `account`, never from
+ * the other balance (wallet-or-points spec §2).
  */
-export async function placeBets(userId: string, input: unknown, now: Date = new Date()): Promise<Bet[]> {
+export async function placeBets(
+  userId: string,
+  account: unknown,
+  input: unknown,
+  now: Date = new Date(),
+): Promise<Bet[]> {
+  const from: BetAccount = betAccountSchema.parse(account)
   const picks = placeBetsSchema.parse(input)
   const single = picks.length === 1
 
@@ -69,8 +79,9 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
       const user = await tx.user.findUniqueOrThrow({ where: { id: userId } })
       if (isSuspended(user, now)) throw new DomainError('SUSPENDED', 'Account suspended')
       if (isStaff(user.role)) throw new DomainError('FORBIDDEN', 'Staff accounts cannot bet')
-      let pointsLeft = Math.max(0, user.pointsBalance)
-      let walletLeft = Math.max(0, user.walletBalance)
+      const available = availableFor(from, { wallet: user.walletBalance, points: user.pointsBalance })
+      const total = picks.reduce((sum, p) => sum + p.stake, 0)
+      if (total > available) throw new DomainError('INSUFFICIENT_BALANCE', notEnoughMessage(from, available))
 
       // Endings already held on each game; read under the player lock so two slips can't both
       // fit. A pick on an ending already held tops it up and takes no room.
@@ -136,35 +147,21 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
         }
 
         const { gameId, awayDigit, homeDigit, stake } = pick
-        if (stake > pointsLeft + walletLeft) {
-          throw fail(index, pick, new DomainError('INSUFFICIENT_BALANCE', 'Not enough balance'))
-        }
-        const paid = splitStake(stake, pointsLeft)
+        const pointsPart = from === 'POINTS' ? stake : 0
         const bet = await tx.bet.upsert({
           where: { userId_gameId_awayDigit_homeDigit: { userId, gameId, awayDigit, homeDigit } },
-          create: { userId, gameId, awayDigit, homeDigit, stake, pointsStake: paid.points },
-          update: { stake: { increment: stake }, pointsStake: { increment: paid.points } },
+          create: { userId, gameId, awayDigit, homeDigit, stake, pointsStake: pointsPart },
+          update: { stake: { increment: stake }, pointsStake: { increment: pointsPart } },
         })
         try {
-          if (paid.points > 0) {
-            await postEntry(
-              tx,
-              { userId, account: 'POINTS', type: 'BET', amount: -paid.points, gameId, betId: bet.id },
-              { requireFunds: true },
-            )
-          }
-          if (paid.wallet > 0) {
-            await postEntry(
-              tx,
-              { userId, account: 'WALLET', type: 'BET', amount: -paid.wallet, gameId, betId: bet.id },
-              { requireFunds: true },
-            )
-          }
+          await postEntry(
+            tx,
+            { userId, account: from, type: 'BET', amount: -stake, gameId, betId: bet.id },
+            { requireFunds: true },
+          )
         } catch (e) {
           throw e instanceof DomainError ? fail(index, pick, e) : e
         }
-        pointsLeft -= paid.points
-        walletLeft -= paid.wallet
         await tx.game.update({ where: { id: gameId }, data: { pool: { increment: stake } } })
         bets.push(bet)
       }
@@ -175,8 +172,13 @@ export async function placeBets(userId: string, input: unknown, now: Date = new 
 }
 
 /** Single-pick wrapper kept for existing callers and tests. */
-export async function placeBet(userId: string, input: unknown, now: Date = new Date()): Promise<Bet> {
-  const [bet] = await placeBets(userId, [input], now)
+export async function placeBet(
+  userId: string,
+  account: unknown,
+  input: unknown,
+  now: Date = new Date(),
+): Promise<Bet> {
+  const [bet] = await placeBets(userId, account, [input], now)
   if (!bet) throw new Error('placeBets returned no bet for one pick')
   return bet
 }

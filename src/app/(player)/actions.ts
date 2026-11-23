@@ -11,10 +11,10 @@ import { getSlipStatus } from '@/server/queries/player'
 import { requirePlayer } from '@/server/session'
 
 /** Places every pick in the slip or none (spec §4.3); `pickIndex` marks the failing pick. */
-export async function placeBetsAction(picks: unknown): Promise<ActionState> {
+export async function placeBetsAction(account: unknown, picks: unknown): Promise<ActionState> {
   const user = await requirePlayer()
   const result = await runAction(
-    () => placeBets(user.id, picks),
+    () => placeBets(user.id, account, picks),
     (bets) => `${bets.length} ${bets.length === 1 ? 'bet' : 'bets'} placed`,
   )
   revalidatePath('/', 'layout')

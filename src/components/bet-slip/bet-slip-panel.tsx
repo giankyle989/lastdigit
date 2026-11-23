@@ -16,6 +16,7 @@ import {
   estimatePickReturns,
   parseStakeInput,
   QUICK_STAKES,
+  resolveAccount,
   type SlipPick,
   slipTotal,
 } from '@/lib/slip'
@@ -108,7 +109,12 @@ export function BetSlipPanel() {
           toast.error('Remove the picks marked "Betting closed" first')
           return
         }
+        const account = resolveAccount(slip.account, {
+          wallet: fresh.walletBalance,
+          points: fresh.pointsBalance,
+        })
         const result = await placeBetsAction(
+          account,
           picks.map(({ gameId, awayDigit, homeDigit, stake }) => ({ gameId, awayDigit, homeDigit, stake })),
         )
         if (result.error) {

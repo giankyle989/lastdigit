@@ -36,14 +36,10 @@ Choosing per pick; changing how winnings are paid; currency conversion; schema c
 
 ### Input
 
-`placeBets(userId, input)` takes:
-
-```ts
-{ account: 'WALLET' | 'POINTS', picks: { gameId, awayDigit, homeDigit, stake }[] }
-```
-
-validated with zod (`account` required). `placeBet` (single) passes its own `account` the same
-way. `placeBetsAction` forwards the slip's `account`.
+`placeBets(userId, account, picks, now)` takes `account: 'WALLET' | 'POINTS'` as its own
+argument (required, validated with zod) and `picks: { gameId, awayDigit, homeDigit, stake }[]`.
+`placeBet(userId, account, pick, now)` (single) passes its `account` the same way.
+`placeBetsAction(account, picks)` forwards the slip's account.
 
 ### Placing
 

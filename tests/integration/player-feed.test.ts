@@ -27,9 +27,9 @@ describe('player feed queries', () => {
     await makeGame({ startsAt: new Date('2026-11-11T16:00:00Z') }) // 00:00 PHT Nov 12
     await makeGame({ startsAt: new Date('2026-11-10T15:59:59Z') }) // 23:59:59 PHT Nov 10
     const now = new Date('2026-11-10T12:00:00Z')
-    await placeBet(me.id, { gameId: late.id, awayDigit: 1, homeDigit: 1, stake: 10 }, now)
-    await placeBet(me.id, { gameId: late.id, awayDigit: 2, homeDigit: 2, stake: 10 }, now)
-    await placeBet(other.id, { gameId: early.id, awayDigit: 1, homeDigit: 1, stake: 10 }, now)
+    await placeBet(me.id, 'WALLET', { gameId: late.id, awayDigit: 1, homeDigit: 1, stake: 10 }, now)
+    await placeBet(me.id, 'WALLET', { gameId: late.id, awayDigit: 2, homeDigit: 2, stake: 10 }, now)
+    await placeBet(other.id, 'WALLET', { gameId: early.id, awayDigit: 1, homeDigit: 1, stake: 10 }, now)
 
     const games = await listGamesForDate('2026-11-11', me.id)
     expect(games.map((g) => [g.id, g.myPickCount])).toEqual([
@@ -48,8 +48,8 @@ describe('player feed queries', () => {
       games.push(await makeGame({ startsAt: new Date(Date.UTC(2026, 10, 11, i)) }))
     }
     for (const g of games) {
-      await placeBet(me.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 1 }, now)
-      await placeBet(me.id, { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 1 }, now)
+      await placeBet(me.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 1 }, now)
+      await placeBet(me.id, 'WALLET', { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 1 }, now)
     }
     // another player's bets must never show up for me
     const other = await makeUser()
@@ -57,8 +57,8 @@ describe('player feed queries', () => {
     const shared = games[5]
     if (!shared) throw new Error('setup')
     const theirs = await makeGame({ startsAt: new Date(Date.UTC(2026, 10, 12, 12)) })
-    await placeBet(other.id, { gameId: shared.id, awayDigit: 3, homeDigit: 3, stake: 1 }, now)
-    await placeBet(other.id, { gameId: theirs.id, awayDigit: 3, homeDigit: 3, stake: 1 }, now)
+    await placeBet(other.id, 'WALLET', { gameId: shared.id, awayDigit: 3, homeDigit: 3, stake: 1 }, now)
+    await placeBet(other.id, 'WALLET', { gameId: theirs.id, awayDigit: 3, homeDigit: 3, stake: 1 }, now)
     const settled = games[0]
     if (!settled) throw new Error('setup')
     await prisma.bet.updateMany({ where: { gameId: settled.id, awayDigit: 1 }, data: { result: 'WON' } })
@@ -114,8 +114,8 @@ describe('player feed queries', () => {
     await fundUser(me.id, 70, 'POINTS')
     const open = await makeGame()
     const live = await makeGame({ awayTeam: 'BOS', homeTeam: 'NYK' })
-    await placeBet(other.id, { gameId: open.id, awayDigit: 9, homeDigit: 6, stake: 120 })
-    await placeBet(other.id, { gameId: open.id, awayDigit: 0, homeDigit: 0, stake: 80 })
+    await placeBet(other.id, 'WALLET', { gameId: open.id, awayDigit: 9, homeDigit: 6, stake: 120 })
+    await placeBet(other.id, 'WALLET', { gameId: open.id, awayDigit: 0, homeDigit: 0, stake: 80 })
     await prisma.game.update({ where: { id: live.id }, data: { status: 'LIVE' } })
 
     const s = await getSlipStatus(me.id, [

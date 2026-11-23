@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react'
 import { toast } from 'sonner'
 
+import { type BetAccount } from '@/lib/funding'
 import {
   addBlockReason,
   EMPTY_SLIP,
@@ -20,6 +21,8 @@ type SlipContextValue = {
   balance: number
   /** Points from the last server render; spent first. */
   points: number
+  /** The player's chosen account for this slip; null until they choose. */
+  account: BetAccount | null
   add: (pick: NewPick) => void
   /** Adds several picks at once, or none if the slip lacks room (multi-select spec §2.4). */
   addMany: (picks: SlipPick[], lastStake: number) => void
@@ -101,6 +104,7 @@ export function SlipProvider({
       lastStake: slip.lastStake,
       balance,
       points,
+      account: slip.account,
       add,
       addMany: (picks, lastStake) => {
         dispatch({ type: 'addMany', picks, lastStake })

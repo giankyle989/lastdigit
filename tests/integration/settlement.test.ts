@@ -21,15 +21,48 @@ async function setupGame() {
   const c = await makeUser({ username: 'c' })
   for (const u of [a, b, c]) await fundUser(u.id, 1000)
   const g = await makeGame()
-  await placeBet(a.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
-  await placeBet(b.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 300 })
-  await placeBet(c.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 600 })
+  await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+  await placeBet(b.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 300 })
+  await placeBet(c.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 600 })
   await prisma.game.update({ where: { id: g.id }, data: { status: 'FINAL', awayScore: 99, homeScore: 106 } })
   return { a, b, c, g }
 }
 
 describe('settleGame', () => {
   beforeEach(resetDb)
+
+  it('a merged wallet + points bet: a win returns the points stake as points, the rest to wallet', async () => {
+    const admin = await makeUser({ role: 'SUPERADMIN' })
+    const m = await makeUser({ username: 'mixed' })
+    const c = await makeUser({ username: 'loser' })
+    await fundUser(m.id, 1000)
+    await fundUser(m.id, 500, 'POINTS')
+    await fundUser(c.id, 1000)
+    const g = await makeGame()
+    await placeBet(m.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 60 })
+    await placeBet(m.id, 'POINTS', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 40 })
+    await placeBet(c.id, 'WALLET', { gameId: g.id, awayDigit: 0, homeDigit: 0, stake: 300 })
+    await finish(g.id)
+    await settleGame(g.id)
+
+    // pool 400, 90% = 360 to the only winner: 40 back as points, 320 to the wallet
+    const won = await prisma.user.findUniqueOrThrow({ where: { id: m.id } })
+    expect([won.walletBalance, won.pointsBalance]).toEqual([1000 - 60 + 320, 500])
+    const payouts = await prisma.transaction.findMany({
+      where: { userId: m.id, type: 'PAYOUT' },
+      orderBy: { account: 'asc' },
+    })
+    expect(payouts.map((t) => [t.account, t.amount])).toEqual([
+      ['WALLET', 320],
+      ['POINTS', 40],
+    ])
+
+    await voidGame(admin.id, g.id, 'Wrong score')
+    const back = await prisma.user.findUniqueOrThrow({ where: { id: m.id } })
+    expect([back.walletBalance, back.pointsBalance]).toEqual([1000, 500])
+    expect(await balanceOf(c.id)).toBe(1000)
+    await expectLedgerConsistent()
+  })
 
   it('pays winners pro-rata from 90% of the pool', async () => {
     const { a, b, c, g } = await setupGame()
@@ -91,8 +124,8 @@ describe('settleGame', () => {
     const a = await makeUser({ username: 'solo' })
     await fundUser(a.id, 1000)
     const g = await makeGame()
-    await placeBet(a.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
-    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 50 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 50 })
     await finish(g.id)
     expect(await settleGame(g.id)).toEqual({ settled: true })
     expect(await balanceOf(a.id)).toBe(1000)
@@ -119,8 +152,8 @@ describe('settleGame', () => {
     const b = await makeUser({ username: 'b' })
     for (const u of [a, b]) await fundUser(u.id, 1000)
     const g = await makeGame()
-    await placeBet(a.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
-    await placeBet(b.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 50 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(b.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 50 })
     await finish(g.id)
     await settleGame(g.id)
     for (const u of [a, b]) expect(await balanceOf(u.id)).toBe(1000)
@@ -137,9 +170,9 @@ describe('settleGame', () => {
     const c = await makeUser({ username: 'c' })
     for (const u of [a, b, c]) await fundUser(u.id, 1000)
     const g = await makeGame()
-    await placeBet(a.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
-    await placeBet(b.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 50 })
-    await placeBet(c.id, { gameId: g.id, awayDigit: 0, homeDigit: 0, stake: 1 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(b.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 50 })
+    await placeBet(c.id, 'WALLET', { gameId: g.id, awayDigit: 0, homeDigit: 0, stake: 1 })
     await finish(g.id)
     await settleGame(g.id)
     expect(await balanceOf(a.id)).toBe(1000)
@@ -154,7 +187,7 @@ describe('settleGame', () => {
     const a = await makeUser({ username: 'solo' })
     await fundUser(a.id, 1000)
     const g = await makeGame()
-    await placeBet(a.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
     await finish(g.id)
     await settleGame(g.id)
     await voidGame(admin.id, g.id, 'Bad data')
@@ -187,8 +220,8 @@ describe('settlement and referrals', () => {
     const carol = await makeUser({ username: 'carol' })
     for (const u of [bob, carol]) await fundUser(u.id, 1000)
     const g = await makeGame()
-    await placeBet(bob.id, { gameId: g.id, awayDigit: 1, homeDigit: 6, stake: 100 })
-    await placeBet(carol.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(bob.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 6, stake: 100 })
+    await placeBet(carol.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
     await finish(g.id)
     await settleGame(g.id)
     expect(await balanceOf(alice.id)).toBe(0)
@@ -243,15 +276,15 @@ describe('voidGame', () => {
     await fundUser(winner.id, 100)
     await fundUser(loser.id, 900)
     const g = await makeGame()
-    await placeBet(winner.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
-    await placeBet(loser.id, { gameId: g.id, awayDigit: 0, homeDigit: 0, stake: 900 })
+    await placeBet(winner.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(loser.id, 'WALLET', { gameId: g.id, awayDigit: 0, homeDigit: 0, stake: 900 })
     await prisma.game.update({
       where: { id: g.id },
       data: { status: 'FINAL', awayScore: 99, homeScore: 106 },
     })
     await settleGame(g.id) // winner gets 900
     const g2 = await makeGame()
-    await placeBet(winner.id, { gameId: g2.id, awayDigit: 1, homeDigit: 1, stake: 900 }) // spends it
+    await placeBet(winner.id, 'WALLET', { gameId: g2.id, awayDigit: 1, homeDigit: 1, stake: 900 }) // spends it
     await voidGame(admin.id, g.id, 'Bad data')
     expect(await balanceOf(winner.id)).toBe(100 - 900) // +100 refund, -900 reversal from 0
     await expectLedgerConsistent()
@@ -304,8 +337,9 @@ describe('settlement with wallet and points', () => {
     await fundUser(a.id, 40, 'WALLET')
     await fundUser(a.id, 60, 'POINTS')
     await fundUser(b.id, 900, 'WALLET')
-    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 }) // 60 pts + 40 wallet
-    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 900 })
+    await placeBet(a.id, 'POINTS', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 60 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 40 }) // 60 pts + 40 wallet
+    await placeBet(b.id, 'WALLET', { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 900 })
     await finishAndSettle(g.id, 101, 102) // ending 1-2: a wins 90% of 1000 = 900
     expect(await balancesOf(a.id)).toEqual({ wallet: 840, points: 60 })
     const payouts = await prisma.transaction.findMany({
@@ -324,7 +358,8 @@ describe('settlement with wallet and points', () => {
     const g = await makeGame()
     await fundUser(a.id, 40, 'WALLET')
     await fundUser(a.id, 60, 'POINTS')
-    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await placeBet(a.id, 'POINTS', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 60 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 40 })
     await finishAndSettle(g.id, 101, 102) // solo pool → refund
     expect(await balancesOf(a.id)).toEqual({ wallet: 40, points: 60 })
     await expectLedgerConsistent()
@@ -335,8 +370,9 @@ describe('settlement with wallet and points', () => {
     const g = await makeGame()
     await fundUser(a.id, 30, 'POINTS')
     await fundUser(a.id, 100, 'WALLET')
-    await placeBet(a.id, { gameId: g.id, awayDigit: 7, homeDigit: 7, stake: 20 }) // 20 pts
-    await placeBet(a.id, { gameId: g.id, awayDigit: 7, homeDigit: 7, stake: 50 }) // 10 pts + 40 wallet
+    await placeBet(a.id, 'POINTS', { gameId: g.id, awayDigit: 7, homeDigit: 7, stake: 20 })
+    await placeBet(a.id, 'POINTS', { gameId: g.id, awayDigit: 7, homeDigit: 7, stake: 10 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 7, homeDigit: 7, stake: 40 })
     await finishAndSettle(g.id, 100, 100) // nobody else bet: solo refund
     expect(await balancesOf(a.id)).toEqual({ wallet: 100, points: 30 })
   })
@@ -349,8 +385,9 @@ describe('settlement with wallet and points', () => {
     await fundUser(a.id, 40, 'WALLET')
     await fundUser(a.id, 60, 'POINTS')
     await fundUser(b.id, 900, 'WALLET')
-    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
-    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 900 })
+    await placeBet(a.id, 'POINTS', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 60 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 40 })
+    await placeBet(b.id, 'WALLET', { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 900 })
     await finishAndSettle(g.id, 101, 102)
     await voidGame(admin.id, g.id, 'wrong score')
     expect(await balancesOf(a.id)).toEqual({ wallet: 40, points: 60 })
@@ -366,8 +403,9 @@ describe('settlement with wallet and points', () => {
     await fundUser(a.id, 40, 'WALLET')
     await fundUser(a.id, 60, 'POINTS')
     await fundUser(b.id, 900, 'WALLET')
-    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 }) // 60 pts + 40 wallet
-    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 900 })
+    await placeBet(a.id, 'POINTS', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 60 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 40 }) // 60 pts + 40 wallet
+    await placeBet(b.id, 'WALLET', { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 900 })
     await finishAndSettle(g.id, 103, 103) // ending 3-3: a loses
     expect(await balancesOf(a.id)).toEqual({ wallet: 0, points: 0 })
     await voidGame(admin.id, g.id, 'wrong score')
@@ -382,7 +420,8 @@ describe('settlement with wallet and points', () => {
     const g = await makeGame()
     await fundUser(a.id, 40, 'WALLET')
     await fundUser(a.id, 60, 'POINTS')
-    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await placeBet(a.id, 'POINTS', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 60 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 40 })
     await voidGame(admin.id, g.id, 'postponed')
     expect(await balancesOf(a.id)).toEqual({ wallet: 40, points: 60 })
     await expectLedgerConsistent()
@@ -395,8 +434,8 @@ describe('settlement with wallet and points', () => {
     const g = await makeGame()
     await fundUser(a.id, 100, 'WALLET')
     await fundUser(b.id, 100, 'WALLET')
-    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
-    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 100 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await placeBet(b.id, 'WALLET', { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 100 })
     await finishAndSettle(g.id, 101, 102)
     await voidGame(admin.id, g.id, 'wrong score')
     expect(await balancesOf(a.id)).toEqual({ wallet: 100, points: 0 })
@@ -411,8 +450,8 @@ describe('settlement with wallet and points', () => {
     const g = await makeGame()
     await fundUser(a.id, 100, 'WALLET')
     await fundUser(b.id, 100, 'WALLET')
-    await placeBet(a.id, { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
-    await placeBet(b.id, { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 100 })
+    await placeBet(a.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 2, stake: 100 })
+    await placeBet(b.id, 'WALLET', { gameId: g.id, awayDigit: 3, homeDigit: 3, stake: 100 })
     await finishAndSettle(g.id, 101, 102)
     const before = [await balancesOf(a.id), await balancesOf(b.id)]
     await prisma.transaction.deleteMany({ where: { type: 'PAYOUT', userId: a.id } })
