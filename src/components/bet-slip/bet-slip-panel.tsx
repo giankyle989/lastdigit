@@ -14,7 +14,6 @@ import { formatEnding } from '@/lib/game/ending'
 import {
   bestCaseReturn,
   estimatePickReturns,
-  fundingLine,
   parseStakeInput,
   QUICK_STAKES,
   type SlipPick,
@@ -90,9 +89,7 @@ export function BetSlipPanel() {
 
   const statusByKey = new Map(status?.picks.map((s) => [keyOf(s), s]))
   const balance = status ? status.walletBalance + status.pointsBalance : slip.balance
-  const points = status?.pointsBalance ?? slip.points
   const total = slipTotal(slip.picks)
-  const funding = fundingLine(total, points)
   const anyClosed = slip.picks.some((p) => statusByKey.get(keyOf(p))?.open === false)
   const anyInvalid = slip.picks.some((p) => p.stake < 1)
   const returns = estimatePickReturns(slip.picks, (p) => statusByKey.get(keyOf(p)))
@@ -251,11 +248,6 @@ export function BetSlipPanel() {
           <PointsAmount value={bestReturn} unit />
         </dd>
       </dl>
-      {funding && (
-        <p className="text-muted-foreground text-xs" data-testid="slip-funding">
-          {funding}
-        </p>
-      )}
       <p className="text-muted-foreground text-xs">
         Only one ending per game can win, so this counts your best pick in each game. Estimate — changes as
         others bet.

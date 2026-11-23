@@ -33,7 +33,7 @@ export function MultiAddTray({ gameId, matchup, endings, onAdded, onClear }: Pro
   const [typed, setTyped] = useState<number | null>(null)
   const stake = typed ?? (mode === 'perEnding' ? slip.lastStake : slip.lastStake * n)
   const plan = planMultiAdd({
-    slip: { picks: slip.picks, lastStake: slip.lastStake },
+    slip: { picks: slip.picks, lastStake: slip.lastStake, account: null },
     gameId,
     matchup,
     endings,
