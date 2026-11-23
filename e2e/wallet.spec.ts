@@ -74,6 +74,20 @@ test('staff give and take points; a slip is paid from points or from the wallet,
 
   await addEnding(1, 2)
   const stakeInput = page.getByLabel('Stake for LAL @ GSW 1-2', { exact: true }).filter({ visible: true })
+  const maxButton = page
+    .getByRole('button', { name: 'Max stake for LAL @ GSW 1-2' })
+    .filter({ visible: true })
+  // Max follows the chosen balance: the whole wallet, then (after switching) the whole points balance
+  await payFrom(page, 'Wallet')
+  await maxButton.click()
+  await expect(stakeInput).toHaveValue('200')
+  await payFrom(page, 'Points')
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Not enough' }).filter({ visible: true }),
+  ).toContainText('Not enough points (40 pts).')
+  await expect(page.getByRole('button', { name: 'Confirm bets' })).toBeDisabled()
+  await maxButton.click()
+  await expect(stakeInput).toHaveValue('40')
   await stakeInput.fill('30')
   await payFrom(page, 'Points')
   // too much from points: blocked, with the offer to switch
