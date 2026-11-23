@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 
+import { Amount } from '@/components/amount'
 import { CopyShare } from '@/components/more/copy-share'
-import { PointsAmount } from '@/components/points-amount'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDateTime } from '@/lib/format'
 import { isStaff } from '@/lib/permissions'
@@ -30,8 +30,8 @@ export default async function ReferralPage() {
           <p className="text-sm">
             Earn <strong className="text-primary">{bonuses.referralPercent}%</strong> of your friend&apos;s
             first top-up as bonus points, up to{' '}
-            <PointsAmount value={bonuses.referralBonusCap} unit className="text-primary font-semibold" />, for
-            each friend who signs up with your code.
+            <Amount kind="points" value={bonuses.referralBonusCap} className="text-primary font-semibold" />,
+            for each friend who signs up with your code.
           </p>
           <div className="bg-surface-2 border-border rounded-lg border p-3 text-center">
             <div className="text-muted-foreground text-xs">Your code</div>

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { ActionState } from '@/lib/action-state'
-import { formatPoints } from '@/lib/format'
+import { formatAmount } from '@/lib/format'
 import { nextMessage, SUPPORT_TOPICS, type SupportTopic, TOPIC_LABELS, topicSubject } from '@/lib/support'
 
 type Props = {
@@ -65,7 +65,7 @@ export function NewTicketForm({ action, phone, wallet }: Props) {
         />
         {topic === 'CASH_OUT' && (
           <p id="cash-out-hint" className="text-muted-foreground text-xs">
-            Wallet: {formatPoints(wallet)} pts available. Points can&apos;t be cashed out.
+            Wallet: {formatAmount('wallet', wallet)} available. Points can&apos;t be cashed out.
           </p>
         )}
       </div>

@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useSlip } from '@/components/bet-slip/slip-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { formatPoints } from '@/lib/format'
+import { formatAmount } from '@/lib/format'
 import {
   type Ending,
   parseStakeInput,
@@ -42,12 +42,12 @@ export function MultiAddTray({ gameId, matchup, endings, onAdded, onClear }: Pro
   })
   const each =
     plan.perEnding.min === plan.perEnding.max
-      ? formatPoints(plan.perEnding.min)
-      : `${formatPoints(plan.perEnding.min)}–${formatPoints(plan.perEnding.max)}`
+      ? formatAmount('pool', plan.perEnding.min)
+      : `${formatAmount('pool', plan.perEnding.min)}–${formatAmount('pool', plan.perEnding.max)}`
   const cost =
     mode === 'perEnding'
-      ? `${n} × ${formatPoints(stake)} = ${formatPoints(stake * n)} pts`
-      : `${formatPoints(stake)} split → ${each} each`
+      ? `${n} × ${formatAmount('pool', stake)} = ${formatAmount('pool', stake * n)}`
+      : `${formatAmount('pool', stake)} split → ${each} each`
 
   return (
     <div className="bg-surface-2 border-border space-y-3 rounded-lg border p-3">

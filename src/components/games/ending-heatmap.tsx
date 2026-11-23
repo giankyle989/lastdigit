@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 
-import { formatPoints } from '@/lib/format'
+import { formatAmount } from '@/lib/format'
 import { heatLevel, maxCell } from '@/lib/game/heat'
 import { endingKey } from '@/lib/slip'
 import { cn } from '@/lib/utils'
@@ -72,7 +72,7 @@ export function EndingHeatmap({
               </th>
               {DIGITS.map((h) => {
                 const stake = cells[a]?.[h] ?? 0
-                const label = `Ending ${a}-${h}, ${formatPoints(stake)} staked`
+                const label = `Ending ${a}-${h}, ${formatAmount('pool', stake)} staked`
                 const isSelected = onToggle
                   ? (selectedKeys?.has(endingKey({ awayDigit: a, homeDigit: h })) ?? false)
                   : selected?.awayDigit === a && selected.homeDigit === h

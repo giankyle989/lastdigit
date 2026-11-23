@@ -1,10 +1,10 @@
 import Link from 'next/link'
 
+import { SplitAmount } from '@/components/amount'
 import { BetResult } from '@/components/bet-result'
 import { EmptyState } from '@/components/empty-state'
 import { FilterChips } from '@/components/filter-chips'
 import { Pagination } from '@/components/pagination'
-import { PointsAmount } from '@/components/points-amount'
 import { StatusPill } from '@/components/status-pill'
 import { TeamBadge } from '@/components/team-badge'
 import { formatTipoff } from '@/lib/format'
@@ -66,9 +66,13 @@ async function BetGroups({ userId, tab, page }: { userId: string; tab: BetTab; p
               {bets.map((b) => (
                 <li key={b.id} className="grid grid-cols-3 items-center gap-2 py-2 text-sm">
                   <span className="num font-semibold">{formatEnding(b)}</span>
-                  <PointsAmount value={b.stake} unit className="text-muted-foreground" />
+                  <SplitAmount
+                    wallet={b.stake - b.pointsStake}
+                    points={b.pointsStake}
+                    className="text-muted-foreground"
+                  />
                   <span className="text-right">
-                    <BetResult result={b.result} payout={b.payout} />
+                    <BetResult result={b.result} payout={b.payout} pointsStake={b.pointsStake} />
                   </span>
                 </li>
               ))}

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
+import { Amount } from '@/components/amount'
 import { useSlip } from '@/components/bet-slip/slip-provider'
-import { PointsAmount } from '@/components/points-amount'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { estimatePayout } from '@/lib/game/payout'
@@ -99,11 +99,11 @@ export function EndingPicker({ gameId, awayTeam, homeTeam, open, pool, cells }: 
           <dl className="mt-2 grid grid-cols-2 gap-y-1 text-sm">
             <dt className="text-muted-foreground">Staked on this ending</dt>
             <dd className="text-right">
-              <PointsAmount value={endingStake} unit />
+              <Amount kind="pool" value={endingStake} />
             </dd>
             <dt className="text-muted-foreground">Est. payout per 100 staked</dt>
             <dd className="text-primary text-right">
-              <PointsAmount value={estimatePayout(pool, endingStake, 100)} unit />
+              <Amount kind="pool" value={estimatePayout(pool, endingStake, 100)} />
             </dd>
           </dl>
         )}
@@ -126,7 +126,7 @@ export function EndingPicker({ gameId, awayTeam, homeTeam, open, pool, cells }: 
           </Button>
           {open && (
             <p className="text-muted-foreground text-center text-xs">
-              Adds at your last stake: <PointsAmount value={slip.lastStake} unit />
+              Adds at your last stake: <Amount kind="pool" value={slip.lastStake} />
             </p>
           )}
         </>

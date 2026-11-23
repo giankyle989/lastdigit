@@ -1,7 +1,7 @@
 import type { GameStatus } from '@prisma/client'
 
+import { Amount } from '@/components/amount'
 import { Countdown } from '@/components/countdown'
-import { PointsAmount } from '@/components/points-amount'
 import { StatusPill } from '@/components/status-pill'
 import { TeamBadge } from '@/components/team-badge'
 import { formatTipoff } from '@/lib/format'
@@ -52,7 +52,7 @@ export function GameHeader({ game, winners, now }: { game: GameHeaderData; winne
       </div>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
         <span className="text-muted-foreground">
-          Pool <PointsAmount value={game.pool} unit className="text-foreground" />
+          Pool <Amount kind="pool" value={game.pool} className="text-foreground" />
         </span>
         {isBettingOpen(game, now) && (
           <span className="text-muted-foreground">

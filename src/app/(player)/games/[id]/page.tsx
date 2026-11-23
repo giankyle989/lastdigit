@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation'
 
+import { SplitAmount } from '@/components/amount'
 import { BetResult } from '@/components/bet-result'
 import { EndingPicker } from '@/components/games/ending-picker'
 import { GameHeader } from '@/components/games/game-header'
-import { PointsAmount } from '@/components/points-amount'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatEnding } from '@/lib/game/ending'
 import { isBettingOpen } from '@/lib/game/status'
@@ -50,8 +50,12 @@ export default async function GamePage({ params }: { params: Promise<{ id: strin
               {myBets.map((b) => (
                 <li key={b.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="num text-base font-semibold">{formatEnding(b)}</span>
-                  <PointsAmount value={b.stake} unit className="text-muted-foreground" />
-                  <BetResult result={b.result} payout={b.payout} />
+                  <SplitAmount
+                    wallet={b.stake - b.pointsStake}
+                    points={b.pointsStake}
+                    className="text-muted-foreground"
+                  />
+                  <BetResult result={b.result} payout={b.payout} pointsStake={b.pointsStake} />
                 </li>
               ))}
             </ul>

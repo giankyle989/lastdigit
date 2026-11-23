@@ -268,7 +268,7 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
                 </Link>
                 <span className="num">{formatEnding(b)}</span>
                 <PointsAmount value={b.stake} />
-                <BetResult result={b.result} payout={b.payout} />
+                <BetResult result={b.result} payout={b.payout} pointsStake={b.pointsStake} />
               </li>
             ))}
             {p.bets.length === 0 && <li className="text-muted-foreground py-2">No bets.</li>}
