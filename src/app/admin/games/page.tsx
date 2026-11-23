@@ -5,7 +5,7 @@ import { FilterForm } from '@/components/admin/filter-form'
 import { PageHeader } from '@/components/admin/page-header'
 import { SelectField } from '@/components/admin/select-field'
 import { UrlSheet } from '@/components/admin/url-sheet'
-import { PointsAmount } from '@/components/points-amount'
+import { Amount } from '@/components/amount'
 import { StatusPill } from '@/components/status-pill'
 import { Input } from '@/components/ui/input'
 import { formatTipoff } from '@/lib/format'
@@ -103,14 +103,14 @@ async function GamesTable({ sp, params }: { sp: SearchParams; params: GameListPa
           header: 'Pool',
           sort: 'pool',
           align: 'right',
-          cell: (g) => <PointsAmount value={g.pool} />,
+          cell: (g) => <Amount kind="pool" value={g.pool} />,
         },
         {
           key: 'houseTake',
           header: 'House take',
           sort: 'houseTake',
           align: 'right',
-          cell: (g) => <PointsAmount value={g.houseTake} />,
+          cell: (g) => <Amount kind="pool" value={g.houseTake} />,
         },
         { key: 'winners', header: 'Winners', align: 'right', cell: (g) => g._count.bets },
       ]}

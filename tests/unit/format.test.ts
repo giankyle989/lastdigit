@@ -1,26 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  accountKind,
+  formatAmount,
   formatCountdown,
   formatDate,
   formatDateTime,
   formatDay,
-  formatPoints,
   formatRelative,
-  formatSignedPoints,
+  formatSplit,
   formatTipoffTime,
 } from '@/lib/format'
 
 describe('format', () => {
   it('formats PHT tip-off times', () => {
     expect(formatTipoffTime(new Date('2026-11-12T00:30:00Z'))).toBe('8:30 AM PHT')
-  })
-
-  it('formats points with separators and signs', () => {
-    expect(formatPoints(1200)).toBe('1,200')
-    expect(formatSignedPoints(90)).toBe('+90')
-    expect(formatSignedPoints(-100)).toBe('-100')
-    expect(formatSignedPoints(0)).toBe('0')
   })
 
   it('formats countdowns', () => {
@@ -49,5 +43,36 @@ describe('format', () => {
 
   it('formats date-times in PHT', () => {
     expect(formatDateTime(new Date('2026-11-12T00:30:00Z'))).toBe('Nov 12, 2026, 8:30 AM PHT')
+  })
+})
+
+describe('labelled amounts', () => {
+  it('formats wallet in pesos, points in pts and pools plain', () => {
+    expect(formatAmount('wallet', 1240)).toBe('₱1,240')
+    expect(formatAmount('wallet', -25)).toBe('-₱25')
+    expect(formatAmount('wallet', 0)).toBe('₱0')
+    expect(formatAmount('points', 40)).toBe('40 pts')
+    expect(formatAmount('points', -40)).toBe('-40 pts')
+    expect(formatAmount('pool', 1240)).toBe('1,240')
+  })
+
+  it('adds a plus sign when signed', () => {
+    expect(formatAmount('wallet', 100, { signed: true })).toBe('+₱100')
+    expect(formatAmount('wallet', -100, { signed: true })).toBe('-₱100')
+    expect(formatAmount('points', 40, { signed: true })).toBe('+40 pts')
+    expect(formatAmount('wallet', 0, { signed: true })).toBe('₱0')
+  })
+
+  it('writes mixed amounts wallet first and drops zero parts', () => {
+    expect(formatSplit({ wallet: 60, points: 40 })).toBe('₱60 + 40 pts')
+    expect(formatSplit({ wallet: 0, points: 40 })).toBe('40 pts')
+    expect(formatSplit({ wallet: 210, points: 0 })).toBe('₱210')
+    expect(formatSplit({ wallet: 0, points: 0 })).toBe('₱0')
+    expect(formatSplit({ wallet: 210, points: 100 }, { signed: true })).toBe('+₱210 + 100 pts')
+  })
+
+  it('maps ledger accounts to kinds', () => {
+    expect(accountKind('WALLET')).toBe('wallet')
+    expect(accountKind('POINTS')).toBe('points')
   })
 })

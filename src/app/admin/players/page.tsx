@@ -4,7 +4,7 @@ import { FilterForm } from '@/components/admin/filter-form'
 import { PageHeader } from '@/components/admin/page-header'
 import { SelectField } from '@/components/admin/select-field'
 import { UrlSheet } from '@/components/admin/url-sheet'
-import { PointsAmount } from '@/components/points-amount'
+import { Amount } from '@/components/amount'
 import { Input } from '@/components/ui/input'
 import { formatDateTime } from '@/lib/format'
 import { firstParam } from '@/lib/pagination'
@@ -104,7 +104,11 @@ async function PlayersTable({ sp, params }: { sp: SearchParams; params: PlayerLi
           sort: 'wallet',
           align: 'right',
           cell: (r) => (
-            <PointsAmount value={r.walletBalance} className={r.walletBalance < 0 ? 'text-danger' : ''} />
+            <Amount
+              kind="wallet"
+              value={r.walletBalance}
+              className={r.walletBalance < 0 ? 'text-danger' : ''}
+            />
           ),
         },
         {
@@ -113,7 +117,11 @@ async function PlayersTable({ sp, params }: { sp: SearchParams; params: PlayerLi
           sort: 'points',
           align: 'right',
           cell: (r) => (
-            <PointsAmount value={r.pointsBalance} className={r.pointsBalance < 0 ? 'text-danger' : ''} />
+            <Amount
+              kind="points"
+              value={r.pointsBalance}
+              className={r.pointsBalance < 0 ? 'text-danger' : ''}
+            />
           ),
         },
         {

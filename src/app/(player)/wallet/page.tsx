@@ -1,11 +1,11 @@
 import { ActionForm } from '@/components/action-form'
+import { Amount } from '@/components/amount'
 import { EmptyState } from '@/components/empty-state'
 import { FilterChips } from '@/components/filter-chips'
 import { Pagination } from '@/components/pagination'
-import { PointsAmount } from '@/components/points-amount'
 import { TxIcon } from '@/components/tx-icon'
 import { localDateOf } from '@/lib/dates'
-import { formatDay, formatTipoffTime } from '@/lib/format'
+import { accountKind, formatDay, formatTipoffTime } from '@/lib/format'
 import { parsePage } from '@/lib/pagination'
 import type { SearchParams } from '@/lib/table-params'
 import {
@@ -36,14 +36,14 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         <section className="from-primary/20 to-card border-border rounded-xl border bg-gradient-to-br p-4">
           <h2 className="text-muted-foreground text-sm">Wallet</h2>
           <div className="mt-1 text-2xl font-bold sm:text-3xl" data-testid="wallet-balance">
-            <PointsAmount value={user.walletBalance} unit />
+            <Amount kind="wallet" value={user.walletBalance} />
           </div>
           <p className="text-muted-foreground mt-1 text-xs">Can be cashed out</p>
         </section>
         <section className="bg-card border-border rounded-xl border p-4">
           <h2 className="text-muted-foreground text-sm">Points</h2>
           <div className="mt-1 text-2xl font-bold sm:text-3xl" data-testid="points-balance">
-            <PointsAmount value={user.pointsBalance} unit />
+            <Amount kind="points" value={user.pointsBalance} />
           </div>
           <p className="text-muted-foreground mt-1 text-xs">Bonus credit, for betting only</p>
         </section>
@@ -124,9 +124,14 @@ async function TransactionDays({
                   </div>
                 </div>
                 <div className="text-right">
-                  <PointsAmount value={t.amount} signed className="block font-semibold" />
+                  <Amount
+                    kind={accountKind(t.account)}
+                    value={t.amount}
+                    signed
+                    className="block font-semibold"
+                  />
                   <span className="text-muted-foreground text-xs">
-                    <PointsAmount value={t.balanceAfter} />
+                    <Amount kind={accountKind(t.account)} value={t.balanceAfter} />
                   </span>
                 </div>
               </li>

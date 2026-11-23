@@ -1,7 +1,14 @@
 import { z } from 'zod'
 
-import { formatPoints } from './format'
-import { splitStake as splitAcrossAccounts } from './funding'
+import { formatAmount } from './format'
+import {
+  availableFor,
+  type Balances,
+  type BetAccount,
+  type Funding,
+  notEnoughMessage,
+  otherAccount,
+} from './funding'
 import { endingLimitMessage, MAX_ENDINGS_PER_GAME, MAX_SLIP_PICKS, MAX_STAKE } from './game/limits'
 import { estimatePayout } from './game/payout'
 
@@ -17,7 +24,7 @@ export type SlipPick = {
   matchup: string
 }
 export type NewPick = Omit<SlipPick, 'stake'>
-export type Slip = { picks: SlipPick[]; lastStake: number }
+export type Slip = { picks: SlipPick[]; lastStake: number; account: BetAccount | null }
 export type Ending = { awayDigit: number; homeDigit: number }
 export type StakeMode = 'perEnding' | 'splitTotal'
 
@@ -29,12 +36,13 @@ export type SlipAction =
   | { type: 'setMax'; index: number; balance: number }
   | { type: 'removePicks'; picks: Omit<NewPick, 'matchup'>[] }
   | { type: 'addMany'; picks: SlipPick[]; lastStake: number }
+  | { type: 'setAccount'; account: BetAccount }
   | { type: 'clear' }
   /** Undo for clear: puts picks back, but only into a slip that is still empty. */
   | { type: 'restore'; picks: SlipPick[] }
   | { type: 'load'; slip: Slip }
 
-export const EMPTY_SLIP: Slip = { picks: [], lastStake: DEFAULT_STAKE }
+export const EMPTY_SLIP: Slip = { picks: [], lastStake: DEFAULT_STAKE, account: null }
 
 export function samePick(a: Omit<NewPick, 'matchup'>, b: Omit<NewPick, 'matchup'>): boolean {
   return a.gameId === b.gameId && a.awayDigit === b.awayDigit && a.homeDigit === b.homeDigit
@@ -116,9 +124,9 @@ export function planMultiAdd(input: {
 
   if (n === 0) return empty('Select at least one ending')
   if (!(stake > 0)) return empty('Enter a stake')
-  if (mode === 'splitTotal' && stake < n) return empty('At least 1 pt per ending')
+  if (mode === 'splitTotal' && stake < n) return empty('At least 1 per ending')
   if (stake > (mode === 'perEnding' ? MAX_STAKE : n * MAX_STAKE)) {
-    return empty(`At most ${formatPoints(MAX_STAKE)} pts per ending`)
+    return empty(`At most ${formatAmount('pool', MAX_STAKE)} per ending`)
   }
 
   const stakes = mode === 'perEnding' ? endings.map(() => stake) : splitStake(stake, n)
@@ -205,6 +213,7 @@ function updateAt(slip: Slip, index: number, stake: number, remember: boolean): 
   if (!slip.picks[index]) return slip
   const clamped = Math.max(0, Math.min(MAX_STAKE, Math.floor(stake)))
   return {
+    ...slip,
     picks: slip.picks.map((p, i) => (i === index ? { ...p, stake: clamped } : p)),
     lastStake: remember && clamped >= 1 ? clamped : slip.lastStake,
   }
@@ -240,6 +249,8 @@ export function slipReducer(slip: Slip, action: SlipAction): Slip {
       }
       return { ...next, lastStake: action.lastStake >= 1 ? action.lastStake : slip.lastStake }
     }
+    case 'setAccount':
+      return { ...slip, account: action.account }
     case 'clear':
       return { ...slip, picks: [] }
     case 'restore':
@@ -266,6 +277,11 @@ const storedSlipSchema = z.object({
     )
     .max(MAX_SLIP_PICKS),
   lastStake: z.number().int().min(1).max(MAX_STAKE),
+  account: z
+    .enum(['WALLET', 'POINTS'])
+    .nullish()
+    .catch(null)
+    .transform((v) => v ?? null),
 })
 
 /** A saved slip, or an empty one when the value is missing or cannot be parsed (spec §4.3). */
@@ -282,13 +298,47 @@ export function parseStoredSlip(raw: string | null): Slip {
   return parsed.success ? parsed.data : EMPTY_SLIP
 }
 
-/** "Uses 500 points + 200 wallet": how a slip total will be paid, points first; null when empty. */
-export function fundingLine(total: number, points: number): string | null {
-  if (total <= 0) return null
-  const paid = splitAcrossAccounts(total, points)
-  const parts = [
-    paid.points > 0 && `${formatPoints(paid.points)} points`,
-    paid.wallet > 0 && `${formatPoints(paid.wallet)} wallet`,
-  ].filter(Boolean)
-  return `Uses ${parts.join(' + ')}`
+/** The slip's account: the player's choice, else points when they have any, else the wallet. */
+export function resolveAccount(chosen: BetAccount | null, b: Balances): BetAccount {
+  return chosen ?? (b.points > 0 ? 'POINTS' : 'WALLET')
+}
+
+/** Why the chosen balance can't pay the slip, and the other account when it can; null when it can. */
+export function slipShortfall(
+  account: BetAccount,
+  b: Balances,
+  total: number,
+): { message: string; switchTo: BetAccount | null } | null {
+  const available = availableFor(account, b)
+  if (total <= available) return null
+  const other = otherAccount(account)
+  return {
+    message: notEnoughMessage(account, available),
+    switchTo: total <= availableFor(other, b) ? other : null,
+  }
+}
+
+/** A pick's est. return by account: a points stake comes back as points, the profit as wallet. */
+export function returnSplit(account: BetAccount, stake: number, estimate: number): Funding {
+  if (account === 'WALLET') return { wallet: estimate, points: 0 }
+  const points = Math.min(stake, estimate)
+  return { wallet: Math.max(0, estimate - stake), points }
+}
+
+/** bestCaseReturn, split by account: the best pick of each game. */
+export function bestCaseSplit(picks: SlipPick[], returns: (number | null)[], account: BetAccount): Funding {
+  const best = new Map<string, { stake: number; ret: number }>()
+  picks.forEach((p, i) => {
+    const r = returns[i]
+    if (r == null) return
+    const cur = best.get(p.gameId)
+    if (!cur || r > cur.ret) best.set(p.gameId, { stake: p.stake, ret: r })
+  })
+  const sum: Funding = { wallet: 0, points: 0 }
+  for (const { stake, ret } of best.values()) {
+    const part = returnSplit(account, stake, ret)
+    sum.wallet += part.wallet
+    sum.points += part.points
+  }
+  return sum
 }

@@ -61,8 +61,8 @@ describe('syncGames', () => {
     await fundUser(u.id, 100)
     await fundUser(other.id, 100)
     const g = await makeGame({ externalId: 501 })
-    await placeBet(u.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
-    await placeBet(other.id, { gameId: g.id, awayDigit: 0, homeDigit: 0, stake: 100 })
+    await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(other.id, 'WALLET', { gameId: g.id, awayDigit: 0, homeDigit: 0, stake: 100 })
     const r = await syncGames({
       fetchGames: fetcher([
         apiGame({ status: 'Final', period: 4, visitor_team_score: 99, home_team_score: 106 }),
@@ -92,7 +92,7 @@ describe('syncGames', () => {
     const u = await makeUser()
     await fundUser(u.id, 100)
     const g = await makeGame({ externalId: 501 })
-    await placeBet(u.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
     await prisma.game.update({ where: { id: g.id }, data: { status: 'POSTPONED' } })
     await voidGame(admin.id, g.id, 'Postponed')
     const r = await syncGames({
@@ -147,7 +147,7 @@ describe('syncGames', () => {
     const u = await makeUser()
     await fundUser(u.id, 100)
     const g = await makeGame({ externalId: 501, startsAt: new Date(Date.now() + 3600_000) })
-    await placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 })
+    await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 })
     const newTime = new Date(Date.now() + 2 * 86400_000)
     await syncGames({ fetchGames: fetcher([apiGame({ datetime: newTime.toISOString() })]) })
     expect((await prisma.game.findUniqueOrThrow({ where: { id: g.id } })).startsAt).toEqual(newTime)

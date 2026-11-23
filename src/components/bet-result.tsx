@@ -1,10 +1,19 @@
 import type { BetResult as Result } from '@prisma/client'
 
-import { formatPoints } from '@/lib/format'
+import { formatSplit } from '@/lib/format'
+import { splitReturn } from '@/lib/funding'
 import { cn } from '@/lib/utils'
 
-/** "+225" in accent for wins; muted for losses; plain for pending/refunded (spec §4.4). */
-export function BetResult({ result, payout }: { result: Result; payout: number }) {
+/** "Won +₱210 + 100 pts" in accent for wins; muted for losses; plain for pending/refunded (spec §4.4). */
+export function BetResult({
+  result,
+  payout,
+  pointsStake,
+}: {
+  result: Result
+  payout: number
+  pointsStake: number
+}) {
   return (
     <span
       className={cn(
@@ -14,7 +23,7 @@ export function BetResult({ result, payout }: { result: Result; payout: number }
       )}
     >
       {result === 'WON'
-        ? `Won +${formatPoints(payout)}`
+        ? `Won ${formatSplit(splitReturn(payout, pointsStake), { signed: true })}`
         : result === 'LOST'
           ? 'Lost'
           : result === 'PENDING'

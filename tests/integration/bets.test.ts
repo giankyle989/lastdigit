@@ -17,7 +17,7 @@ describe('placeBet', () => {
     const u = await makeUser()
     await fundUser(u.id, 1000)
     const g = await makeGame()
-    const bet = await placeBet(u.id, { gameId: g.id, awayDigit: '9', homeDigit: '6', stake: '100' })
+    const bet = await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: '9', homeDigit: '6', stake: '100' })
     expect(bet).toMatchObject({ awayDigit: 9, homeDigit: 6, stake: 100, result: 'PENDING' })
     expect(await balanceOf(u.id)).toBe(900)
     const t = await prisma.transaction.findFirstOrThrow({ where: { type: 'BET' } })
@@ -30,8 +30,8 @@ describe('placeBet', () => {
     const u = await makeUser()
     await fundUser(u.id, 1000)
     const g = await makeGame()
-    await placeBet(u.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
-    const merged = await placeBet(u.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 50 })
+    await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    const merged = await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 50 })
     expect(merged.stake).toBe(150)
     expect(await prisma.bet.count()).toBe(1)
     expect(await prisma.transaction.count({ where: { type: 'BET' } })).toBe(2)
@@ -41,8 +41,8 @@ describe('placeBet', () => {
     const u = await makeUser()
     await fundUser(u.id, 1000)
     const g = await makeGame()
-    await placeBet(u.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
-    await placeBet(u.id, { gameId: g.id, awayDigit: 2, homeDigit: 4, stake: 100 })
+    await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 2, homeDigit: 4, stake: 100 })
     expect(await prisma.bet.count()).toBe(2)
   })
 
@@ -51,7 +51,7 @@ describe('placeBet', () => {
     await fundUser(u.id, 50)
     const g = await makeGame()
     await expect(
-      placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 51 }),
+      placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 51 }),
     ).rejects.toMatchObject({
       code: 'INSUFFICIENT_BALANCE',
     })
@@ -64,7 +64,7 @@ describe('placeBet', () => {
     await fundUser(u.id, 2_000_000)
     const g = await makeGame()
     await expect(
-      placeBet(u.id, { gameId: g.id, awayDigit: '9', homeDigit: '6', stake: '1000001' }),
+      placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: '9', homeDigit: '6', stake: '1000001' }),
     ).rejects.toBeInstanceOf(ZodError)
     expect(await balanceOf(u.id)).toBe(2_000_000)
   })
@@ -75,10 +75,11 @@ describe('placeBet', () => {
     const startsAt = new Date('2026-11-11T23:00:00Z')
     const g = await makeGame({ startsAt })
     await expect(
-      placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }, startsAt),
+      placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }, startsAt),
     ).rejects.toMatchObject({ code: 'BETTING_CLOSED' })
     const ok = await placeBet(
       u.id,
+      'WALLET',
       { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 },
       new Date(startsAt.getTime() - 1000),
     )
@@ -92,7 +93,7 @@ describe('placeBet', () => {
       await fundUser(u.id, 100)
       const g = await makeGame({ status })
       await expect(
-        placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }),
+        placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }),
       ).rejects.toMatchObject({
         code: 'BETTING_CLOSED',
       })
@@ -103,7 +104,7 @@ describe('placeBet', () => {
     const u = await makeUser()
     await fundUser(u.id, 100)
     await expect(
-      placeBet(u.id, { gameId: 'nope', awayDigit: 1, homeDigit: 1, stake: 10 }),
+      placeBet(u.id, 'WALLET', { gameId: 'nope', awayDigit: 1, homeDigit: 1, stake: 10 }),
     ).rejects.toMatchObject({
       code: 'NOT_FOUND',
     })
@@ -114,13 +115,13 @@ describe('placeBet', () => {
     await fundUser(u.id, 100)
     const g = await makeGame()
     await expect(
-      placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }),
+      placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }),
     ).rejects.toMatchObject({
       code: 'SUSPENDED',
     })
     await prisma.user.update({ where: { id: u.id }, data: { suspendedUntil: new Date(Date.now() - 1000) } })
     await expect(
-      placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }),
+      placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 10 }),
     ).resolves.toBeTruthy()
   })
 
@@ -128,15 +129,15 @@ describe('placeBet', () => {
     const u = await makeUser({ stakeLimitPerGame: 100 })
     await fundUser(u.id, 1000)
     const g = await makeGame()
-    await placeBet(u.id, { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 60 })
+    await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 1, homeDigit: 1, stake: 60 })
     await expect(
-      placeBet(u.id, { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 50 }),
+      placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 50 }),
     ).rejects.toMatchObject({
       code: 'STAKE_LIMIT',
       message: 'Stake limit exceeded (remaining: 40)',
     })
     await expect(
-      placeBet(u.id, { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 40 }),
+      placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 2, homeDigit: 2, stake: 40 }),
     ).resolves.toBeTruthy()
   })
 
@@ -146,8 +147,8 @@ describe('placeBet', () => {
     const g1 = await makeGame()
     const g2 = await makeGame()
     const results = await Promise.allSettled([
-      placeBet(u.id, { gameId: g1.id, awayDigit: 1, homeDigit: 1, stake: 80 }),
-      placeBet(u.id, { gameId: g2.id, awayDigit: 1, homeDigit: 1, stake: 80 }),
+      placeBet(u.id, 'WALLET', { gameId: g1.id, awayDigit: 1, homeDigit: 1, stake: 80 }),
+      placeBet(u.id, 'WALLET', { gameId: g2.id, awayDigit: 1, homeDigit: 1, stake: 80 }),
     ])
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
     expect(await balanceOf(u.id)).toBe(20)
@@ -170,7 +171,7 @@ describe('placeBet', () => {
     await fundUser(u.id, 10_000)
     const g = await makeGame()
     await expect(
-      placeBet(u.id, { gameId: g.id, awayDigit: '1', homeDigit: '1', stake: '10', ...override }),
+      placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: '1', homeDigit: '1', stake: '10', ...override }),
     ).rejects.toBeInstanceOf(ZodError)
     expect(await prisma.bet.count()).toBe(0)
   })

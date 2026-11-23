@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { ActionForm } from '@/components/action-form'
 import { ActionDialog } from '@/components/admin/action-dialog'
 import { Field } from '@/components/admin/field'
-import { PointsAmount } from '@/components/points-amount'
+import { Amount } from '@/components/amount'
 import { ChatThread } from '@/components/support/chat-thread'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -53,7 +53,7 @@ export function TicketDrawer({ thread, canAdjust }: { thread: Thread; canAdjust:
                 </>
               ) : (
                 <>
-                  Wallet: <PointsAmount value={thread.user.walletBalance} unit />
+                  Wallet: <Amount kind="wallet" value={thread.user.walletBalance} />
                   {cash.kind === 'CASH_OUT' && ' available to cash out'}
                 </>
               )}
@@ -67,7 +67,7 @@ export function TicketDrawer({ thread, canAdjust }: { thread: Thread; canAdjust:
               action={ticketCashAction.bind(null, thread.id)}
             >
               <input type="hidden" name="kind" value={cash.kind} />
-              <Field id="ticket-amount" label="Amount">
+              <Field id="ticket-amount" label="Amount (₱)">
                 <Input
                   id="ticket-amount"
                   name="amount"

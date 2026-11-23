@@ -3,10 +3,10 @@ import Link from 'next/link'
 import { KpiTile } from '@/components/admin/kpi-tile'
 import { PageHeader } from '@/components/admin/page-header'
 import { VolumeChart } from '@/components/admin/volume-chart'
-import { PointsAmount } from '@/components/points-amount'
+import { Amount, SplitAmount } from '@/components/amount'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { formatDateTime, formatPoints, formatRelative } from '@/lib/format'
+import { formatAmount, formatDateTime, formatRelative } from '@/lib/format'
 import { getDailyVolume, getOverviewStats, getTopBettorsToday } from '@/server/admin/overview'
 import { requireAdmin } from '@/server/session'
 
@@ -37,10 +37,14 @@ async function OverviewBody() {
   return (
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile label="Players" value={formatPoints(s.playerCount)} sub={`+${s.newPlayers7d} in 7d`} />
+        <KpiTile
+          label="Players"
+          value={s.playerCount.toLocaleString('en-US')}
+          sub={`+${s.newPlayers7d} in 7d`}
+        />
         <KpiTile
           label="Open pools"
-          value={formatPoints(s.openPoolTotal)}
+          value={formatAmount('pool', s.openPoolTotal)}
           sub={`${s.openPoolCount} ${s.openPoolCount === 1 ? 'game' : 'games'}`}
         />
         <KpiTile
@@ -49,10 +53,10 @@ async function OverviewBody() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <span tabIndex={0} className="cursor-help underline decoration-dotted underline-offset-4">
-                  {formatPoints(s.houseTake7d)}
+                  {formatAmount('pool', s.houseTake7d)}
                 </span>
               </TooltipTrigger>
-              <TooltipContent>All time: {formatPoints(s.houseTakeAllTime)}</TooltipContent>
+              <TooltipContent>All time: {formatAmount('pool', s.houseTakeAllTime)}</TooltipContent>
             </Tooltip>
           }
           sub="Last 7 days (PHT)"
@@ -117,8 +121,9 @@ async function OverviewBody() {
                         <span>
                           Negative {which}: {u.username}
                         </span>
-                        <PointsAmount
-                          value={Math.min(u.walletBalance, 0) + Math.min(u.pointsBalance, 0)}
+                        <SplitAmount
+                          wallet={Math.min(u.walletBalance, 0)}
+                          points={Math.min(u.pointsBalance, 0)}
                           className="text-danger"
                         />
                       </Link>
@@ -164,7 +169,7 @@ async function OverviewBody() {
                     <Link href={`/admin/players?player=${b.userId}`} className="flex items-center gap-3 py-2">
                       <span className="num text-muted-foreground w-4">{i + 1}</span>
                       <span className="flex-1">{b.username}</span>
-                      <PointsAmount value={b.volume} unit />
+                      <Amount kind="pool" value={b.volume} />
                     </Link>
                   </li>
                 ))}

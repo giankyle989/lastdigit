@@ -6,7 +6,7 @@ import { placeBet } from '../src/server/bets'
 import { setBonuses } from '../src/server/settings'
 import type { ApiGame } from '../src/server/sync/balldontlie'
 import { syncGames } from '../src/server/sync/sync'
-import { login, logout, signup } from './helpers'
+import { login, logout, payFrom, signup } from './helpers'
 
 test('referral → first top-up matched + referral bonus → daily bonus → slip bet → settle → payout', async ({
   page,
@@ -74,7 +74,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   })
   // alice tops up 100 (+100 matched) and joins the pool on a losing ending, so it is not a solo pool
   await adjustBalance(adminRow.id, aliceRow.id, { kind: 'CASH_IN', amount: 100, note: 'top-up' })
-  await placeBet(aliceRow.id, { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
+  await placeBet(aliceRow.id, 'WALLET', { gameId: game.id, awayDigit: 1, homeDigit: 1, stake: 100 })
 
   await login(page, bob, 'secret123')
   await page.waitForURL('**/games')
@@ -117,7 +117,8 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   await expect(slipText('Bet slip cleared.')).toBeVisible()
   await page.getByRole('button', { name: 'Undo' }).click()
   await expect(slipText('4 picks')).toBeVisible()
-  await expect(slipText('Uses 400 points')).toBeVisible()
+  // pay the whole slip from points (a slip is charged to one account only)
+  await payFrom(page, 'Points')
   await page.getByRole('button', { name: 'Confirm bets' }).click()
   await expect(page.getByText('4 bets placed')).toBeVisible()
 
@@ -139,7 +140,7 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
   // bob: wallet 1000 top-up + 350 (payout 450 minus the 100 points stake on 9-6);
   // points 1000 welcome + 100 daily - 400 staked + 100 points stake back
   await page.goto('/wallet')
-  await expect(page.getByTestId('wallet-balance')).toHaveText('1,350 pts')
+  await expect(page.getByTestId('wallet-balance')).toHaveText('₱1,350')
   await expect(page.getByTestId('points-balance')).toHaveText('800 pts')
   await expect(
     page
@@ -148,9 +149,9 @@ test('referral → first top-up matched + referral bonus → daily bonus → sli
       .first(),
   ).toBeVisible()
 
-  // alice: wallet 100 top-up; points 200 referral + 100 welcome - 100 stake (her bet lost)
+  // alice: wallet 100 top-up - 100 stake (her bet lost, paid from the wallet); points 200 referral + 100 welcome
   const aliceAfter = await prisma.user.findUniqueOrThrow({ where: { usernameKey: alice } })
-  expect([aliceAfter.walletBalance, aliceAfter.pointsBalance]).toEqual([100, 200])
+  expect([aliceAfter.walletBalance, aliceAfter.pointsBalance]).toEqual([0, 300])
 })
 
 test.afterAll(async () => {

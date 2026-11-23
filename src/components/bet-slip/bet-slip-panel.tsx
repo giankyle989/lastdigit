@@ -7,21 +7,26 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
 import { getSlipStatusAction, placeBetsAction } from '@/app/(player)/actions'
-import { PointsAmount } from '@/components/points-amount'
+import { Amount, SplitAmount } from '@/components/amount'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { accountKind } from '@/lib/format'
+import { availableFor } from '@/lib/funding'
 import { formatEnding } from '@/lib/game/ending'
 import {
-  bestCaseReturn,
+  bestCaseSplit,
   estimatePickReturns,
-  fundingLine,
   parseStakeInput,
   QUICK_STAKES,
+  resolveAccount,
+  returnSplit,
   type SlipPick,
+  slipShortfall,
   slipTotal,
 } from '@/lib/slip'
 import { cn } from '@/lib/utils'
 
+import { PayFrom } from './pay-from'
 import { useSlip } from './slip-provider'
 
 type PickKey = { gameId: string; awayDigit: number; homeDigit: number }
@@ -89,16 +94,22 @@ export function BetSlipPanel() {
   }
 
   const statusByKey = new Map(status?.picks.map((s) => [keyOf(s), s]))
-  const balance = status ? status.walletBalance + status.pointsBalance : slip.balance
-  const points = status?.pointsBalance ?? slip.points
+  const balances = {
+    wallet: status?.walletBalance ?? slip.wallet,
+    points: status?.pointsBalance ?? slip.points,
+  }
+  const account = resolveAccount(slip.account, balances)
+  const available = availableFor(account, balances)
+  const kind = accountKind(account)
   const total = slipTotal(slip.picks)
-  const funding = fundingLine(total, points)
+  const shortfall = slipShortfall(account, balances, total)
+  const switchTo = shortfall?.switchTo
   const anyClosed = slip.picks.some((p) => statusByKey.get(keyOf(p))?.open === false)
   const anyInvalid = slip.picks.some((p) => p.stake < 1)
   const returns = estimatePickReturns(slip.picks, (p) => statusByKey.get(keyOf(p)))
-  const bestReturn = bestCaseReturn(slip.picks, returns)
+  const bestReturn = bestCaseSplit(slip.picks, returns, account)
   const count = slip.picks.length
-  const disabled = pending || total > balance || anyClosed || anyInvalid
+  const disabled = pending || shortfall !== null || anyClosed || anyInvalid
 
   function confirm() {
     startTransition(async () => {
@@ -112,6 +123,7 @@ export function BetSlipPanel() {
           return
         }
         const result = await placeBetsAction(
+          account,
           picks.map(({ gameId, awayDigit, homeDigit, stake }) => ({ gameId, awayDigit, homeDigit, stake })),
         )
         if (result.error) {
@@ -152,6 +164,13 @@ export function BetSlipPanel() {
           Clear all
         </Button>
       </div>
+      <PayFrom
+        account={account}
+        wallet={balances.wallet}
+        points={balances.points}
+        disabled={pending}
+        onChange={slip.setAccount}
+      />
       {/* Only the picks scroll, so totals and Confirm bets stay in view. Focusable so keyboard
           users can scroll it even when every row's inputs are disabled. */}
       <ul
@@ -221,7 +240,7 @@ export function BetSlipPanel() {
                   variant="outline"
                   size="sm"
                   aria-label={`Max stake for ${label}`}
-                  onClick={() => slip.setMax(i, balance)}
+                  onClick={() => slip.setMax(i, available)}
                   disabled={closed || pending}
                 >
                   Max
@@ -229,7 +248,7 @@ export function BetSlipPanel() {
               </div>
               {returns[i] != null && !closed && (
                 <div className="text-muted-foreground mt-1 text-xs">
-                  Est. return if it hits <PointsAmount value={returns[i]} />
+                  Est. return if it hits <SplitAmount {...returnSplit(account, p.stake, returns[i])} />
                 </div>
               )}
             </li>
@@ -239,21 +258,32 @@ export function BetSlipPanel() {
 
       <dl className="grid grid-cols-2 gap-y-1 text-sm">
         <dt className="text-muted-foreground">Total stake</dt>
-        <dd className={cn('text-right', total > balance && 'text-danger')}>
-          <PointsAmount value={total} unit />
+        <dd className={cn('text-right', shortfall && 'text-danger')}>
+          <Amount kind={kind} value={total} />
         </dd>
         <dt className="text-muted-foreground">Available</dt>
         <dd className="text-right">
-          <PointsAmount value={balance} unit />
+          <Amount kind={kind} value={available} />
         </dd>
         <dt className="text-muted-foreground">Est. max return</dt>
         <dd className="text-primary text-right">
-          <PointsAmount value={bestReturn} unit />
+          <SplitAmount wallet={bestReturn.wallet} points={bestReturn.points} />
         </dd>
       </dl>
-      {funding && (
-        <p className="text-muted-foreground text-xs" data-testid="slip-funding">
-          {funding}
+      {shortfall && (
+        <p className="text-danger text-sm" role="alert">
+          {shortfall.message}{' '}
+          {switchTo && (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto p-0"
+              onClick={() => slip.setAccount(switchTo)}
+            >
+              Pay from {switchTo === 'WALLET' ? 'Wallet' : 'Points'} instead
+            </Button>
+          )}
         </p>
       )}
       <p className="text-muted-foreground text-xs">

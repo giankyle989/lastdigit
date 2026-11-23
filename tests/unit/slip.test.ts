@@ -3,20 +3,23 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   addBlockReason,
   bestCaseReturn,
+  bestCaseSplit,
   canAdd,
   EMPTY_SLIP,
   endingKey,
   estimatePickReturns,
-  fundingLine,
   maxStakeFor,
   newPickCount,
   parseStakeInput,
   parseStoredSlip,
   parseTotalInput,
   planMultiAdd,
+  resolveAccount,
+  returnSplit,
   type Slip,
   slipReducer,
   slipRoom,
+  slipShortfall,
   slipStorageKey,
   slipTotal,
   splitStake,
@@ -173,14 +176,12 @@ describe('addMany and the multi-add plan', () => {
     expect(plan(EMPTY_SLIP, [e(0, 0)], 'perEnding', 0).blocked).toBe('Enter a stake')
     expect(plan(EMPTY_SLIP, [e(0, 0)], 'perEnding', parseStakeInput('1e3')).blocked).toBe('Enter a stake')
     expect(plan(EMPTY_SLIP, [e(0, 0), e(0, 1), e(0, 2)], 'splitTotal', 2).blocked).toBe(
-      'At least 1 pt per ending',
+      'At least 1 per ending',
     )
     expect(plan(EMPTY_SLIP, [e(0, 0), e(0, 1)], 'splitTotal', 2_000_001).blocked).toBe(
-      'At most 1,000,000 pts per ending',
+      'At most 1,000,000 per ending',
     )
-    expect(plan(EMPTY_SLIP, [e(0, 0)], 'perEnding', 1_000_010).blocked).toBe(
-      'At most 1,000,000 pts per ending',
-    )
+    expect(plan(EMPTY_SLIP, [e(0, 0)], 'perEnding', 1_000_010).blocked).toBe('At most 1,000,000 per ending')
   })
 
   it('counts room only for endings not already in the slip', () => {
@@ -243,10 +244,11 @@ describe('clear and restore', () => {
       { ...pick('g2'), stake: 50 },
     ],
     lastStake: 50,
+    account: null,
   }
 
   it('clear empties the picks and keeps the last stake', () => {
-    expect(slipReducer(full, { type: 'clear' })).toEqual({ picks: [], lastStake: 50 })
+    expect(slipReducer(full, { type: 'clear' })).toEqual({ picks: [], lastStake: 50, account: null })
   })
 
   it('restore puts the cleared picks back into an empty slip', () => {
@@ -292,13 +294,72 @@ describe('estimated returns', () => {
   })
 })
 
-describe('fundingLine', () => {
-  it('says how a stake will be paid', () => {
-    expect(fundingLine(0, 100)).toBeNull()
-    expect(fundingLine(300, 0)).toBe('Uses 300 wallet')
-    expect(fundingLine(300, 500)).toBe('Uses 300 points')
-    expect(fundingLine(700, 500)).toBe('Uses 500 points + 200 wallet')
-    expect(fundingLine(1500, 1200)).toBe('Uses 1,200 points + 300 wallet')
-    expect(fundingLine(300, -50)).toBe('Uses 300 wallet') // negative points count as 0
+describe('pay from', () => {
+  const b = { wallet: 700, points: 40 }
+
+  it('defaults to points when the player has any, else the wallet', () => {
+    expect(resolveAccount(null, b)).toBe('POINTS')
+    expect(resolveAccount(null, { wallet: 700, points: 0 })).toBe('WALLET')
+    expect(resolveAccount(null, { wallet: 700, points: -5 })).toBe('WALLET')
+    expect(resolveAccount('WALLET', b)).toBe('WALLET')
+  })
+
+  it('reports a shortfall in the chosen balance and offers the other when it covers the slip', () => {
+    expect(slipShortfall('POINTS', b, 40)).toBeNull()
+    expect(slipShortfall('POINTS', b, 100)).toEqual({
+      message: 'Not enough points (40 pts).',
+      switchTo: 'WALLET',
+    })
+    expect(slipShortfall('POINTS', b, 800)).toEqual({
+      message: 'Not enough points (40 pts).',
+      switchTo: null,
+    })
+    expect(slipShortfall('WALLET', { wallet: -25, points: 40 }, 50)).toEqual({
+      message: 'Not enough in the wallet (₱0).',
+      switchTo: null,
+    })
+  })
+
+  it('splits a points return into the stake back as points and the rest as wallet', () => {
+    expect(returnSplit('WALLET', 100, 310)).toEqual({ wallet: 310, points: 0 })
+    expect(returnSplit('POINTS', 100, 310)).toEqual({ wallet: 210, points: 100 })
+    // a crowded ending: the estimate is at or below the stake, so no ₱ part
+    expect(returnSplit('POINTS', 100, 100)).toEqual({ wallet: 0, points: 100 })
+    expect(returnSplit('POINTS', 100, 80)).toEqual({ wallet: 0, points: 80 })
+  })
+
+  it('splits the best case per game', () => {
+    const picks = [
+      { gameId: 'g1', awayDigit: 1, homeDigit: 2, stake: 100, matchup: 'A @ B' },
+      { gameId: 'g1', awayDigit: 3, homeDigit: 4, stake: 50, matchup: 'A @ B' },
+      { gameId: 'g2', awayDigit: 0, homeDigit: 0, stake: 20, matchup: 'C @ D' },
+    ]
+    // best of g1 is the first pick (300), g2's pick returns 60
+    expect(bestCaseSplit(picks, [300, 200, 60], 'POINTS')).toEqual({ wallet: 240, points: 120 })
+    expect(bestCaseSplit(picks, [300, 200, 60], 'WALLET')).toEqual({ wallet: 360, points: 0 })
+    expect(bestCaseSplit(picks, [null, null, null], 'POINTS')).toEqual({ wallet: 0, points: 0 })
+  })
+
+  it('stores the choice', () => {
+    const s = slipReducer(
+      { picks: [], lastStake: 100, account: null },
+      { type: 'setAccount', account: 'WALLET' },
+    )
+    expect(s.account).toBe('WALLET')
+  })
+
+  it('loads a slip saved before the choice existed, keeping its picks', () => {
+    const old = JSON.stringify({
+      picks: [{ gameId: 'g1', awayDigit: 1, homeDigit: 2, stake: 100, matchup: 'A @ B' }],
+      lastStake: 100,
+    })
+    const s = parseStoredSlip(old)
+    expect(s.picks).toHaveLength(1)
+    expect(s.account).toBeNull()
+  })
+
+  it('drops an unknown saved account instead of the whole slip', () => {
+    const odd = JSON.stringify({ picks: [], lastStake: 50, account: 'BITCOIN' })
+    expect(parseStoredSlip(odd)).toEqual({ picks: [], lastStake: 50, account: null })
   })
 })

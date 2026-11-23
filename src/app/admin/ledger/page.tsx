@@ -5,9 +5,9 @@ import { Field } from '@/components/admin/field'
 import { FilterForm } from '@/components/admin/filter-form'
 import { PageHeader } from '@/components/admin/page-header'
 import { SelectField } from '@/components/admin/select-field'
-import { PointsAmount } from '@/components/points-amount'
+import { Amount } from '@/components/amount'
 import { Input } from '@/components/ui/input'
-import { formatDateTime } from '@/lib/format'
+import { accountKind, formatDateTime } from '@/lib/format'
 import { formatSort, type SearchParams } from '@/lib/table-params'
 import { ACCOUNT_LABELS, TX_TYPE_LABELS } from '@/lib/wallet'
 import {
@@ -97,13 +97,13 @@ async function LedgerTable({ sp, params }: { sp: SearchParams; params: LedgerLis
           header: 'Amount',
           sort: 'amount',
           align: 'right',
-          cell: (t) => <PointsAmount value={t.amount} signed />,
+          cell: (t) => <Amount kind={accountKind(t.account)} value={t.amount} signed />,
         },
         {
           key: 'balanceAfter',
           header: 'Balance after',
           align: 'right',
-          cell: (t) => <PointsAmount value={t.balanceAfter} />,
+          cell: (t) => <Amount kind={accountKind(t.account)} value={t.balanceAfter} />,
         },
         { key: 'note', header: 'Note', cell: (t) => t.note ?? '' },
       ]}
@@ -113,7 +113,11 @@ async function LedgerTable({ sp, params }: { sp: SearchParams; params: LedgerLis
             Total for this filter
           </td>
           <td className="px-3 py-2 text-right">
-            <PointsAmount value={result.totalAmount} signed />
+            <Amount
+              kind={params.account ? accountKind(params.account) : 'pool'}
+              value={result.totalAmount}
+              signed
+            />
           </td>
           <td colSpan={2} />
         </tr>

@@ -1,18 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { splitReturn, splitStake } from '@/lib/funding'
-
-describe('splitStake', () => {
-  it('spends points first, then the wallet', () => {
-    expect(splitStake(100, 0)).toEqual({ points: 0, wallet: 100 })
-    expect(splitStake(100, 60)).toEqual({ points: 60, wallet: 40 })
-    expect(splitStake(100, 500)).toEqual({ points: 100, wallet: 0 })
-  })
-
-  it('treats negative points as none', () => {
-    expect(splitStake(100, -30)).toEqual({ points: 0, wallet: 100 })
-  })
-})
+import { availableFor, notEnoughMessage, otherAccount, splitReturn } from '@/lib/funding'
 
 describe('splitReturn', () => {
   it('returns the points stake to points and the rest to the wallet', () => {
@@ -29,5 +17,21 @@ describe('splitReturn', () => {
 
   it('never returns more points than the amount', () => {
     expect(splitReturn(50, 60)).toEqual({ points: 50, wallet: 0 })
+  })
+})
+
+describe('bet accounts', () => {
+  it('counts only the chosen balance, a negative one as 0', () => {
+    expect(availableFor('POINTS', { wallet: 700, points: 40 })).toBe(40)
+    expect(availableFor('WALLET', { wallet: 700, points: 40 })).toBe(700)
+    expect(availableFor('WALLET', { wallet: -25, points: 40 })).toBe(0)
+  })
+  it('names the account in the not-enough message', () => {
+    expect(notEnoughMessage('POINTS', 40)).toBe('Not enough points (40 pts).')
+    expect(notEnoughMessage('WALLET', 25)).toBe('Not enough in the wallet (₱25).')
+  })
+  it('knows the other account', () => {
+    expect(otherAccount('WALLET')).toBe('POINTS')
+    expect(otherAccount('POINTS')).toBe('WALLET')
   })
 })

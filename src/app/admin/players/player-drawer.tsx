@@ -3,11 +3,11 @@ import Link from 'next/link'
 import { ActionForm } from '@/components/action-form'
 import { ActionDialog } from '@/components/admin/action-dialog'
 import { Field } from '@/components/admin/field'
+import { Amount, SplitAmount } from '@/components/amount'
 import { BetResult } from '@/components/bet-result'
-import { PointsAmount } from '@/components/points-amount'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatDate, formatDateTime } from '@/lib/format'
+import { accountKind, formatDate, formatDateTime } from '@/lib/format'
 import { formatEnding } from '@/lib/game/ending'
 import { formatPhPhone } from '@/lib/phone'
 import { isSuspended } from '@/lib/suspension'
@@ -55,13 +55,21 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
         <div>
           <dt className="text-muted-foreground text-xs">Wallet</dt>
           <dd>
-            <PointsAmount value={p.walletBalance} unit className={p.walletBalance < 0 ? 'text-danger' : ''} />
+            <Amount
+              kind="wallet"
+              value={p.walletBalance}
+              className={p.walletBalance < 0 ? 'text-danger' : ''}
+            />
           </dd>
         </div>
         <div>
           <dt className="text-muted-foreground text-xs">Points</dt>
           <dd>
-            <PointsAmount value={p.pointsBalance} unit className={p.pointsBalance < 0 ? 'text-danger' : ''} />
+            <Amount
+              kind="points"
+              value={p.pointsBalance}
+              className={p.pointsBalance < 0 ? 'text-danger' : ''}
+            />
           </dd>
         </div>
         <div>
@@ -158,7 +166,7 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
           action={adjustBalanceAction.bind(null, p.id)}
         >
           <input type="hidden" name="kind" value="CASH_IN" />
-          <AmountAndNote />
+          <AmountAndNote unit="₱" />
         </ActionDialog>
         <ActionDialog
           triggerLabel="Cash out"
@@ -168,7 +176,7 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
           action={adjustBalanceAction.bind(null, p.id)}
         >
           <input type="hidden" name="kind" value="CASH_OUT" />
-          <AmountAndNote />
+          <AmountAndNote unit="₱" />
         </ActionDialog>
         <ActionDialog
           triggerLabel="Give points"
@@ -179,7 +187,7 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
           action={adjustBalanceAction.bind(null, p.id)}
         >
           <input type="hidden" name="kind" value="GIVE_POINTS" />
-          <AmountAndNote />
+          <AmountAndNote unit="pts" />
         </ActionDialog>
         <ActionDialog
           triggerLabel="Take points"
@@ -188,7 +196,7 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
           action={adjustBalanceAction.bind(null, p.id)}
         >
           <input type="hidden" name="kind" value="TAKE_POINTS" />
-          <AmountAndNote />
+          <AmountAndNote unit="pts" />
         </ActionDialog>
         {/* Both stay mounted (hidden, not swapped) so the success toast and onSuccess of the form
             that just submitted are not lost when the revalidated render flips `suspended`. */}
@@ -267,8 +275,8 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
                   {b.game.awayTeam} @ {b.game.homeTeam}
                 </Link>
                 <span className="num">{formatEnding(b)}</span>
-                <PointsAmount value={b.stake} />
-                <BetResult result={b.result} payout={b.payout} />
+                <SplitAmount wallet={b.stake - b.pointsStake} points={b.pointsStake} />
+                <BetResult result={b.result} payout={b.payout} pointsStake={b.pointsStake} />
               </li>
             ))}
             {p.bets.length === 0 && <li className="text-muted-foreground py-2">No bets.</li>}
@@ -285,8 +293,12 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
                     {t.note ? ` · ${t.note}` : ''}
                   </span>
                 </span>
-                <PointsAmount value={t.amount} signed />
-                <PointsAmount value={t.balanceAfter} className="text-muted-foreground" />
+                <Amount kind={accountKind(t.account)} value={t.amount} signed />
+                <Amount
+                  kind={accountKind(t.account)}
+                  value={t.balanceAfter}
+                  className="text-muted-foreground"
+                />
               </li>
             ))}
             {p.transactions.length === 0 && <li className="text-muted-foreground py-2">No transactions.</li>}
@@ -310,10 +322,10 @@ export function PlayerDrawer({ player: p, linked }: { player: Player; linked: Li
   )
 }
 
-function AmountAndNote() {
+function AmountAndNote({ unit }: { unit: '₱' | 'pts' }) {
   return (
     <>
-      <Field id="amount" label="Amount">
+      <Field id="amount" label={`Amount (${unit})`}>
         <Input id="amount" name="amount" type="number" min={1} step={1} required />
       </Field>
       <Field id="note" label="Note">

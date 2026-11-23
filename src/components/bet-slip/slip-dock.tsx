@@ -2,10 +2,11 @@
 
 import { Ticket } from 'lucide-react'
 
-import { PointsAmount } from '@/components/points-amount'
+import { Amount } from '@/components/amount'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { slipTotal } from '@/lib/slip'
+import { accountKind } from '@/lib/format'
+import { resolveAccount, slipTotal } from '@/lib/slip'
 
 import { BetSlipPanel } from './bet-slip-panel'
 import { useSlip } from './slip-provider'
@@ -44,7 +45,10 @@ export function SlipBar() {
               <Ticket aria-hidden className="size-4" />
               Bet slip · {count}
             </span>
-            <PointsAmount value={slipTotal(slip.picks)} unit />
+            <Amount
+              kind={accountKind(resolveAccount(slip.account, { wallet: slip.wallet, points: slip.points }))}
+              value={slipTotal(slip.picks)}
+            />
           </button>
         </div>
       )}

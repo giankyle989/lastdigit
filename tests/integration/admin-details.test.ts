@@ -13,7 +13,7 @@ describe('admin drawer details', () => {
     const u = await makeUser({ username: 'winner' })
     await fundUser(u.id, 500)
     const g = await makeGame()
-    const bet = await placeBet(u.id, { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
+    const bet = await placeBet(u.id, 'WALLET', { gameId: g.id, awayDigit: 9, homeDigit: 6, stake: 100 })
     await prisma.bet.update({ where: { id: bet.id }, data: { result: 'WON', payout: 90 } })
 
     const d = await getGameDetail(g.id)

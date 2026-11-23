@@ -1,8 +1,8 @@
 import type { GameStatus } from '@prisma/client'
 import Link from 'next/link'
 
+import { Amount } from '@/components/amount'
 import { Countdown } from '@/components/countdown'
-import { PointsAmount } from '@/components/points-amount'
 import { StatusPill } from '@/components/status-pill'
 import { TeamBadge } from '@/components/team-badge'
 import { formatTipoffTime } from '@/lib/format'
@@ -50,7 +50,7 @@ export function GameCard({ game, now }: { game: GameCardData; now: Date }) {
       </div>
       <div className="text-muted-foreground mt-3 flex items-center justify-between text-sm">
         <span>
-          Pool <PointsAmount value={game.pool} className="text-foreground" />
+          Pool <Amount kind="pool" value={game.pool} className="text-foreground" />
         </span>
         {open && <Countdown to={game.startsAt.toISOString()} />}
       </div>
