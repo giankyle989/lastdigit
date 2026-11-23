@@ -45,13 +45,15 @@ argument (required, validated with zod) and `picks: { gameId, awayDigit, homeDig
 
 Under the existing locks (games, then the user row):
 
-1. All existing checks run unchanged: suspension, staff, betting closed, stake limit, the
+1. The suspension and staff checks run first, unchanged.
+2. `available` = the chosen balance, with a negative balance counted as 0. The slip total is
+   checked against it next, before any per-pick check (betting closed, stake limit,
+   20-endings-per-game limit). If the total is more than `available`, throw
+   `INSUFFICIENT_BALANCE` with a message naming the account and its balance, e.g.
+   `Not enough points (40 pts)` or `Not enough in the wallet (₱25)`. The error is slip-level: it
+   carries no pick label. Nothing is posted. The other balance is never read for funding.
+3. The remaining per-pick checks run unchanged: betting closed, stake limit, the
    20-endings-per-game limit.
-2. `available` = the chosen balance, with a negative balance counted as 0.
-3. If the slip total is more than `available`, throw `INSUFFICIENT_BALANCE` with a message naming
-   the account and its balance, e.g. `Not enough points (40 pts)` or
-   `Not enough in the wallet (₱25)`. Nothing is posted. The other balance is never read for
-   funding.
 4. Each stake posts one `BET` ledger entry to the chosen account (`postEntry`, unchanged).
 5. Each bet row's `pointsStake` grows by the stake on a points slip, and is unchanged on a wallet
    slip.
@@ -103,12 +105,15 @@ Tests must pin this.
 
 In `src/lib/format.ts`:
 
-- `formatWallet(n)` → `₱1,240` (negative: `-₱25`)
-- `formatPts(n)` → `40 pts`
-- `formatPool(n)` → `1,240`
+- `formatAmount(kind, n, { signed })`, with `kind` = `'wallet'` → `₱1,240` (negative: `-₱25`,
+  signed: `+₱100`), `'points'` → `40 pts` (signed: `+40 pts`), `'pool'` → `1,240`
+- `formatSplit({ wallet, points }, { signed })` → `₱60 + 40 pts`: wallet first, zero parts
+  dropped, all-zero is `₱0`, and the `+` goes on the first part only
+- `accountKind(account)` maps `'WALLET'` / `'POINTS'` to the `'wallet'` / `'points'` kind
 
-A component `<Amount kind="wallet" | "points" | "pool" value={n} />` replaces `PointsAmount`. It
-keeps its current visual role (tabular figures, optional sign).
+Components `<Amount kind="wallet" | "points" | "pool" value={n} />` and
+`<SplitAmount wallet={w} points={p} />` replace `PointsAmount`. They keep its current visual
+role (tabular figures, optional sign).
 
 ### Screens
 
@@ -148,7 +153,7 @@ unclear is a pool (no unit).
     settle as a win (points back to points, rest to wallet) and void (each account refunded its
     own part), with `expectLedgerConsistent()`.
 - **Unit**:
-  - `formatWallet`, `formatPts`, `formatPool`;
+  - `formatAmount` (all kinds, signed), `formatSplit`, `accountKind`;
   - slip: default account; stored `account` parsing; sufficiency check against the chosen balance;
     `maxStakeFor` with the chosen balance; points-slip return split.
 - **E2E** (`e2e/wallet.spec.ts`):
