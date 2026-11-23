@@ -27,6 +27,7 @@ export function PayFrom({ account, wallet, points, disabled, onChange }: Props) 
             key={o.value}
             className={cn(
               'border-border flex min-h-11 cursor-pointer flex-col justify-center rounded-lg border px-3 py-1.5 text-sm',
+              'has-[:focus-visible]:ring-primary has-[:focus-visible]:ring-offset-background has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-offset-2',
               account === o.value && 'border-primary ring-primary/40 ring-2',
             )}
           >
