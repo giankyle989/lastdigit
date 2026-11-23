@@ -1,3 +1,4 @@
+import { formatAmount } from './format'
 import { formatPhPhone } from './phone'
 
 /** What a new support ticket is about. Cash in and Cash out come with a prefilled message. */
@@ -73,5 +74,5 @@ export function ticketAmount(
 
 /** The reply staff post on a cash ticket once it is recorded. */
 export function cashReply(kind: 'CASH_IN' | 'CASH_OUT', amount: number): string {
-  return `${TOPIC_LABELS[kind]} of ${amount.toLocaleString('en-US')} recorded.`
+  return `${TOPIC_LABELS[kind]} of ${formatAmount('wallet', amount)} recorded.`
 }

@@ -55,7 +55,7 @@ test('a cash in ticket starts from a template, and staff record it from the tick
   await page.getByLabel('Note').fill('ref 12345')
   await page.getByRole('dialog').getByRole('button', { name: 'Record cash in' }).click()
   await expect(page.getByText(/^Cash in recorded/)).toBeVisible()
-  await expect(page.getByText('Cash in of 500 recorded.')).toBeVisible()
+  await expect(page.getByText('Cash in of ₱500 recorded.')).toBeVisible()
   const after = await prisma.inquiry.findUniqueOrThrow({ where: { id: ticket.id } })
   expect(after.status).toBe('CLOSED')
   expect((await prisma.user.findUniqueOrThrow({ where: { id: user.id } })).walletBalance).toBe(500)

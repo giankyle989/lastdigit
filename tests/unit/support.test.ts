@@ -91,7 +91,7 @@ describe('cash tickets', () => {
   })
 
   it('writes the staff reply', () => {
-    expect(cashReply('CASH_IN', 1500)).toBe('Cash in of 1,500 recorded.')
-    expect(cashReply('CASH_OUT', 200)).toBe('Cash out of 200 recorded.')
+    expect(cashReply('CASH_IN', 1500)).toBe('Cash in of ₱1,500 recorded.')
+    expect(cashReply('CASH_OUT', 200)).toBe('Cash out of ₱200 recorded.')
   })
 })

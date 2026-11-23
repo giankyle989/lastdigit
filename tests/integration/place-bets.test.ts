@@ -432,7 +432,7 @@ describe('placeBets', () => {
     await expect(placeBets(u.id, 'BOTH', pick)).rejects.toBeInstanceOf(ZodError)
   })
 
-  it('merges a wallet and a points bet on one ending; settle and void return each part', async () => {
+  it('merges a wallet and a points bet on one ending into one row', async () => {
     const u = await makeUser()
     await fundUser(u.id, 500)
     await fundUser(u.id, 500, 'POINTS')

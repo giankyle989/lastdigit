@@ -25,7 +25,7 @@ describe('recordTicketCash', () => {
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     })
     expect(thread.status).toBe('CLOSED')
-    expect(thread.messages.at(-1)).toMatchObject({ authorId: staff.id, body: 'Cash in of 300 recorded.' })
+    expect(thread.messages.at(-1)).toMatchObject({ authorId: staff.id, body: 'Cash in of ₱300 recorded.' })
     const tx = await prisma.transaction.findFirstOrThrow({ where: { userId: p.id, type: 'ADMIN_GRANT' } })
     expect(tx.note).toBe(`Ticket ${t.id}: GCash ref 1`)
     await expectLedgerConsistent()

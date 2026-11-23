@@ -18,6 +18,7 @@ type Props = {
 export function PayFrom({ account, wallet, points, disabled, onChange }: Props) {
   // The slip renders in two places (desktop column and phone sheet): one radio group each.
   const groupName = useId()
+  const idBase = useId()
   const options: { value: BetAccount; label: string; amount: string }[] = [
     { value: 'WALLET', label: 'Wallet', amount: formatAmount('wallet', wallet) },
     { value: 'POINTS', label: 'Points', amount: formatAmount('points', points) },
@@ -40,12 +41,15 @@ export function PayFrom({ account, wallet, points, disabled, onChange }: Props) 
               name={groupName}
               value={o.value}
               aria-label={o.label}
+              aria-describedby={`${idBase}-${o.value}`}
               checked={account === o.value}
               onChange={() => onChange(o.value)}
               className="sr-only"
             />
             <span className="font-medium">{o.label}</span>
-            <span className="num text-muted-foreground text-xs">{o.amount}</span>
+            <span id={`${idBase}-${o.value}`} className="num text-muted-foreground text-xs">
+              {o.amount}
+            </span>
           </label>
         ))}
       </div>

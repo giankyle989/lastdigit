@@ -176,14 +176,12 @@ describe('addMany and the multi-add plan', () => {
     expect(plan(EMPTY_SLIP, [e(0, 0)], 'perEnding', 0).blocked).toBe('Enter a stake')
     expect(plan(EMPTY_SLIP, [e(0, 0)], 'perEnding', parseStakeInput('1e3')).blocked).toBe('Enter a stake')
     expect(plan(EMPTY_SLIP, [e(0, 0), e(0, 1), e(0, 2)], 'splitTotal', 2).blocked).toBe(
-      'At least 1 pt per ending',
+      'At least 1 per ending',
     )
     expect(plan(EMPTY_SLIP, [e(0, 0), e(0, 1)], 'splitTotal', 2_000_001).blocked).toBe(
-      'At most 1,000,000 pts per ending',
+      'At most 1,000,000 per ending',
     )
-    expect(plan(EMPTY_SLIP, [e(0, 0)], 'perEnding', 1_000_010).blocked).toBe(
-      'At most 1,000,000 pts per ending',
-    )
+    expect(plan(EMPTY_SLIP, [e(0, 0)], 'perEnding', 1_000_010).blocked).toBe('At most 1,000,000 per ending')
   })
 
   it('counts room only for endings not already in the slip', () => {
