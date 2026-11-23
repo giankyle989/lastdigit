@@ -1,5 +1,7 @@
 'use client'
 
+import { useId } from 'react'
+
 import { formatAmount } from '@/lib/format'
 import type { BetAccount } from '@/lib/funding'
 import { cn } from '@/lib/utils'
@@ -14,6 +16,8 @@ type Props = {
 
 /** "Pay from" radio group: a slip is paid from one balance only (wallet-or-points spec §3). */
 export function PayFrom({ account, wallet, points, disabled, onChange }: Props) {
+  // The slip renders in two places (desktop column and phone sheet): one radio group each.
+  const groupName = useId()
   const options: { value: BetAccount; label: string; amount: string }[] = [
     { value: 'WALLET', label: 'Wallet', amount: formatAmount('wallet', wallet) },
     { value: 'POINTS', label: 'Points', amount: formatAmount('points', points) },
@@ -33,7 +37,7 @@ export function PayFrom({ account, wallet, points, disabled, onChange }: Props) 
           >
             <input
               type="radio"
-              name="pay-from"
+              name={groupName}
               value={o.value}
               aria-label={o.label}
               checked={account === o.value}
