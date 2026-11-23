@@ -17,9 +17,9 @@ import {
 type SlipContextValue = {
   picks: SlipPick[]
   lastStake: number
-  /** Balance from the last server render; the slip refreshes it via getSlipStatusAction. */
-  balance: number
-  /** Points from the last server render; spent first. */
+  /** Wallet balance from the last server render; the slip refreshes it via getSlipStatusAction. */
+  wallet: number
+  /** Points balance from the last server render. */
   points: number
   /** The player's chosen account for this slip; null until they choose. */
   account: BetAccount | null
@@ -30,6 +30,8 @@ type SlipContextValue = {
   setStake: (index: number, stake: number) => void
   addStake: (index: number, amount: number) => void
   setMax: (index: number, balance: number) => void
+  /** Chooses the balance the slip is paid from. */
+  setAccount: (account: BetAccount) => void
   clear: () => void
   /** Undo for clear: puts the picks back, but only while the slip is still empty. */
   restore: (picks: SlipPick[]) => void
@@ -62,12 +64,12 @@ function writeStorage(key: string, value: string): void {
 
 export function SlipProvider({
   userId,
-  balance,
+  wallet,
   points,
   children,
 }: {
   userId: string
-  balance: number
+  wallet: number
   points: number
   children: React.ReactNode
 }) {
@@ -102,7 +104,7 @@ export function SlipProvider({
     () => ({
       picks: slip.picks,
       lastStake: slip.lastStake,
-      balance,
+      wallet,
       points,
       account: slip.account,
       add,
@@ -114,13 +116,14 @@ export function SlipProvider({
       setStake: (index, stake) => dispatch({ type: 'setStake', index, stake }),
       addStake: (index, amount) => dispatch({ type: 'addStake', index, amount }),
       setMax: (index, bal) => dispatch({ type: 'setMax', index, balance: bal }),
+      setAccount: (account) => dispatch({ type: 'setAccount', account }),
       clear: () => dispatch({ type: 'clear' }),
       restore: (picks) => dispatch({ type: 'restore', picks }),
       removePicks: (picks) => dispatch({ type: 'removePicks', picks }),
       sheetOpen,
       setSheetOpen,
     }),
-    [slip, balance, points, add, sheetOpen],
+    [slip, wallet, points, add, sheetOpen],
   )
 
   return <SlipContext.Provider value={value}>{children}</SlipContext.Provider>
