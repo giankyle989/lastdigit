@@ -7,9 +7,7 @@ import {
   formatDate,
   formatDateTime,
   formatDay,
-  formatPoints,
   formatRelative,
-  formatSignedPoints,
   formatSplit,
   formatTipoffTime,
 } from '@/lib/format'
@@ -17,13 +15,6 @@ import {
 describe('format', () => {
   it('formats PHT tip-off times', () => {
     expect(formatTipoffTime(new Date('2026-11-12T00:30:00Z'))).toBe('8:30 AM PHT')
-  })
-
-  it('formats points with separators and signs', () => {
-    expect(formatPoints(1200)).toBe('1,200')
-    expect(formatSignedPoints(90)).toBe('+90')
-    expect(formatSignedPoints(-100)).toBe('-100')
-    expect(formatSignedPoints(0)).toBe('0')
   })
 
   it('formats countdowns', () => {

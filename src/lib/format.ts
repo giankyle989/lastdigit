@@ -25,14 +25,6 @@ export function formatDate(d: Date): string {
   return d.toLocaleDateString('en-US', { timeZone: TIME_ZONE, dateStyle: 'medium' })
 }
 
-export function formatPoints(n: number): string {
-  return n.toLocaleString('en-US')
-}
-
-export function formatSignedPoints(n: number): string {
-  return n > 0 ? `+${formatPoints(n)}` : formatPoints(n)
-}
-
 /** "2h 05m 09s" / "4m 09s" — time left until tip-off. */
 export function formatCountdown(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000))

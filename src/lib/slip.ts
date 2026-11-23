@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { formatPoints } from './format'
+import { formatAmount } from './format'
 import {
   availableFor,
   type Balances,
@@ -126,7 +126,7 @@ export function planMultiAdd(input: {
   if (!(stake > 0)) return empty('Enter a stake')
   if (mode === 'splitTotal' && stake < n) return empty('At least 1 pt per ending')
   if (stake > (mode === 'perEnding' ? MAX_STAKE : n * MAX_STAKE)) {
-    return empty(`At most ${formatPoints(MAX_STAKE)} pts per ending`)
+    return empty(`At most ${formatAmount('points', MAX_STAKE)} per ending`)
   }
 
   const stakes = mode === 'perEnding' ? endings.map(() => stake) : splitStake(stake, n)

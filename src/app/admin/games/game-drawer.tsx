@@ -2,10 +2,11 @@ import Link from 'next/link'
 
 import { ActionDialog } from '@/components/admin/action-dialog'
 import { Field } from '@/components/admin/field'
+import { Amount, SplitAmount } from '@/components/amount'
 import { EndingHeatmap } from '@/components/games/ending-heatmap'
 import { GameHeader } from '@/components/games/game-header'
-import { PointsAmount } from '@/components/points-amount'
 import { Input } from '@/components/ui/input'
+import { splitReturn } from '@/lib/funding'
 import { formatEnding, winningEnding } from '@/lib/game/ending'
 import type { getGameDetail } from '@/server/admin/queries'
 
@@ -30,7 +31,7 @@ export function GameDrawer({
         <div>
           <dt className="text-muted-foreground text-xs">House take</dt>
           <dd>
-            <PointsAmount value={game.houseTake} unit />
+            <Amount kind="pool" value={game.houseTake} />
           </dd>
         </div>
         <div>
@@ -59,8 +60,8 @@ export function GameDrawer({
                   {b.user.username}
                 </Link>
                 <span className="num">{formatEnding(b)}</span>
-                <PointsAmount value={b.stake} />
-                <PointsAmount value={b.payout} signed />
+                <SplitAmount wallet={b.stake - b.pointsStake} points={b.pointsStake} />
+                <SplitAmount {...splitReturn(b.payout, b.pointsStake)} signed />
               </li>
             ))}
           </ul>
